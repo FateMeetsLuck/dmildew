@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/dmildew
+dmildew
+dmildew.so
+dmildew.dylib
+dmildew.dll
+dmildew.a
+dmildew.lib
+dmildew-test-*
+*.exe
+*.o
+*.obj
+*.lst

@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"Johnny Postblock"
+	],
+	"copyright": "Copyright © 2020, Johnny Postblock",
+	"description": "Port of PyMilDew to D",
+	"license": "GPL-3",
+	"name": "dmildew"
+}

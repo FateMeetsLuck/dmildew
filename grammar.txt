@@ -1,0 +1,75 @@
+# OPERATOR PRECEDENCE
+20  DOT, FUNCTION_CALL
+
+17  BIT_NOT, NOT, UNARY PLUS, UNARY DASH
+
+16  POW (right-assoc)
+
+15  STAR, FSLASH, PERCENT (left-assoc)
+
+14  PLUS, DASH (left-assoc)
+
+13  BIT_RSHIFT, BIT_LSHIFT (left-assoc)
+
+12  LT, LE, GT, GE
+
+11  EQUALS, NEQUALS
+
+10  BIT_AND
+
+9   BIT_XOR
+
+8   BIT_OR
+
+7   AND
+
+6   OR
+
+3   ASSIGN, PLUS_ASSIGN, DASH_ASSIGN (right-assoc)
+
+
+# GRAMMAR
+
+program         ::=     statement*
+
+statement       ::=     var-decl SEMICOLON
+                        | expr SEMICOLON
+                        | block
+                        | KEYWORD:if LPAREN expr RPAREN statement (KEYWORD:else statement)?
+                        | KEYWORD:while LPAREN expr RPAREN statement
+                        | KEYWORD:do statement KEYWORD:while LPAREN expr RPAREN SEMICOLON
+                        | KEYWORD:for LPAREN statement expr SEMICOLON expr RPAREN statement
+                        | KEYWORD:break SEMICOLON
+                        | KEYWORD:return expr? SEMICOLON
+                        | func-decl
+                        | SEMICOLON # empty statement
+
+func-decl       ::=     KEYWORD:function IDENTIFIER LPAREN (IDENTIFIER (COMMA IDENTIFIER)*)? RPAREN LBRACE statement* RBRACE
+
+block           ::=     LBRACE statement* RBRACE
+
+var-decl        ::=     (KEYWORD:var|KEYWORD:let) IDENTIFIER (ASSIGN expr)? (COMMA IDENTIFIER (ASSIGN expr)?)*
+
+expr            ::=     (BIT_NOT|NOT|PLUS|DASH) expr 
+                        | primary-expr 
+                        | expr POW expr 
+                        | expr (STAR|FSLASH|PERCENT) expr 
+                        | expr (PLUS|DASH) expr
+                        | expr (BIT_LSHIFT|BIT_RSHIFT) expr
+                        | expr (LT|LE|GT|GE) expr 
+                        | expr (EQUALS|NEQUALS) expr
+                        | expr BIT_AND expr
+                        | expr BIT_XOR expr
+                        | expr BIT_OR expr
+                        | expr AND expr 
+                        | expr OR expr 
+                        | expr ASSIGN expr # TODO: make this separate rule or do something to invalidate `5 + a = 11;`
+
+primary-expr    ::=     LPAREN expr RPAREN | INTEGER | DOUBLE 
+                        | (KEYWORD:true|KEYWORD:false|KEYWORD:undefined|KEYWORD:null) 
+                        | KEYWORD:function LPAREN (IDENTIFIER (COMMA IDENTIFIER)*)? RPAREN LBRACE statement* RBRACE
+                        | STRING | IDENTIFIER
+                        | func-call 
+
+func-call       :: =    primary-expr LPAREN (expr (COMMA expr)*)? RPAREN
+                        
