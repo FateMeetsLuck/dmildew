@@ -271,7 +271,10 @@ class ForStatementNode : StatementNode
 
     override string toString() const
     {
-        auto str = "for(" ~ varDeclarationStatement.toString() ~ ";" ~ conditionNode.toString() 
+        auto decl = "";
+        if(varDeclarationStatement !is null)
+            decl = varDeclarationStatement.toString();
+        auto str = "for(" ~ decl ~ ";" ~ conditionNode.toString() 
             ~ ";" ~ incrementNode.toString() ~ ") " ~ bodyNode.toString();
         return str;
     }
