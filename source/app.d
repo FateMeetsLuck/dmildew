@@ -1,3 +1,4 @@
+import std.file: readText;
 import std.stdio;
 import std.string: strip;
 
@@ -36,7 +37,7 @@ ScriptValue native_testSum(Context c, ScriptValue[] args, ref NativeFunctionErro
 }
 
 /// for now just parses an expression
-void evaluateWithErrorChecking(Interpreter interpreter, in string code)
+void evaluateWithErrorChecking(Interpreter interpreter, in string code, in string fileName = "<stdin>")
 {
     try 
     {
@@ -45,10 +46,12 @@ void evaluateWithErrorChecking(Interpreter interpreter, in string code)
     }
     catch(ScriptCompileException ex)
     {
+        writeln("In file " ~ fileName);
         writefln("%s", ex);
     }
     catch(ScriptRuntimeException ex)
     {
+        writeln("In file " ~ fileName);
         writefln("%s", ex);
     }
 }
@@ -58,20 +61,30 @@ int main(string[] args)
     auto interpreter = new Interpreter();
     interpreter.forceSetGlobal("testPrint", &native_testPrint, true);
     interpreter.forceSetGlobal("testSum", &native_testSum, true);
-    while(true)
+
+    if(args.length > 1)
     {
-        write("mildew> ");
-        string input = strip(readln());
-        if(input == "#exit" || input == "")
-            break;
-        while(input.length > 0 && input[$-1]=='\\')
+        immutable fileName = args[1];
+        auto code = readText(fileName);
+        evaluateWithErrorChecking(interpreter, code, fileName);
+    }    
+    else
+    {
+        while(true)
         {
-            write(">>> ");
-            input = input[0..$-1];
-            input ~= "\n" ~ strip(readln());
+            write("mildew> ");
+            string input = strip(readln());
+            if(input == "#exit" || input == "")
+                break;
+            while(input.length > 0 && input[$-1]=='\\')
+            {
+                write(">>> ");
+                input = input[0..$-1];
+                input ~= "\n" ~ strip(readln());
+            }
+            evaluateWithErrorChecking(interpreter, input);
         }
-        evaluateWithErrorChecking(interpreter, input);
+        writeln("");
     }
-    writeln("");
     return 0;
 }
