@@ -240,6 +240,7 @@ private:
                 vResult.exception = new ScriptRuntimeException("Cannot assign values to this array index");
                 return vResult;
             }
+            varRef = vResult.varPointer;
             // else we have a valid pointer
         }
         else // we can't assign to this left hand node
@@ -266,51 +267,6 @@ private:
         vResult.value = *varRef;
         return vResult;
     }
-
-    /*VisitResult visitVarAssignmentNode(VarAssignmentNode node)
-    {
-        auto valueToAssign = visitNode(node.rightNode).value;
-        // auto leftVisitResult = visitVarAccessNode(node.leftNode);
-        auto nameOfVar = node.leftNode.varToken.text;
-        bool isConst; // @suppress(dscanner.suspicious.unmodified)
-        auto valuePtr = _currentContext.lookupVariableOrConst(nameOfVar, isConst);
-        if(valuePtr != null)
-        {
-            if(isConst)
-            {
-                // throw new Exception("Attempt to assign to const " ~ nameOfVar);
-                auto vr = VisitResult(ScriptValue.UNDEFINED);
-                vr.exception = new ScriptRuntimeException("Attempt to assign to const " ~ nameOfVar);
-                return vr;
-            }
-            if(node.assignOp.type == Token.Type.ASSIGN)
-            {
-                if(valueToAssign.type == ScriptValue.Type.UNDEFINED)
-                    _currentContext.unsetVariable(nameOfVar);
-                else
-                    *valuePtr = valueToAssign;
-            }
-            else if(node.assignOp.type == Token.Type.PLUS_ASSIGN)
-            {
-                *valuePtr = *valuePtr + valueToAssign;
-                return VisitResult(*valuePtr);
-            }
-            else if(node.assignOp.type == Token.Type.DASH_ASSIGN)
-            {
-                *valuePtr = *valuePtr - valueToAssign;
-                return VisitResult(*valuePtr);
-            }
-        }
-        else 
-        {
-            // throw new Exception("Attempt to assign to undeclared variable " ~ nameOfVar);
-            auto vr = VisitResult(ScriptValue.UNDEFINED);
-            vr.exception = new ScriptRuntimeException("Attempt to assign to undeclared variable " 
-                ~ nameOfVar);
-            return vr;
-        }
-        return VisitResult(valueToAssign);
-    }*/
 
     VisitResult visitFunctionCallNode(FunctionCallNode node)
     {

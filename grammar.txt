@@ -50,8 +50,7 @@ block           ::=     LBRACE statement* RBRACE
 
 var-decl        ::=     (KEYWORD:var|KEYWORD:let) IDENTIFIER (ASSIGN expr)? (COMMA IDENTIFIER (ASSIGN expr)?)*
 
-expr            ::=     (BIT_NOT|NOT|PLUS|DASH) expr 
-                        | primary-expr 
+expr            ::=     primary-expr 
                         | expr POW expr 
                         | expr (STAR|FSLASH|PERCENT) expr 
                         | expr (PLUS|DASH) expr
@@ -65,7 +64,8 @@ expr            ::=     (BIT_NOT|NOT|PLUS|DASH) expr
                         | expr OR expr 
                         | expr ASSIGN expr # TODO: make this separate rule or do something to invalidate `5 + a = 11;`
 
-primary-expr    ::=     LPAREN expr RPAREN | INTEGER | DOUBLE 
+primary-expr    ::=     (NOT|PLUS|DASH) primary-expr
+                        | LPAREN expr RPAREN | INTEGER | DOUBLE 
                         | (KEYWORD:true|KEYWORD:false|KEYWORD:undefined|KEYWORD:null) 
                         | KEYWORD:function LPAREN (IDENTIFIER (COMMA IDENTIFIER)*)? RPAREN LBRACE statement* RBRACE
                         | STRING | IDENTIFIER 

@@ -245,7 +245,8 @@ private:
         return statement;
     }
 
-    /// parse a single expression
+    /// parse a single expression. See https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
+    ///  for algorithm.
     Node parseExpression(int minPrec = 1)
     {
         debug import std.stdio: writeln;
@@ -259,9 +260,19 @@ private:
             immutable isLeftAssoc = opToken.isBinaryOpLeftAssociative;
             immutable nextMinPrec = isLeftAssoc? prec + 1 : prec;
             nextToken();
-            Node primaryRight = parseExpression(nextMinPrec);
-            // here check for () and [] operators
-            primaryLeft = new BinaryOpNode(opToken, primaryLeft, primaryRight);
+            if(opToken.type == Token.Type.LBRACKET)
+            {
+                Node index = parseExpression();
+                if(_currentToken.type != Token.Type.RBRACKET)
+                    throw new ScriptCompileException("Missing ']'", _currentToken);
+                nextToken();
+                primaryLeft = new ArrayIndexNode(primaryLeft, index);
+            }
+            else 
+            {
+                Node primaryRight = parseExpression(nextMinPrec);
+                primaryLeft = new BinaryOpNode(opToken, primaryLeft, primaryRight);
+            }
         }
         writeln(primaryLeft.toString());
         return primaryLeft;
