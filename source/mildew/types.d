@@ -27,7 +27,7 @@ public:
     enum Type 
     {
         NULL=0, UNDEFINED, BOOLEAN, INTEGER, DOUBLE, STRING, ARRAY, // add more later
-        FUNCTION,
+        FUNCTION, OBJECT,
         NATIVE_FUNCTION, NATIVE_DELEGATE
     }
 
@@ -160,6 +160,11 @@ public:
         if(_type == Type.ARRAY && other._type == Type.ARRAY)
             return _asArray == other._asArray;
 
+        // if both are functions or objects, compare for exactness
+        if((_type == Type.FUNCTION && other._type == Type.FUNCTION) ||
+            (_type == Type.OBJECT && other._type == Type.OBJECT))
+            return _asObjectOrFunction is other._asObjectOrFunction;
+
         // if both are native functions or native delegates we can compare for exact address
         if(_type == Type.NATIVE_FUNCTION && other._type == Type.NATIVE_FUNCTION)
             return _asNativeFunction == other._asNativeFunction;
@@ -233,7 +238,9 @@ public:
                 return 0;
         }
 
-        // TODO handle functions and delegates. Not sure how that comparison should work
+        // TODO handle object and functions
+
+        // TODO handle native functions and delegates. Not sure how that comparison should work
         throw new ScriptValueException("Unable to compare " ~ this.toString ~ " to " ~ other.toString, other);
     }
 
@@ -254,8 +261,8 @@ public:
                 return typeid(_asString).getHash(&_asString);
             case Type.ARRAY:
                 return typeid(_asArray).getHash(&_asArray);
-            case Type.FUNCTION:
-                return typeid(_asScriptFunction).getHash(&_asScriptFunction);
+            case Type.FUNCTION: case Type.OBJECT:
+                return typeid(_asObjectOrFunction).getHash(&_asObjectOrFunction);
             case Type.NATIVE_FUNCTION:
                 return typeid(_asNativeFunction).getHash(&_asNativeFunction);
             case Type.NATIVE_DELEGATE:
@@ -284,8 +291,8 @@ public:
                 return _asString == other._asString;
             case Type.ARRAY:
                 return _asArray == other._asArray;
-            case Type.FUNCTION:
-                return *_asScriptFunction == *(other._asScriptFunction);
+            case Type.FUNCTION: case Type.OBJECT:
+                return _asObjectOrFunction is other._asObjectOrFunction;
             case Type.NATIVE_FUNCTION:
                 return _asNativeFunction == other._asNativeFunction;
             case Type.NATIVE_DELEGATE:
@@ -357,8 +364,8 @@ public:
                 str ~= "]";
                 return str;
             }
-            case Type.FUNCTION:
-                return "function " ~ _asScriptFunction.name;
+            case Type.FUNCTION: case Type.OBJECT:
+                return _asObjectOrFunction.toString;
             case Type.NATIVE_FUNCTION:
                 return format("native function %x", &_asNativeFunction);
             case Type.NATIVE_DELEGATE:
@@ -414,10 +421,15 @@ private:
             _type = Type.NATIVE_DELEGATE;
             _asNativeDelegate = value;
         }
-        else static if(is(T == ScriptFunction*)) // only accept pointers
+        else static if(is(T == ScriptFunction)) // only accept pointers
         {
             _type = Type.FUNCTION;
-            _asScriptFunction = value;
+            _asObjectOrFunction = value;
+        }
+        else static if(is(T == ScriptObject))
+        {
+            _type = Type.OBJECT;
+            _asObjectOrFunction = value;
         }
         else static if(is(T == ScriptValue) || is(T == immutable(ScriptValue)))
         {
@@ -442,8 +454,8 @@ private:
                 case Type.ARRAY:
                     this._asArray = cast(ScriptValue[])(value._asArray);
                     break;
-                case Type.FUNCTION:
-                    this._asScriptFunction = cast(ScriptFunction*)(value._asScriptFunction);
+                case Type.FUNCTION: case Type.OBJECT:
+                    this._asObjectOrFunction = cast(ScriptObject)(value._asObjectOrFunction);
                     break;
                 case Type.NATIVE_FUNCTION:
                     this._asNativeFunction = value._asNativeFunction;
@@ -530,7 +542,7 @@ private:
                 return arrayToFill;
             }          
         }
-        else static if(is(T == ScriptFunction*))
+        else static if(is(T == ScriptFunction))
         {
             if(_type != Type.FUNCTION)
             {
@@ -541,9 +553,24 @@ private:
             }
             else
             {
-                return cast(ScriptFunction*)_asScriptFunction;
+                return cast(T)_asObjectOrFunction;
             }
         }
+        else static if(is(T == ScriptObject))
+        {
+            if(_type != Type.OBJECT)
+            {
+                if(throwing)
+                    throw new ScriptValueException("ScriptValue " ~ toString ~ " is not an object", this);
+                else
+                    return cast(T)null;
+            }
+            else
+            {
+                return cast(T)_asObjectOrFunction;
+            }
+        }
+        // else TODO cast NativeObjects from the stored in ScriptObject
         else static if(is(T == NativeFunction))
         {
             if(_type != Type.NATIVE_FUNCTION)
@@ -585,7 +612,7 @@ private:
         ScriptValue[] _asArray;
         NativeFunction _asNativeFunction;
         NativeDelegate _asNativeDelegate;
-        ScriptFunction* _asScriptFunction;
+        ScriptObject _asObjectOrFunction;
     }
 }
 
@@ -594,42 +621,82 @@ class ScriptObject
 {
 public:
     /// constructor
-    this(ScriptValue* proto, Object native = null)
+    this(in string typename, ScriptObject proto, Object native = null)
     {
-        if(proto)
-            _prototype = *proto;
+        _name = typename;
+        _prototype = proto;
         _nativeObject = native;
     }
 
-    ScriptValue* opIndex(in string index)
-    {
-        // first search prototype chain for __index__
-        return null;
-    }
-
-private:
-    /// constructor for the Object.prototype singleton
+    /// empty constructor
     this()
     {
 
     }
 
+    ScriptValue* opIndex(in string index)
+    {
+        auto objectToSearch = this;
+        while(objectToSearch !is null)
+        {
+            auto foundMember = index in objectToSearch._members;
+            if(foundMember != null)
+                return foundMember;
+            objectToSearch = objectToSearch._prototype;
+        }
+        return null;
+    }
+
+    /// name property
+    string name() const { return _name; }
+
+    /// prototype property
+    auto prototype() { return _prototype; }
+
+    /// as string
+    override string toString() const
+    {
+        return "object"; // TODO JSON style formatting for each member
+    }
+
+private:
+
+    /// type name (Function or whatever)
+    string _name;
     /// members
     ScriptValue[string] _members;
     /// it can also hold a native object
     Object _nativeObject;
-    /// prototype can be anything but preferably a ScriptObject TODO handle Object.prototype
-    ScriptValue _prototype = ScriptValue.UNDEFINED;
+    /// prototype 
+    ScriptObject _prototype;
 }
 
 /// A function defined with the scripting language
-struct ScriptFunction
+class ScriptFunction : ScriptObject
 {
     import mildew.nodes: StatementNode;
+public:
+    this(string fnname, string[] args, StatementNode[] statementNodes)
+    {
+        super("Function", new ScriptObject(), null);
+        _functionName = fnname;
+        _argNames = args;
+        _statementNodes = statementNodes;
+    }
 
-    string name;
-    string[] argNames;
-    StatementNode[] statements;
+    override string toString() const
+    {
+        return "Function " ~ _functionName;
+    }
+
+    auto functionName() const { return _functionName; }
+    auto argNames() { return _argNames; }
+    auto statementNodes() { return _statementNodes; }
+
+private:
+    string _functionName;
+    string[] _argNames;
+    StatementNode[] _statementNodes;
 }
 
 /// exception thrown on failed conversions

@@ -320,7 +320,7 @@ private:
         }
         else if(fnToCall.type == ScriptValue.Type.FUNCTION)
         {
-            auto sfn = fnToCall.toValue!(ScriptFunction*);
+            auto sfn = fnToCall.toValue!ScriptFunction;
             // valid function to call so gather expressions;
             auto vr = VisitResult(ScriptValue.UNDEFINED);
             // make sure arguments match TODO support vararg and default values
@@ -338,12 +338,12 @@ private:
                     return vr;
                 args ~= vr.value;
             }
-            _currentContext = new Context(_currentContext);
+            _currentContext = new Context(_currentContext, sfn.functionName);
             // push args by name as locals
             for(size_t i=0; i < sfn.argNames.length; ++i)
                 _currentContext.forceSetVarOrConst(sfn.argNames[i], args[i], false);
             
-            foreach(statement ; sfn.statements)
+            foreach(statement ; sfn.statementNodes)
             {
                 vr = visitStatementNode(statement);
                 if(vr.breakFlag) // can't break out of a function
@@ -662,7 +662,7 @@ private:
 
     VisitResult visitFunctionDeclarationStatementNode(FunctionDeclarationStatementNode node)
     {
-        ScriptFunction* func = new ScriptFunction(node.name, node.argNames, node.statementNodes);
+        auto func = new ScriptFunction(node.name, node.argNames, node.statementNodes);
         immutable okToDeclare = _globalContext.declareVariableOrConst(node.name, ScriptValue(func), false);
         VisitResult vr = VisitResult(ScriptValue.UNDEFINED);
         if(!okToDeclare)
