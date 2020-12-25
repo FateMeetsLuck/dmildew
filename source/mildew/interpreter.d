@@ -96,7 +96,10 @@ private:
     VisitResult visitUnaryOpNode(UnaryOpNode node)
     {
         // TODO handle ++, -- if operandNode is a VarAccessNode
-        auto value = visitNode(node.operandNode).value;
+        auto vr = visitNode(node.operandNode);
+        if(vr.exception !is null)
+            return vr;
+        auto value = vr.value;
         switch(node.opToken.type)
         {
             case Token.Type.BIT_NOT:
@@ -320,7 +323,7 @@ private:
             auto sfn = fnToCall.toValue!(ScriptFunction*);
             // valid function to call so gather expressions;
             auto vr = VisitResult(ScriptValue.UNDEFINED);
-            // make sure arguments match TODO support vararg
+            // make sure arguments match TODO support vararg and default values
             if(node.expressionArgs.length > sfn.argNames.length)
             {
                 vr.exception = new ScriptRuntimeException("Wrong number of arguments to function " 

@@ -589,67 +589,37 @@ private:
     }
 }
 
-/// ScriptObject type that can also be D objects or defined types. TODO finish
+/// Object class
 class ScriptObject
 {
 public:
-    
-    this(ScriptObject proto = null)
+    /// constructor
+    this(ScriptValue* proto, Object native = null)
     {
-        if(proto is null)
-            _prototype = _rootPrototype;
-        _prototype = proto;
+        if(proto)
+            _prototype = *proto;
+        _nativeObject = native;
     }
 
-    /// prototype property
-    ScriptObject prototype() { return _prototype; }
-    /// prototype property
-    ScriptObject prototype(ScriptObject proto) { return _prototype = proto; }
-
-    /// access to members, searches up prototype chain
-    ref auto opIndex(string index)
+    ScriptValue* opIndex(in string index)
     {
-        auto objectToSearch = this;
-        while(objectToSearch !is null)
-        {
-            if(index in objectToSearch._members)
-                return objectToSearch._members[index];
-            objectToSearch = objectToSearch._prototype;
-        }
-        return ScriptValue.UNDEFINED;
-    }
-
-    /// sets a member
-    auto opIndexAssign(T)(T value, string index)
-    {
-        _members[index] = ScriptValue(value);
-        return _members[index];
-    }
-
-    Object nativeObject()
-    {
-        return _nativeObject;
-    }
-
-    /// Modifiying the main root prototype has to be done per thread
-    static this()
-    {
-        _rootPrototype = new ScriptObject(false);
-        // TODO fill in whatever should be in it
+        // first search prototype chain for __index__
+        return null;
     }
 
 private:
-
-    this(bool value)
+    /// constructor for the Object.prototype singleton
+    this()
     {
-        _prototype = null;
+
     }
 
-    static ScriptObject _rootPrototype;
-
-    ScriptObject _prototype;
+    /// members
     ScriptValue[string] _members;
+    /// it can also hold a native object
     Object _nativeObject;
+    /// prototype can be anything but preferably a ScriptObject TODO handle Object.prototype
+    ScriptValue _prototype = ScriptValue.UNDEFINED;
 }
 
 /// A function defined with the scripting language
