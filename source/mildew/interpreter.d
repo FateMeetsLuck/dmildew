@@ -54,6 +54,8 @@ private:
 
         if(auto lnode = cast(LiteralNode)node)
             result = visitLiteralNode(lnode);
+        else if(auto anode = cast(ArrayLiteralNode)node)
+            result = visitArrayLiteralNode(anode);
         else if(auto unode = cast(UnaryOpNode)node)
             result = visitUnaryOpNode(unode);
         else if(auto bnode = cast(BinaryOpNode)node)
@@ -74,6 +76,21 @@ private:
     VisitResult visitLiteralNode(LiteralNode node)
     {
         return VisitResult(node.value);
+    }
+
+    VisitResult visitArrayLiteralNode(ArrayLiteralNode node)
+    {
+        auto vr = VisitResult(ScriptValue.UNDEFINED);
+        ScriptValue[] values = [];
+        foreach(expression ; node.valueNodes)
+        {
+            vr = visitNode(expression);
+            if(vr.exception !is null)
+                return vr;
+            values ~= vr.value;
+        }
+        vr.value = values;
+        return vr;
     }
 
     VisitResult visitUnaryOpNode(UnaryOpNode node)

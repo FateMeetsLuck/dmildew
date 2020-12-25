@@ -68,7 +68,8 @@ expr            ::=     (BIT_NOT|NOT|PLUS|DASH) expr
 primary-expr    ::=     LPAREN expr RPAREN | INTEGER | DOUBLE 
                         | (KEYWORD:true|KEYWORD:false|KEYWORD:undefined|KEYWORD:null) 
                         | KEYWORD:function LPAREN (IDENTIFIER (COMMA IDENTIFIER)*)? RPAREN LBRACE statement* RBRACE
-                        | STRING | IDENTIFIER
+                        | STRING | IDENTIFIER 
+                        | LBRACKET (expr (COMMA expr)*)? RBRACKET
                         | func-call 
 
 func-call       :: =    primary-expr LPAREN (expr (COMMA expr)*)? RPAREN

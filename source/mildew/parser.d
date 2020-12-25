@@ -34,6 +34,7 @@ private int binaryOpPrecedence(Token opToken)
     // see grammar.txt for explanation of magic constants
     switch(opToken.type)
     {
+        case Token.Type.LBRACKET:
         case Token.Type.DOT: 
         case Token.Type.LPAREN:
             return 20;
@@ -295,6 +296,14 @@ private:
                 left = new VarAccessNode(_currentToken);
                 nextToken();
                 break;
+            case Token.Type.LBRACKET: // an array
+            {
+                nextToken(); // eat the [
+                auto values = parseCommaSeparatedExpressions(Token.Type.RBRACKET);
+                nextToken(); // eat the ]
+                left = new ArrayLiteralNode(values);
+                break;
+            }
             default:
                 throw new ScriptCompileException("Unexpected token in primary expression", _currentToken);
         }

@@ -70,6 +70,21 @@ class LiteralNode : Node
     ScriptValue value;
 }
 
+class ArrayLiteralNode : Node 
+{
+    this(Node[] values)
+    {
+        valueNodes = values;
+    }
+
+    override string toString() const
+    {
+        return format("%s", valueNodes);
+    }
+
+    Node[] valueNodes;
+}
+
 class VarAccessNode : Node
 {
     this(Token token)
