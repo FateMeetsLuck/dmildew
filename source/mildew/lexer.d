@@ -199,7 +199,8 @@ public:
         "var", "let", "const", 
         "if", "else", "while", "do", "for",
         "switch", "case", "default",
-        "break", "continue", "return", "function"
+        "break", "continue", "return", "function",
+        "new"
     );
 
     /// AA of look up for escape chars based on character after \

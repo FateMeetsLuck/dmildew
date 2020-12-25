@@ -358,7 +358,7 @@ private:
                     nextToken(); // eat the {
                     auto statements = parseStatements(Token.Type.RBRACE);
                     // don't eat the } here because nextToken call at end of if-else
-                    ScriptFunction* func = new ScriptFunction(name, argNames, statements);
+                    auto func = new ScriptFunction(name, argNames, statements);
                     left = new LiteralNode(funcToken, ScriptValue(func));
                 }
                 else
