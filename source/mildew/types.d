@@ -419,7 +419,7 @@ private:
             _type = Type.FUNCTION;
             _asScriptFunction = value;
         }
-        else static if(is(T == ScriptValue))
+        else static if(is(T == ScriptValue) || is(T == immutable(ScriptValue)))
         {
             this._type = value._type;
             final switch(value._type)
@@ -440,10 +440,10 @@ private:
                     this._asString = value._asString;
                     break;
                 case Type.ARRAY:
-                    this._asArray = value._asArray;
+                    this._asArray = cast(ScriptValue[])(value._asArray);
                     break;
                 case Type.FUNCTION:
-                    this._asScriptFunction = value._asScriptFunction;
+                    this._asScriptFunction = cast(ScriptFunction*)(value._asScriptFunction);
                     break;
                 case Type.NATIVE_FUNCTION:
                     this._asNativeFunction = value._asNativeFunction;
@@ -652,6 +652,7 @@ private:
     Object _nativeObject;
 }
 
+/// A function defined with the scripting language
 struct ScriptFunction
 {
     import mildew.nodes: StatementNode;

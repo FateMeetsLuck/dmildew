@@ -137,11 +137,29 @@ class ArrayIndexNode : Node
 
     override string toString() const
     {
-        return objectNode.toString() ~ "[" ~ indexValueNode.toString ~ "]";
+        return objectNode.toString() ~ "[" ~ indexValueNode.toString() ~ "]";
     }
 
     Node objectNode;
     Node indexValueNode;
+}
+
+// when . is used. We will need helper functions to get the this and handle =
+class MemberAccessNode : Node 
+{
+    this(Node obj, Node member)
+    {
+        objectNode = obj;
+        memberNode = member;
+    }
+
+    override string toString() const
+    {
+        return objectNode.toString() ~ "." ~ memberNode.toString();
+    }
+
+    Node objectNode;
+    Node memberNode;
 }
 
 /// root class of all statement nodes

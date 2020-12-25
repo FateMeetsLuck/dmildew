@@ -243,6 +243,7 @@ private:
             varRef = vResult.varPointer;
             // else we have a valid pointer
         }
+        // TODO handle MemberAccessNode
         else // we can't assign to this left hand node
         {
             vResult.exception = new ScriptRuntimeException("Invalid reassignment");
@@ -674,6 +675,7 @@ private:
         debug import std.stdio: writefln;
         auto vr = visitNode(node.expressionNode);
         writefln("The result of the expression statement is %s", vr.value);
+        vr.value = ScriptValue.UNDEFINED; // they should never return a result
         return vr;
     }
 

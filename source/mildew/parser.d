@@ -9,7 +9,7 @@ debug
 import mildew.exceptions: ScriptCompileException;
 import mildew.lexer: Token;
 import mildew.nodes;
-import mildew.types: ScriptValue;
+import mildew.types: ScriptValue, ScriptFunction;
 
 private int unaryOpPrecedence(Token opToken)
 {
@@ -260,7 +260,14 @@ private:
             immutable isLeftAssoc = opToken.isBinaryOpLeftAssociative;
             immutable nextMinPrec = isLeftAssoc? prec + 1 : prec;
             nextToken();
-            if(opToken.type == Token.Type.LBRACKET)
+            if(opToken.type == Token.Type.DOT)
+            {
+                auto right = parsePrimaryExpression();
+                if(cast(VarAccessNode)right is null)
+                    throw new ScriptCompileException("Object members must be valid identifiers", _currentToken);
+                primaryLeft = new MemberAccessNode(primaryLeft, right);
+            }
+            else if(opToken.type == Token.Type.LBRACKET)
             {
                 auto index = parseExpression();
                 if(_currentToken.type != Token.Type.RBRACKET)
@@ -324,6 +331,36 @@ private:
                     left = new LiteralNode(_currentToken, ScriptValue(null));
                 else if(_currentToken.text == "undefined")
                     left = new LiteralNode(_currentToken, ScriptValue.UNDEFINED);
+                else if(_currentToken.text == "function") // function literal
+                {
+                    auto funcToken = _currentToken;
+                    nextToken();
+                    if(_currentToken.type != Token.Type.LPAREN)
+                        throw new ScriptCompileException("Argument list expected after anonymous function", 
+                            _currentToken);
+                    nextToken();
+                    auto name = "<anonymous function>";
+                    string[] argNames = [];
+                    while(_currentToken.type != Token.Type.RPAREN)
+                    {
+                        if(_currentToken.type != Token.Type.IDENTIFIER)
+                            throw new ScriptCompileException("Argument list must be valid identifier", _currentToken);
+                        argNames ~= _currentToken.text;
+                        nextToken();
+                        if(_currentToken.type == Token.Type.COMMA)
+                            nextToken();
+                        else if(_currentToken.type !=  Token.Type.RPAREN)
+                            throw new ScriptCompileException("Missing ')' after argument list", _currentToken);
+                    }
+                    nextToken(); // eat the )
+                    if(_currentToken.type != Token.Type.LBRACE)
+                        throw new ScriptCompileException("Expected '{' before anonymous function body", _currentToken);
+                    nextToken(); // eat the {
+                    auto statements = parseStatements(Token.Type.RBRACE);
+                    // don't eat the } here because nextToken call at end of if-else
+                    ScriptFunction* func = new ScriptFunction(name, argNames, statements);
+                    left = new LiteralNode(funcToken, ScriptValue(func));
+                }
                 else
                     throw new ScriptCompileException("Unexpected keyword in primary expression", _currentToken);
                 nextToken();
