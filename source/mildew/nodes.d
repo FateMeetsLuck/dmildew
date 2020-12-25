@@ -100,27 +100,6 @@ class VarAccessNode : Node
     Token varToken;
 }
 
-class VarAssignmentNode : Node 
-{
-    import mildew.lexer: Position;
-
-    this(Token op, VarAccessNode left, Node right)
-    {
-        assignOp = op;
-        leftNode = left;
-        rightNode = right;
-    }
-
-    override string toString() const
-    {
-        return format("VarAssignmentNode:(%s %s %s)", leftNode, assignOp, rightNode);
-    }
-
-    Token assignOp;
-    VarAccessNode leftNode;
-    Node rightNode;
-}
-
 class FunctionCallNode : Node
 {
     this(Node fn, Node[] args)
@@ -145,6 +124,24 @@ class FunctionCallNode : Node
     Node functionToCall;
     // todo handle "this", the object that calls
     Node[] expressionArgs;
+}
+
+// when [] operator is used
+class ArrayIndexNode : Node 
+{
+    this(Node obj, Node index)
+    {
+        objectNode = obj;
+        indexValueNode = index;
+    }    
+
+    override string toString() const
+    {
+        return objectNode.toString() ~ "[" ~ indexValueNode.toString ~ "]";
+    }
+
+    Node objectNode;
+    Node indexValueNode;
 }
 
 /// root class of all statement nodes

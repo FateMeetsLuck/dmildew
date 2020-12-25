@@ -509,7 +509,7 @@ private:
                     return cast(T)null;
             }
             else
-                return _asArray;
+                return cast(ScriptValue[])_asArray;
         }
         else static if(is(T : E[], E))
         {

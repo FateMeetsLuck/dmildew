@@ -62,10 +62,10 @@ private:
             result = visitBinaryOpNode(bnode);
         else if(auto vnode = cast(VarAccessNode)node)
             result = visitVarAccessNode(vnode);
-        else if(auto vnode = cast(VarAssignmentNode)node)
-            result = visitVarAssignmentNode(vnode);
         else if(auto fnnode = cast(FunctionCallNode)node)
             result = visitFunctionCallNode(fnnode);
+        else if(auto anode = cast(ArrayIndexNode)node)
+            result = visitArrayIndexNode(anode);
         else
             throw new Exception("Unknown node type " ~ typeid(node).toString);
 
@@ -125,6 +125,9 @@ private:
             return lhsResult;
         if(rhsResult.exception !is null)
             return rhsResult;
+
+        if(node.opToken.isAssignmentOperator)
+            return handleAssignment(node.opToken, node.leftNode, node.rightNode);
 
         auto lhs = lhsResult.value;
         auto rhs = rhsResult.value;
@@ -202,7 +205,69 @@ private:
         }
     }
 
-    VisitResult visitVarAssignmentNode(VarAssignmentNode node)
+    VisitResult handleAssignment(Token assignToken, Node left, Node right)
+    {
+        // first get the value of what we're going to assign
+        auto vResult = visitNode(right);
+        if(vResult.exception !is null)
+            return vResult;
+        auto value = vResult.value;
+        // if it is a VarAccessNode we need the name and to follow all reassignment rules
+        ScriptValue* varRef;
+        if(auto van = cast(VarAccessNode)left)
+        {
+            auto name = van.varToken.text;
+            bool isConst; // @suppress(dscanner.suspicious.unmodified)
+            varRef = _currentContext.lookupVariableOrConst(name, isConst);
+            if(varRef == null)
+            {
+                vResult.exception = new ScriptRuntimeException("Cannot reassign undefined variable " ~ name);
+                return vResult;
+            }
+            if(isConst) // we can't reassign this
+            {
+                vResult.exception = new ScriptRuntimeException("Cannot reassign const " ~ name);
+                return vResult;
+            }
+            // else we have a valid pointer at this point
+        }
+        // if it is an array index node, it has to return a valid pointer
+        else if(auto ain = cast(ArrayIndexNode)left) 
+        {
+            vResult = visitNode(left);
+            if(vResult.varPointer == null)
+            {
+                vResult.exception = new ScriptRuntimeException("Cannot assign values to this array index");
+                return vResult;
+            }
+            // else we have a valid pointer
+        }
+        else // we can't assign to this left hand node
+        {
+            vResult.exception = new ScriptRuntimeException("Invalid reassignment");
+            return vResult;
+        }
+
+        // what assignment operation is it?
+        switch(assignToken.type)
+        {
+            case Token.Type.PLUS_ASSIGN:
+                *varRef = *varRef + value;
+                break;
+            case Token.Type.DASH_ASSIGN:
+                *varRef = *varRef - value;
+                break;
+            case Token.Type.ASSIGN:
+                *varRef = value;
+                break;
+            default:
+                throw new Exception("We should have never gotten here (assignment)");
+        }
+        vResult.value = *varRef;
+        return vResult;
+    }
+
+    /*VisitResult visitVarAssignmentNode(VarAssignmentNode node)
     {
         auto valueToAssign = visitNode(node.rightNode).value;
         // auto leftVisitResult = visitVarAccessNode(node.leftNode);
@@ -245,7 +310,7 @@ private:
             return vr;
         }
         return VisitResult(valueToAssign);
-    }
+    }*/
 
     VisitResult visitFunctionCallNode(FunctionCallNode node)
     {
@@ -342,6 +407,42 @@ private:
         }
     }
 
+    VisitResult visitArrayIndexNode(ArrayIndexNode node)
+    {
+        auto vr = visitNode(node.indexValueNode);
+        if(vr.exception !is null)
+            return vr;
+        immutable indexSV = vr.value;
+        vr = visitNode(node.objectNode);
+        if(vr.exception !is null)
+            return vr;
+        auto arrayToIndex = vr.value;
+        if(arrayToIndex.type == ScriptValue.Type.ARRAY)
+        {
+            if(!indexSV.isNumber)
+            {
+                vr.exception = new ScriptRuntimeException("Array index must be a number");
+                return vr;
+            }
+            immutable index = indexSV.toValue!long;
+            auto rawArray = arrayToIndex.toValue!(ScriptValue[]);
+            if(index < 0 || index >= rawArray.length)
+            {
+                vr.exception = new ScriptRuntimeException("Out of bounds array access");
+                return vr;
+            }
+            vr.value = rawArray[index];
+            vr.varPointer = &rawArray[index];
+            return vr;            
+        }
+        else 
+        {
+            vr = VisitResult(ScriptValue.UNDEFINED);
+            vr.exception = new ScriptRuntimeException("Cannot index non array " ~ arrayToIndex.toString);
+            return vr;            
+        }
+    }
+
     VisitResult visitStatementNode(StatementNode node)
     {
         VisitResult vr = VisitResult(ScriptValue.UNDEFINED);
@@ -420,16 +521,22 @@ private:
             }
             else
             {
-                auto v = cast(VarAssignmentNode)varNode;
-                auto valueToAssign = visitNode(v.rightNode).value;
+                auto binNode = cast(BinaryOpNode)varNode;
+                visitResult = visitNode(binNode.rightNode);
+                if(visitResult.exception !is null)
+                    return visitResult;
+                auto valueToAssign = visitResult.value;
+                // we checked this before so should be safe
+                auto van = cast(VarAccessNode)(binNode.leftNode);
+                auto name = van.varToken.text;
                 if(node.qualifier.text == "var")
                 {
                     // global variable
-                    if(!_globalContext.declareVariableOrConst(v.leftNode.varToken.text, valueToAssign, false))
+                    if(!_globalContext.declareVariableOrConst(name, valueToAssign, false))
                     {
                         // throw new Exception("Attempt to redeclare global variable " ~ v.leftNode.varToken.text);
                         visitResult.exception = new ScriptRuntimeException("Attempt to redeclare global variable "
-                            ~ v.leftNode.varToken.text);
+                            ~ name);
                         // visitResult.exception.scriptTraceback ~= node;
                         return visitResult;
                     }
@@ -437,22 +544,22 @@ private:
                 else if(node.qualifier.text == "let")
                 {
                     // local variable
-                    if(!_currentContext.declareVariableOrConst(v.leftNode.varToken.text, valueToAssign, false))
+                    if(!_currentContext.declareVariableOrConst(name, valueToAssign, false))
                     {
                         // throw new Exception("Attempt to redeclare local variable " ~ v.leftNode.varToken.text);
                         visitResult.exception = new ScriptRuntimeException("Attempt to redeclare local variable "
-                            ~ v.leftNode.varToken.text);
+                            ~ name);
                         // visitResult.exception.scriptTraceback ~= node;
                         return visitResult;
                     }
                 }
                 else if(node.qualifier.text == "const")
                 {
-                    if(!_currentContext.declareVariableOrConst(v.leftNode.varToken.text, valueToAssign, true))
+                    if(!_currentContext.declareVariableOrConst(name, valueToAssign, true))
                     {
                         // throw new Exception("Attempt to redeclare local const " ~ v.leftNode.varToken.text);
                         visitResult.exception = new ScriptRuntimeException("Attempt to redeclare local const "
-                            ~ v.leftNode.varToken.text);
+                            ~ name);
                         // visitResult.exception.scriptTraceback ~= node;
                         return visitResult;
                     }           

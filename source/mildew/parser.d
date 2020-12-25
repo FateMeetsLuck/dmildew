@@ -81,6 +81,56 @@ private int binaryOpPrecedence(Token opToken)
     // TODO null coalesce 5, terniary 4, yield 2, comma 1?
 }
 
+private bool isBinaryOpLeftAssociative(in Token opToken)
+{
+    switch(opToken.type)
+    {
+        case Token.Type.LBRACKET:
+        case Token.Type.DOT: 
+        case Token.Type.LPAREN:
+            return true;
+        case Token.Type.POW:
+            return false;
+        case Token.Type.STAR: 
+        case Token.Type.FSLASH: 
+        case Token.Type.PERCENT:
+            return true;
+        case Token.Type.PLUS: 
+        case Token.Type.DASH:
+            return true;
+        case Token.Type.BIT_LSHIFT: 
+        case Token.Type.BIT_RSHIFT: 
+        case Token.Type.BIT_URSHIFT:
+            return true;
+        case Token.Type.LT: 
+        case Token.Type.LE: 
+        case Token.Type.GT: 
+        case Token.Type.GE:
+            return true;
+        case Token.Type.EQUALS: 
+        case Token.Type.NEQUALS: 
+        case Token.Type.STRICT_EQUALS: 
+        case Token.Type.STRICT_NEQUALS:
+            return true;
+        case Token.Type.BIT_AND:
+            return true;
+        case Token.Type.BIT_XOR:
+            return true;
+        case Token.Type.BIT_OR:
+            return true;
+        case Token.Type.AND:
+            return true;
+        case Token.Type.OR:
+            return true;
+        case Token.Type.ASSIGN:
+        case Token.Type.PLUS_ASSIGN:
+        case Token.Type.DASH_ASSIGN:
+            return false;
+        default:
+            return false;
+    }   
+}
+
 /// parser
 struct Parser
 {
@@ -195,70 +245,40 @@ private:
         return statement;
     }
 
-    /// parse a single expression which could be a LiteralNode, UnaryOpNode, or BinaryOpNode
-    Node parseExpression(int parentPrecedence = 0)
+    /// parse a single expression
+    Node parseExpression(int minPrec = 1)
     {
-        Node left = null;
-
-        immutable unOpPrec = _currentToken.unaryOpPrecedence;
-        if(unOpPrec != 0 && unOpPrec >= parentPrecedence)
-        {
-            auto opToken =  _currentToken;
-            nextToken();
-            auto operand = parseExpression(unOpPrec);
-            left = new UnaryOpNode(opToken, operand);
-        }
-        else
-        {
-            left = parsePrimaryExpression();
-        }
-
-        // cheap hack to force right associativity on these ops
-        if(_currentToken.type == Token.Type.POW || _currentToken.isAssignmentOperator)
-        {
-            immutable prec = _currentToken.binaryOpPrecedence;
-            auto opToken = _currentToken;
-            nextToken();
-            auto right = parseExpression(prec);
-            if(opToken.isAssignmentOperator)
-            {
-                if(cast(VarAccessNode)left is null)
-                    throw new ScriptCompileException("Attempt to assign to lvalue", opToken);
-                left = new VarAssignmentNode(opToken, cast(VarAccessNode)left, right);
-            }
-            else
-                left = new BinaryOpNode(opToken, left, right);
-        }
-
-        // handle left-assoc binary ops according to priority
-        // (shoutout to Immo Landwerth's Minsk project for this algorithm)
+        debug import std.stdio: writeln;
+        Node primaryLeft = parsePrimaryExpression();
         while(true)
         {
-            immutable prec = _currentToken.binaryOpPrecedence;
-            if(prec == 0 || prec <= parentPrecedence)
-                break;
             auto opToken = _currentToken;
+            immutable prec = opToken.binaryOpPrecedence;
+            if(prec == 0)
+                break;
+            immutable isLeftAssoc = opToken.isBinaryOpLeftAssociative;
+            immutable nextMinPrec = isLeftAssoc? prec + 1 : prec;
             nextToken();
-            if(opToken.type == Token.Type.LPAREN)
-            {
-                // left is already the function we want to call
-                auto args = parseCommaSeparatedExpressions(Token.Type.RPAREN);
-                nextToken(); // eat ')' and it is complete
-                left = new FunctionCallNode(left, args);
-            }
-            else 
-            {
-                auto right = parseExpression(prec);
-                left = new BinaryOpNode(opToken, left, right);
-            }
+            Node primaryRight = parseExpression(nextMinPrec);
+            // here check for () and [] operators
+            primaryLeft = new BinaryOpNode(opToken, primaryLeft, primaryRight);
         }
-
-        return left;
+        writeln(primaryLeft.toString());
+        return primaryLeft;
     }
 
     Node parsePrimaryExpression()
     {
         Node left = null;
+        if(_currentToken.unaryOpPrecedence > 0)
+        {
+            auto opToken = _currentToken;
+            nextToken();
+            left = parsePrimaryExpression();
+            left = new UnaryOpNode(opToken, left);
+            return left;
+        }
+
         switch(_currentToken.type)
         {
             case Token.Type.LPAREN:
@@ -327,18 +347,17 @@ private:
         auto specifier = _currentToken;
         nextToken();
         auto expressions = parseCommaSeparatedExpressions(Token.Type.SEMICOLON);
-        // make sure all expressions are VarAccessNode or VarAssignmentNode
+        // make sure all expressions are valid BinaryOpNodes or VarAccessNodes
         foreach(expression; expressions)
         {
-            if(cast(VarAccessNode)expression is null && cast(VarAssignmentNode)expression is null)
+            if(auto node = cast(BinaryOpNode)expression)
             {
-                throw new ScriptCompileException("Invalid variable declaration " 
-                    ~ typeid(expression).toString ~ " " ~ expression.toString, specifier);
+                if(!cast(VarAccessNode)node.leftNode)
+                    throw new ScriptCompileException("Invalid assignment node", _currentToken);
             }
-            else if(auto ass = cast(VarAssignmentNode)expression)
+            else if(!cast(VarAccessNode)expression)
             {
-                if(ass.assignOp.type != Token.Type.ASSIGN)
-                    throw new ScriptCompileException("Invalid assignment operator in declaration", ass.assignOp);
+                throw new ScriptCompileException("Invalid variable name in declaration", _currentToken);
             }
         }
         nextToken(); // eat semicolon
