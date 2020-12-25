@@ -262,11 +262,17 @@ private:
             nextToken();
             if(opToken.type == Token.Type.LBRACKET)
             {
-                Node index = parseExpression();
+                auto index = parseExpression();
                 if(_currentToken.type != Token.Type.RBRACKET)
                     throw new ScriptCompileException("Missing ']'", _currentToken);
                 nextToken();
                 primaryLeft = new ArrayIndexNode(primaryLeft, index);
+            }
+            else if(opToken.type == Token.Type.LPAREN)
+            {
+                auto params = parseCommaSeparatedExpressions(Token.Type.RPAREN);
+                nextToken();
+                primaryLeft = new FunctionCallNode(primaryLeft, params);
             }
             else 
             {
