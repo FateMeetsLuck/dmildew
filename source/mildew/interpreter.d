@@ -25,8 +25,10 @@ public:
     void initializeStdlib()
     {
         import mildew.stdlib.object: initializeObjectLibrary;
+        import mildew.stdlib.console: initializeConsoleLibrary;
         import mildew.stdlib.math: initializeMathLibrary;
         initializeObjectLibrary(this);
+        initializeConsoleLibrary(this);
         initializeMathLibrary(this);
     }
 

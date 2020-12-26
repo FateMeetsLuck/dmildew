@@ -306,7 +306,14 @@ public:
     auto isUndefined() const nothrow @nogc { return _type == Type.UNDEFINED; }
 
     /// null property
-    auto isNull() const nothrow @nogc { return _type == Type.NULL; }
+    auto isNull() const nothrow @nogc 
+    { 
+        if(_type == Type.NULL)
+            return true;
+        if(_type == Type.FUNCTION || _type == Type.OBJECT)
+            return _asObjectOrFunction is null;
+        return false;
+    }
 
     /// isNumber property
     auto isNumber() const nothrow @nogc
@@ -387,7 +394,11 @@ public:
                 return str;
             }
             case Type.FUNCTION: case Type.OBJECT:
-                return _asObjectOrFunction.toString;
+            {
+                if(_asObjectOrFunction !is null)
+                    return _asObjectOrFunction.toString;
+                return "null";
+            }
         }
     }
 
@@ -675,7 +686,12 @@ private:
                 result ~= "    ";
             result ~= k ~ " : ";
             if(v.type == ScriptValue.Type.OBJECT)
-                result ~= v.toValue!ScriptObject().formattedString(indent+1);
+            {
+                if(!v.isNull)
+                    result ~= v.toValue!ScriptObject().formattedString(indent+1);
+                else
+                    result ~= "<null object>";
+            }
             else
                 result ~= v.toString();
             result ~= "\n";

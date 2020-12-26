@@ -4,7 +4,7 @@ function Person(name, age) {
 }
 
 Person.prototype.greet = function() {
-    testPrint(this.name + " says hello.");
+    console.log(this.name + " says hello.");
 };
 
 function Employee(name, age, placeOfWork) {
@@ -14,15 +14,15 @@ function Employee(name, age, placeOfWork) {
 
 Employee.prototype = Object.create(Person.prototype);
 Employee.prototype.work = function() {
-    testPrint(this.name + " is working.");
+    console.log(this.name + " is working.");
 };
 
 var e1 = new Employee("Courtney", 30, "Gas station");
 var e2 = new Employee("Retard Doge", 12, "Internet");
 e1.greet();
 e1.work();
-testPrint(e1);
+console.log(e1);
 e2.greet();
 e2.work();
-testPrint(e2);
+console.log(e2);
 

@@ -11,17 +11,6 @@ import mildew.lexer;
 import mildew.parser;
 import mildew.types;
 
-/// testing a native function
-ScriptValue native_testPrint(Context c, ScriptValue* thisObj, ScriptValue[] args, ref NativeFunctionError nfe)
-{
-    foreach(arg; args)
-    {
-        write(arg.toString ~ " ");
-    }
-    writeln("");
-    return ScriptValue.UNDEFINED;
-}
-
 /// testing errors
 ScriptValue native_testSum(Context c, ScriptValue* thisObj, ScriptValue[] args, ref NativeFunctionError nfe)
 {
@@ -63,7 +52,6 @@ int main(string[] args)
     auto terminal = Terminal(ConsoleOutputType.linear);
     auto interpreter = new Interpreter();
     interpreter.initializeStdlib();
-    interpreter.forceSetGlobal("testPrint", new ScriptFunction("testPrint", &native_testPrint), true);
     interpreter.forceSetGlobal("testSum", new ScriptFunction("testSum", &native_testSum), true);
 
     if(args.length > 1)

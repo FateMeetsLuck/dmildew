@@ -5,14 +5,14 @@ function Person(name, age) {
 
 Person.prototype.building = "Brick house";
 Person.prototype.greet = function() {
-    testPrint(this.name + " says hello!");
+    console.log(this.name + " says hello!");
 };
 
 var p1 = new Person("Santa", 79);
 
-testPrint(p1);
+console.log(p1);
 
 var foo = {};
 Person.call(foo, "Moron", 666);
-testPrint(foo);
+console.log(foo);
 
