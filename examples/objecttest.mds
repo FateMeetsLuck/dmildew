@@ -1,0 +1,9 @@
+var testProto = { someValue: 2000 };
+var testObject = Object.create(testProto);
+testPrint(testObject.someValue);
+
+var manyKeys = {
+    amount: 1, "banana": "yellow", price: 60
+};
+
+testPrint(Object.keys(manyKeys));

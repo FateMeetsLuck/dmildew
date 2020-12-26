@@ -13,6 +13,11 @@ import mildew.types: ScriptValue, ScriptObject, ScriptFunction;
 
 private int unaryOpPrecedence(Token opToken)
 {
+    if(opToken.isKeyword("typeof"))
+    {
+        return 17;
+    }
+
     // see grammar.txt for explanation of magic constants
     switch(opToken.type)
     {
@@ -427,7 +432,7 @@ private:
         return statements;
     }
 
-    VarDeclarationStatementNode parseVarDeclarationStatement()
+    VarDeclarationStatementNode parseVarDeclarationStatement(bool consumeSemicolon = true)
     {
         auto specifier = _currentToken;
         nextToken();
@@ -445,7 +450,8 @@ private:
                 throw new ScriptCompileException("Invalid variable name in declaration", _currentToken);
             }
         }
-        nextToken(); // eat semicolon
+        if(consumeSemicolon)
+            nextToken(); // eat semicolon
         return new VarDeclarationStatementNode(specifier, expressions);
     }
 
@@ -506,7 +512,7 @@ private:
         return new DoWhileStatementNode(lineNumber, loopBody, condition);
     }
 
-    ForStatementNode parseForStatement()
+    StatementNode parseForStatement()
     {
         immutable lineNumber = _currentToken.position.line;
         nextToken();
@@ -515,35 +521,68 @@ private:
         nextToken();
         VarDeclarationStatementNode decl = null;
         if(_currentToken.type != Token.Type.SEMICOLON)
-            decl = parseVarDeclarationStatement();
+            decl = parseVarDeclarationStatement(false);
         else
             nextToken();
-        Node condition = null;
-        if(_currentToken.type != Token.Type.SEMICOLON)
+        if(_currentToken.isKeyword("of"))
         {
-            condition = parseExpression();
+            // first we need to validate the VarDeclarationStatementNode to make sure it only consists
+            // of let or const and VarAccessNodes
+            if(decl is null)
+                throw new ScriptCompileException("Invalid for of statement", _currentToken);
+            Token qualifier;
+            VarAccessNode[] vans;
+            if(decl.qualifier.text != "const" && decl.qualifier.text != "let")
+                throw new ScriptCompileException("Global variable declaration invalid in for of statement",
+                    decl.qualifier);
+            foreach(va ; decl.varAccessOrAssignmentNodes)
+            {
+                auto valid = cast(VarAccessNode)va;
+                if(valid is null)
+                    throw new ScriptCompileException("Invalid variable declaration in for of statement", 
+                        _currentToken);
+                vans ~= valid;
+            }
+            nextToken();
+            auto objToIterateExpr = parseExpression();
+            if(_currentToken.type != Token.Type.RPAREN)
+                throw new ScriptCompileException("Expected ')' after array or object", _currentToken);
+            nextToken();
+            auto bodyStatement = parseStatement();
+            return new ForOfStatementNode(lineNumber, qualifier, vans, objToIterateExpr, bodyStatement);
+        }
+        else if(_currentToken.type == Token.Type.SEMICOLON)
+        {
+            nextToken();
+            Node condition = null;
             if(_currentToken.type != Token.Type.SEMICOLON)
-                throw new ScriptCompileException("Expected ';' after for condition", _currentToken);
+            {
+                condition = parseExpression();
+                if(_currentToken.type != Token.Type.SEMICOLON)
+                    throw new ScriptCompileException("Expected ';' after for condition", _currentToken);
+            }
+            else
+            {
+                condition = new LiteralNode(_currentToken, ScriptValue(true));
+            }
+            nextToken();
+            Node increment = null;
+            if(_currentToken.type != Token.Type.RPAREN)
+            {
+                increment = parseExpression();
+            }
+            else
+            {
+                increment = new LiteralNode(_currentToken, ScriptValue(true));
+            }
+            if(_currentToken.type != Token.Type.RPAREN)
+                throw new ScriptCompileException("Expected ')' before for loop body", _currentToken);
+            nextToken();
+            auto bodyNode = parseStatement();
+            return new ForStatementNode(lineNumber, decl, condition, increment, bodyNode);
         }
         else
-        {
-            condition = new LiteralNode(_currentToken, ScriptValue(true));
-        }
-        nextToken();
-        Node increment = null;
-        if(_currentToken.type != Token.Type.RPAREN)
-        {
-            increment = parseExpression();
-        }
-        else
-        {
-            increment = new LiteralNode(_currentToken, ScriptValue(true));
-        }
-        if(_currentToken.type != Token.Type.RPAREN)
-            throw new ScriptCompileException("Expected ')' before for loop body", _currentToken);
-        nextToken();
-        auto bodyNode = parseStatement();
-        return new ForStatementNode(lineNumber, decl, condition, increment, bodyNode);
+            throw new ScriptCompileException("Invalid for statement", _currentToken);
     }
 
     FunctionDeclarationStatementNode parseFunctionDeclarationStatement()
@@ -624,13 +663,13 @@ private:
     {
         Node[] expressions;
 
-        while(_currentToken.type != stop && _currentToken.type != Token.Type.EOF)
+        while(_currentToken.type != stop && _currentToken.type != Token.Type.EOF && !_currentToken.isKeyword("of"))
         {
             auto expression = parseExpression();
             expressions ~= expression;
             if(_currentToken.type == Token.Type.COMMA)
                 nextToken();
-            else if(_currentToken.type != stop)
+            else if(_currentToken.type != stop && !_currentToken.isKeyword("of"))
                 throw new ScriptCompileException("Comma separated list items must be separated by ','", _currentToken);
         }
 

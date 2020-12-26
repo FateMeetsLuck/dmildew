@@ -250,10 +250,10 @@ public:
     static immutable KEYWORDS = redBlackTree(
         "true", "false", "undefined", "null",
         "var", "let", "const", 
-        "if", "else", "while", "do", "for",
+        "if", "else", "while", "do", "for", "of",
         "switch", "case", "default",
         "break", "continue", "return", "function",
-        "new"
+        "new", "typeof"
     );
 
     /// AA of look up for escape chars based on character after \

@@ -25,7 +25,9 @@ public:
     void initializeStdlib()
     {
         import mildew.stdlib.object: initializeObjectLibrary;
+        import mildew.stdlib.math: initializeMathLibrary;
         initializeObjectLibrary(this);
+        initializeMathLibrary(this);
     }
 
     /// evaluates a list of statements in the code. void for now
@@ -148,7 +150,8 @@ private:
             case Token.Type.DASH:
                 return VisitResult(-value);
             default:
-                // all other unary ops are undefined
+                if(node.opToken.isKeyword("typeof"))
+                    return VisitResult(value.typeToString());
                 return VisitResult(ScriptValue.UNDEFINED);
         }
     }
@@ -655,6 +658,8 @@ private:
             vr = visitDoWhileStatementNode(dwnode);
         else if(auto fnode = cast(ForStatementNode)node)
             vr = visitForStatementNode(fnode);
+        else if(auto fonode = cast(ForOfStatementNode)node)
+            vr = visitForOfStatementNode(fonode);
         else if(auto bnode = cast(BreakStatementNode)node)
             vr = visitBreakStatementNode(bnode);
         else if(auto cnode = cast(ContinueStatementNode)node)
@@ -872,6 +877,84 @@ private:
             }
         }
         _currentContext = _currentContext.parent;
+        return vr;
+    }
+
+    VisitResult visitForOfStatementNode(ForOfStatementNode node)
+    {
+        auto vr = visitNode(node.objectToIterateNode);
+        // make sure this is iterable
+        if(vr.exception !is null)
+        {
+            return vr;
+        }
+        
+        if(vr.value.isObject)
+        {
+            auto obj = vr.value.toValue!ScriptObject;
+            // first value is key, second value is value if there
+            foreach(key, val; obj.members)
+            {
+                _currentContext = new Context(_currentContext);
+                _currentContext.declareVariableOrConst(node.varAccessNodes[0].varToken.text,
+                    ScriptValue(key), node.qualifierToken.text == "const" ? true: false);
+                if(node.varAccessNodes.length > 1)
+                    _currentContext.declareVariableOrConst(node.varAccessNodes[1].varToken.text,
+                        ScriptValue(val), node.qualifierToken.text == "const" ? true: false);
+                vr = visitStatementNode(node.bodyNode);              
+                _currentContext = _currentContext.parent;
+                if(vr.breakFlag)
+                {
+                    vr.breakFlag = false;
+                    break;
+                }
+                if(vr.continueFlag)
+                    vr.continueFlag = false;
+                if(vr.exception !is null || vr.returnFlag)
+                    break; 
+                if(vr.exception !is null)
+                    break;  
+            }
+        }
+        else if(vr.value.type == ScriptValue.Type.ARRAY)
+        {
+            auto arr = vr.value.toValue!(ScriptValue[]);
+            for(size_t i = 0; i < arr.length; ++i)
+            {
+                _currentContext = new Context(_currentContext);
+                // if one var access node, then value, otherwise index then value
+                if(node.varAccessNodes.length == 1)
+                {
+                    _currentContext.declareVariableOrConst(node.varAccessNodes[0].varToken.text,
+                        arr[i], node.qualifierToken.text == "const"? true: false);
+                }
+                else 
+                {
+                    _currentContext.declareVariableOrConst(node.varAccessNodes[0].varToken.text,
+                        ScriptValue(i), node.qualifierToken.text == "const"? true: false);
+                    _currentContext.declareVariableOrConst(node.varAccessNodes[1].varToken.text,
+                        arr[i], node.qualifierToken.text == "const"? true: false);
+                }
+                vr = visitStatementNode(node.bodyNode);
+                _currentContext = _currentContext.parent;
+                if(vr.breakFlag)
+                {
+                    vr.breakFlag = false;
+                    break;
+                }
+                if(vr.continueFlag)
+                    vr.continueFlag = false;
+                if(vr.exception !is null || vr.returnFlag)
+                    break; 
+                if(vr.exception !is null)
+                    break;                 
+            }
+        }
+        else 
+        {
+            vr.exception = new ScriptRuntimeException("Cannot iterate over " ~ node.objectToIterateNode.toString);
+        }
+
         return vr;
     }
 

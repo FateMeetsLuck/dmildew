@@ -325,6 +325,23 @@ public:
         return convertValue!T(false);    
     }
 
+    /// for use with typeof operator
+    string typeToString() const
+    {
+        final switch(_type)
+        {
+            case Type.NULL: return "null";
+            case Type.UNDEFINED: return "undefined";
+            case Type.BOOLEAN: return "boolean";
+            case Type.INTEGER: return "integer";
+            case Type.DOUBLE: return "double";
+            case Type.STRING: return "string";
+            case Type.ARRAY: return "array"; // add more later
+            case Type.FUNCTION: return "function";
+            case Type.OBJECT: return "object";
+        }
+    }
+
     /// toString
     auto toString() const
     {
@@ -612,6 +629,9 @@ public:
 
     /// property set prototype
     auto prototype(ScriptObject proto) { return _prototype = proto; }
+
+    /// members
+    auto members() { return _members; }
 
     /// as string
     override string toString() const

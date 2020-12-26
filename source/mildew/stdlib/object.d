@@ -11,6 +11,7 @@ public void initializeObjectLibrary(Interpreter interpreter)
 {
     auto objNamespace = new ScriptObject("Object", null);
     objNamespace["create"] = ScriptValue(new ScriptFunction("Object.create", &native_Object_create));
+    objNamespace["keys"] = ScriptValue(new ScriptFunction("Object.keys", &native_Object_keys));
     interpreter.forceSetGlobal("Object", objNamespace);
 }
 
@@ -35,4 +36,21 @@ private ScriptValue native_Object_create(Context context,  // @suppress(dscanner
     auto newObj = new ScriptObject("", args[0].toValue!ScriptObject);
 
     return ScriptValue(newObj);
+}
+
+/// returns an array of keys of an object (or function)
+private ScriptValue native_Object_keys(Context context,
+        ScriptValue* thisObj,
+        ScriptValue[] args,
+        ref NativeFunctionError nfe)
+{
+    if(args.length < 1)
+        return ScriptValue.UNDEFINED;
+    
+    if(!args[0].isObject)
+        return ScriptValue.UNDEFINED;
+
+    auto sobj = args[0].toValue!ScriptObject;
+    auto keys = ScriptValue(sobj.members.keys);
+    return keys;
 }

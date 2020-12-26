@@ -18,7 +18,11 @@ Employee.prototype.work = function() {
 };
 
 var e1 = new Employee("Courtney", 30, "Gas station");
+var e2 = new Employee("Retard Doge", 12, "Internet");
 e1.greet();
 e1.work();
 testPrint(e1);
+e2.greet();
+e2.work();
+testPrint(e2);
 

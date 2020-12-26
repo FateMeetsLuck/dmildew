@@ -353,6 +353,38 @@ class ForStatementNode : StatementNode
     StatementNode bodyNode;
 }
 
+class ForOfStatementNode : StatementNode
+{
+    this(size_t lineNo, Token qual, VarAccessNode[] vans, Node obj, StatementNode bnode)
+    {
+        super(lineNo);
+        qualifierToken = qual;
+        varAccessNodes = vans;
+        objectToIterateNode = obj;
+        bodyNode = bnode;
+    }
+
+    override string toString() const
+    {
+        auto str = "for(" ~ qualifierToken.text;
+        for(size_t i = 0; i < varAccessNodes.length; ++i)
+        {
+            str ~= varAccessNodes[i].varToken.text;
+            if(i < varAccessNodes.length - 1) // @suppress(dscanner.suspicious.length_subtraction)
+                str ~= ", ";
+        }
+        str ~= " of " 
+            ~ objectToIterateNode.toString() ~ ")" 
+            ~ bodyNode.toString();
+        return str;
+    }
+
+    Token qualifierToken;
+    VarAccessNode[] varAccessNodes;
+    Node objectToIterateNode;
+    StatementNode bodyNode;
+}
+
 class BreakStatementNode : StatementNode
 {
     this(size_t lineNo)
