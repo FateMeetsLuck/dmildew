@@ -265,8 +265,23 @@ private:
     ///  for algorithm.
     Node parseExpression(int minPrec = 1)
     {
-        debug import std.stdio: writeln;
-        Node primaryLeft = parsePrimaryExpression();
+        debug import std.stdio: writeln, writefln;
+        
+        Node primaryLeft = null;
+
+        immutable unOpPrec = _currentToken.unaryOpPrecedence;
+        if(unOpPrec > minPrec)
+        {
+            auto opToken = _currentToken;
+            nextToken();
+            primaryLeft = parsePrimaryExpression();
+            primaryLeft = new UnaryOpNode(opToken, primaryLeft);
+        }
+        else
+        {
+            primaryLeft = parsePrimaryExpression();
+        }
+
         while(true)
         {
             auto opToken = _currentToken;
@@ -281,7 +296,14 @@ private:
                 auto right = parsePrimaryExpression();
                 if(cast(VarAccessNode)right is null)
                     throw new ScriptCompileException("Object members must be valid identifiers", _currentToken);
-                primaryLeft = new MemberAccessNode(primaryLeft, right);
+                if(unOpPrec != 0 && prec > unOpPrec)
+                {
+                    auto uon = cast(UnaryOpNode)primaryLeft;
+                    primaryLeft = new UnaryOpNode(uon.opToken, new MemberAccessNode(uon.operandNode, right));
+                }
+                else
+                    primaryLeft = new MemberAccessNode(primaryLeft, right);
+                debug writefln("UnOpPriority=%s, prec=%s", unOpPrec, prec);
             }
             else if(opToken.type == Token.Type.LBRACKET)
             {
@@ -289,13 +311,25 @@ private:
                 if(_currentToken.type != Token.Type.RBRACKET)
                     throw new ScriptCompileException("Missing ']'", _currentToken);
                 nextToken();
-                primaryLeft = new ArrayIndexNode(primaryLeft, index);
+                if(unOpPrec != 0 && prec > unOpPrec)
+                {
+                    auto uon = cast(UnaryOpNode)primaryLeft;
+                    primaryLeft = new UnaryOpNode(uon.opToken, new ArrayIndexNode(uon.operandNode, index));
+                }
+                else
+                    primaryLeft = new ArrayIndexNode(primaryLeft, index);
             }
             else if(opToken.type == Token.Type.LPAREN)
             {
                 auto params = parseCommaSeparatedExpressions(Token.Type.RPAREN);
                 nextToken();
-                primaryLeft = new FunctionCallNode(primaryLeft, params);
+                if(unOpPrec != 0 && prec > unOpPrec)
+                {
+                    auto uon = cast(UnaryOpNode)primaryLeft;
+                    primaryLeft = new UnaryOpNode(uon.opToken, new FunctionCallNode(uon.operandNode, params));
+                }
+                else
+                    primaryLeft = new FunctionCallNode(primaryLeft, params);
             }
             else 
             {
@@ -310,15 +344,6 @@ private:
     Node parsePrimaryExpression()
     {
         Node left = null;
-        if(_currentToken.unaryOpPrecedence > 0)
-        {
-            auto opToken = _currentToken;
-            nextToken();
-            left = parsePrimaryExpression();
-            left = new UnaryOpNode(opToken, left);
-            return left;
-        }
-
         switch(_currentToken.type)
         {
             case Token.Type.LPAREN:
