@@ -217,7 +217,7 @@ private:
         else if(_currentToken.isKeyword("continue"))
         {
             if(_loopStack == 0)
-                throw new ScriptCompileException("Break statements only allowed in loops", _currentToken);
+                throw new ScriptCompileException("Continue statements only allowed in loops", _currentToken);
             statement = new ContinueStatementNode(lineNumber);
             nextToken();
             // TODO support labels

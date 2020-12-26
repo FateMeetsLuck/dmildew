@@ -440,15 +440,19 @@ private:
                 _asArray ~= ScriptValue(item);
             }
         }
-        else static if(is(T == ScriptFunction)) // only accept pointers
+        else static if(is(T == ScriptFunction))
         {
             _type = Type.FUNCTION;
             _asObjectOrFunction = value;
+            if(_asObjectOrFunction is null)
+                _type = Type.NULL;
         }
         else static if(is(T == ScriptObject))
         {
             _type = Type.OBJECT;
             _asObjectOrFunction = value;
+            if(_asObjectOrFunction is null)
+                _type = Type.NULL;
         }
         else static if(is(T == ScriptValue) || is(T == immutable(ScriptValue)))
         {
@@ -679,11 +683,12 @@ private:
 
     string formattedString(int indent = 0) const
     {
+        immutable indentation = "    ";
         auto result = "{";
         foreach(k, v ; _members)
         {
             for(int i = 0; i < indent; ++i)
-                result ~= "    ";
+                result ~= indentation;
             result ~= k ~ " : ";
             if(v.type == ScriptValue.Type.OBJECT)
             {
@@ -697,7 +702,7 @@ private:
             result ~= "\n";
         }
         for(int i = 0; i < indent; ++i)
-            result ~= "    ";
+            result ~= indentation;
         result ~= "}\n";
         return result;
     }
