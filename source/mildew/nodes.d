@@ -85,6 +85,23 @@ class ArrayLiteralNode : Node
     Node[] valueNodes;
 }
 
+class ObjectLiteralNode : Node 
+{
+    this(string[] ks, Node[] vs)
+    {
+        keys = ks;
+        values = vs;
+    }
+
+    override string toString() const
+    {
+        return "(object literal node)";
+    }
+
+    string[] keys;
+    Node[] values;
+}
+
 class VarAccessNode : Node
 {
     this(Token token)
@@ -160,6 +177,21 @@ class MemberAccessNode : Node
 
     Node objectNode;
     Node memberNode;
+}
+
+class NewExpressionNode : Node 
+{
+    this(Node fn)
+    {
+        functionCallExpression = fn;
+    }
+
+    override string toString() const
+    {
+        return "new " ~ functionCallExpression.toString();
+    }
+
+    Node functionCallExpression;
 }
 
 /// root class of all statement nodes

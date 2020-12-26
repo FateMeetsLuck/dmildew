@@ -5,7 +5,8 @@ import mildew.exceptions: ScriptRuntimeException;
 import mildew.lexer: Token, Lexer;
 import mildew.nodes;
 import mildew.parser;
-import mildew.types: ScriptValue, NativeFunction, NativeDelegate, NativeFunctionError, ScriptFunction;
+import mildew.types: ScriptValue, NativeFunction, NativeDelegate, 
+                     NativeFunctionError, ScriptFunction, ScriptObject;
 
 /// public interface for language
 class Interpreter
@@ -56,6 +57,8 @@ private:
             result = visitLiteralNode(lnode);
         else if(auto anode = cast(ArrayLiteralNode)node)
             result = visitArrayLiteralNode(anode);
+        else if(auto onode = cast(ObjectLiteralNode)node)
+            result = visitObjectLiteralNode(onode);
         else if(auto unode = cast(UnaryOpNode)node)
             result = visitUnaryOpNode(unode);
         else if(auto bnode = cast(BinaryOpNode)node)
@@ -66,6 +69,10 @@ private:
             result = visitFunctionCallNode(fnnode);
         else if(auto anode = cast(ArrayIndexNode)node)
             result = visitArrayIndexNode(anode);
+        else if(auto mnode = cast(MemberAccessNode)node)
+            result = visitMemberAccessNode(mnode);
+        else if(auto nnode = cast(NewExpressionNode)node)
+            result = visitNewExpressionNode(nnode);
         else
             throw new Exception("Unknown node type " ~ typeid(node).toString);
 
@@ -90,6 +97,28 @@ private:
             values ~= vr.value;
         }
         vr.value = values;
+        return vr;
+    }
+
+    VisitResult visitObjectLiteralNode(ObjectLiteralNode node)
+    {
+        if(node.keys.length != node.values.length)
+            throw new Exception("Error with object literal node");
+        ScriptValue[] values = [];
+        VisitResult vr;
+        foreach(valueNode ; node.values)
+        {
+            vr = visitNode(valueNode);
+            if(vr.exception !is null)
+                return vr;
+            values ~= vr.value;
+        }
+        auto obj = new ScriptObject("", null, null);
+        for(size_t i = 0; i < node.keys.length; ++i)
+        {
+            obj[node.keys[i]] = values[i];
+        }
+        vr.value = obj;
         return vr;
     }
 
@@ -246,6 +275,10 @@ private:
             varRef = vResult.varPointer;
             // else we have a valid pointer
         }
+        else if(auto man = cast(MemberAccessNode)left)
+        {
+            return handleDotAssignment(assignToken, man, value);
+        }
         // TODO handle MemberAccessNode
         else // we can't assign to this left hand node
         {
@@ -272,12 +305,60 @@ private:
         return vResult;
     }
 
-    VisitResult visitFunctionCallNode(FunctionCallNode node)
+    VisitResult handleDotAssignment(Token op, MemberAccessNode man, ScriptValue value)
     {
+        // pull an object/function out of man's left hand side
+        VisitResult vr = visitNode(man.objectNode);
+        if(vr.exception !is null)
+            return vr;
+        if(vr.value.type != ScriptValue.Type.FUNCTION && vr.value.type != ScriptValue.Type.OBJECT)
+        {
+            vr.exception = new ScriptRuntimeException("Invalid left hand side of dot operator");
+            return vr;
+        }
+        // get the index from right hand side
+        auto van = cast(VarAccessNode)man.memberNode;
+        if(van is null)
+        {
+            vr.exception = new ScriptRuntimeException("Invalid right hand side of dot operator");
+            return vr;
+        }
+        auto index = van.varToken.text;
+        auto obj = vr.value.toValue!ScriptObject;
+
+        switch(op.type)
+        {
+            case Token.Type.PLUS_ASSIGN:
+                obj[index] = obj[index] + value;
+                break;
+            case Token.Type.DASH_ASSIGN:
+                obj[index] = obj[index] - value;
+                break;
+            case Token.Type.ASSIGN:
+                obj[index] = value;
+                break;
+            default:
+                throw new Exception("Something has gone terrible wrong");
+        }
+        vr.value = value;
+        return vr;
+    }
+
+    VisitResult visitFunctionCallNode(FunctionCallNode node, bool returnThis = false)
+    {
+        debug import std.stdio: writefln;
+
+        ScriptValue thisObj;
+        if(auto man = cast(MemberAccessNode)node.functionToCall)
+        {
+            thisObj = visitNode(man.objectNode).value;
+        }
+
         auto fnVR = visitNode(node.functionToCall);
         if(fnVR.exception !is null)
             return fnVR;
         auto fnToCall = fnVR.value;
+        // TODO: set up "this" for natives
         if(fnToCall.type == ScriptValue.Type.NATIVE_FUNCTION || fnToCall.type == ScriptValue.Type.NATIVE_DELEGATE)
         {
             // valid function to call so gather expressions;
@@ -296,14 +377,18 @@ private:
             if(fnToCall.type == ScriptValue.Type.NATIVE_FUNCTION)
             {
                 auto fn = fnToCall.toValue!NativeFunction();
-                retVal = fn(_currentContext, args, nfe);
+                retVal = fn(_currentContext, &thisObj, args, nfe);
             }
             else // delegate
             {
                 auto dg = fnToCall.toValue!NativeDelegate();
-                retVal = dg(_currentContext, args, nfe);
+                retVal = dg(_currentContext, &thisObj, args, nfe);
             }
             VisitResult finalVR = VisitResult(retVal);
+            if(returnThis)
+            {
+                finalVR.value = thisObj;
+            }
             // check for the appropriate nfe flag
             final switch(nfe)
             {
@@ -342,7 +427,9 @@ private:
             // push args by name as locals
             for(size_t i=0; i < sfn.argNames.length; ++i)
                 _currentContext.forceSetVarOrConst(sfn.argNames[i], args[i], false);
-            
+            if(returnThis)
+                thisObj = new ScriptObject(sfn.functionName, sfn.prototype, null);
+            _currentContext.forceSetVarOrConst("this", thisObj, true);
             foreach(statement ; sfn.statementNodes)
             {
                 vr = visitStatementNode(statement);
@@ -355,6 +442,11 @@ private:
                     vr.returnFlag = false;
                     break;
                 }
+            }
+            if(returnThis)
+            {
+                bool _; // @suppress(dscanner.suspicious.unmodified)
+                vr.value = *(_currentContext.lookupVariableOrConst("this", _));
             }
             _currentContext = _currentContext.parent;
             return vr;
@@ -401,6 +493,41 @@ private:
             vr.exception = new ScriptRuntimeException("Cannot index non array " ~ arrayToIndex.toString);
             return vr;            
         }
+    }
+
+    // this can only be used to retrieve values not for assignment
+    VisitResult visitMemberAccessNode(MemberAccessNode node)
+    {
+        // retrieve ScriptValue that is an object or function from left node
+        VisitResult vr = visitNode(node.objectNode);
+        if(vr.exception !is null)
+            return vr;
+        if(vr.value.type == ScriptValue.Type.FUNCTION || vr.value.type == ScriptValue.Type.OBJECT)
+        {
+            auto obj = vr.value.toValue!ScriptObject;
+            // get the member name from the right node which must be var acess
+            auto van = cast(VarAccessNode)node.memberNode;
+            if(van is null)
+            {
+                vr.exception = new ScriptRuntimeException("Invalid member name " ~ node.memberNode.toString);
+                return vr;
+            }
+            vr.value = obj[van.varToken.text];
+        }
+        else 
+        {
+            vr.exception = new ScriptRuntimeException("Unable to access member of non-object");
+        }
+        return vr;
+    }
+
+    VisitResult visitNewExpressionNode(NewExpressionNode node)
+    {
+        auto fnCall = cast(FunctionCallNode)node.functionCallExpression;
+        if(fnCall is null) // shouldn't happen because the parser is supposed to check
+            throw new Exception("Invalid new expression " ~ node.functionCallExpression.toString);
+        auto vr = visitFunctionCallNode(fnCall, true);
+        return vr;
     }
 
     VisitResult visitStatementNode(StatementNode node)

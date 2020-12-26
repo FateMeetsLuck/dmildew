@@ -10,7 +10,7 @@ import mildew.parser;
 import mildew.types;
 
 /// testing a native function
-ScriptValue native_testPrint(Context c, ScriptValue[] args, ref NativeFunctionError nfe)
+ScriptValue native_testPrint(Context c, ScriptValue* thisObj, ScriptValue[] args, ref NativeFunctionError nfe)
 {
     foreach(arg; args)
     {
@@ -21,7 +21,7 @@ ScriptValue native_testPrint(Context c, ScriptValue[] args, ref NativeFunctionEr
 }
 
 /// testing errors
-ScriptValue native_testSum(Context c, ScriptValue[] args, ref NativeFunctionError nfe)
+ScriptValue native_testSum(Context c, ScriptValue* thisObj, ScriptValue[] args, ref NativeFunctionError nfe)
 {
     double sum = 0.0;
     foreach(arg ; args)

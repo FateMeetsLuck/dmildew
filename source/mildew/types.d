@@ -15,9 +15,9 @@ enum NativeFunctionError
 }
 
 /// native function signature to be usable by scripting language
-alias NativeFunction = ScriptValue function(Context, ScriptValue[] args, ref NativeFunctionError);
+alias NativeFunction = ScriptValue function(Context, ScriptValue* thisObj, ScriptValue[] args, ref NativeFunctionError);
 /// native delegate signature to be usable by scripting language
-alias NativeDelegate = ScriptValue delegate(Context, ScriptValue[] args, ref NativeFunctionError);
+alias NativeDelegate = ScriptValue delegate(Context, ScriptValue* thisObj, ScriptValue[] args, ref NativeFunctionError);
 
 /// runtime polymorphic value type to hold anything usable in Mildew
 struct ScriptValue
@@ -558,7 +558,7 @@ private:
         }
         else static if(is(T == ScriptObject))
         {
-            if(_type != Type.OBJECT)
+            if(_type != Type.OBJECT && _type != Type.FUNCTION)
             {
                 if(throwing)
                     throw new ScriptValueException("ScriptValue " ~ toString ~ " is not an object", this);
@@ -634,17 +634,30 @@ public:
 
     }
 
-    ScriptValue* opIndex(in string index)
+    ScriptValue opIndex(in string index)
     {
+        // first handle special property __proto__
+        if(index == "__proto__")
+        {
+            auto proto = ScriptValue(_prototype);
+            return proto;
+        }
+
         auto objectToSearch = this;
         while(objectToSearch !is null)
         {
-            auto foundMember = index in objectToSearch._members;
-            if(foundMember != null)
-                return foundMember;
+            if(index in objectToSearch._members)
+                return objectToSearch._members[index];
             objectToSearch = objectToSearch._prototype;
         }
-        return null;
+        return ScriptValue.UNDEFINED;
+    }
+
+    ScriptValue opIndexAssign(ScriptValue value, in string index)
+    {
+        // TODO make __proto__ writable
+        _members[index] = value;
+        return _members[index];
     }
 
     /// name property
@@ -653,13 +666,36 @@ public:
     /// prototype property
     auto prototype() { return _prototype; }
 
+    /// property set prototype
+    auto prototype(ScriptObject proto) { return _prototype = proto; }
+
     /// as string
     override string toString() const
     {
-        return "object"; // TODO JSON style formatting for each member
+        return _name ~ formattedString();
     }
 
 private:
+
+    string formattedString(int indent = 0) const
+    {
+        auto result = "{";
+        foreach(k, v ; _members)
+        {
+            for(int i = 0; i < indent; ++i)
+                result ~= "    ";
+            result ~= k ~ " : ";
+            if(v.type == ScriptValue.Type.OBJECT)
+                result ~= v.toValue!ScriptObject().formattedString(indent+1);
+            else
+                result ~= v.toString();
+            result ~= "\n";
+        }
+        for(int i = 0; i < indent; ++i)
+            result ~= "    ";
+        result ~= "}\n";
+        return result;
+    }
 
     /// type name (Function or whatever)
     string _name;
@@ -682,6 +718,7 @@ public:
         _functionName = fnname;
         _argNames = args;
         _statementNodes = statementNodes;
+        _members["prototype"] = _prototype;
     }
 
     override string toString() const
@@ -764,7 +801,10 @@ unittest // TODO organize this
     foo = [5, 6, 7, 8, 20];
     assert(foo > bar);
     assert(bar <= foo);
-    ScriptValue rightSig(Context c, ScriptValue[] args, ref NativeFunctionError nfe) { return ScriptValue.UNDEFINED; }
+    ScriptValue rightSig(Context c, ScriptValue* thisObj, ScriptValue[] args, ref NativeFunctionError nfe) 
+    { 
+        return ScriptValue.UNDEFINED; 
+    }
     foo = cast(NativeDelegate)&rightSig;
     assertNotThrown(cast(NativeDelegate)foo);
     auto func = cast(NativeDelegate)foo;

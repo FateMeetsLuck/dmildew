@@ -9,7 +9,7 @@ debug
 import mildew.exceptions: ScriptCompileException;
 import mildew.lexer: Token;
 import mildew.nodes;
-import mildew.types: ScriptValue, ScriptFunction;
+import mildew.types: ScriptValue, ScriptObject, ScriptFunction;
 
 private int unaryOpPrecedence(Token opToken)
 {
@@ -312,6 +312,9 @@ private:
                     throw new ScriptCompileException("Missing ')' in primary expression", _currentToken);
                 nextToken();
                 break;
+            case Token.Type.LBRACE:
+                left = parseObjectLiteral();
+                break;
             case Token.Type.DOUBLE:
                 left = new LiteralNode(_currentToken, ScriptValue(to!double(_currentToken.text)));
                 nextToken();
@@ -326,11 +329,20 @@ private:
                 break;
             case Token.Type.KEYWORD:
                 if(_currentToken.text == "true" || _currentToken.text == "false")
+                {
                     left = new LiteralNode(_currentToken, ScriptValue(to!bool(_currentToken.text)));
+                    nextToken();
+                }
                 else if(_currentToken.text == "null")
+                {
                     left = new LiteralNode(_currentToken, ScriptValue(null));
+                    nextToken();
+                }
                 else if(_currentToken.text == "undefined")
+                {
                     left = new LiteralNode(_currentToken, ScriptValue.UNDEFINED);
+                    nextToken();
+                }
                 else if(_currentToken.text == "function") // function literal
                 {
                     auto funcToken = _currentToken;
@@ -357,13 +369,21 @@ private:
                         throw new ScriptCompileException("Expected '{' before anonymous function body", _currentToken);
                     nextToken(); // eat the {
                     auto statements = parseStatements(Token.Type.RBRACE);
-                    // don't eat the } here because nextToken call at end of if-else
+                    nextToken();
                     auto func = new ScriptFunction(name, argNames, statements);
                     left = new LiteralNode(funcToken, ScriptValue(func));
                 }
+                else if(_currentToken.text == "new")
+                {
+                    auto newToken = _currentToken;
+                    nextToken();
+                    auto expression = parseExpression();
+                    if(cast(FunctionCallNode)expression is null)
+                        throw new ScriptCompileException("Invalid new expression", newToken);
+                    left = new NewExpressionNode(expression);                    
+                }
                 else
                     throw new ScriptCompileException("Unexpected keyword in primary expression", _currentToken);
-                nextToken();
                 break;
                 // TODO function
             case Token.Type.IDENTIFIER:
@@ -551,6 +571,42 @@ private:
         auto statements = parseStatements(Token.Type.RBRACE);
         nextToken(); // eat the }
         return new FunctionDeclarationStatementNode(lineNumber, name, argNames, statements);
+    }
+
+    ObjectLiteralNode parseObjectLiteral()
+    {
+        nextToken(); // eat the {
+        string[] keys = [];
+        Node[] valueExpressions = [];
+        while(_currentToken.type != Token.Type.RBRACE)
+        {
+            // first must be an identifier token or string literal token
+            immutable idToken = _currentToken;
+            if(_currentToken.type != Token.Type.IDENTIFIER && _currentToken.type != Token.Type.STRING
+                && _currentToken.type != Token.Type.LABEL)
+                throw new ScriptCompileException("Invalid key for object literal", _currentToken);
+            keys ~= _currentToken.text;
+
+            nextToken();
+            // next must be a :
+            if(idToken.type != Token.Type.LABEL)
+            {
+                if(_currentToken.type != Token.Type.COLON)
+                    throw new ScriptCompileException("Expected ':' after key in object literal", _currentToken);
+                nextToken();
+            }
+            // next can be any valid expression
+            valueExpressions ~= parseExpression();
+            // if next is not a comma it must be a closing brace to exit
+            if(_currentToken.type == Token.Type.COMMA)
+                nextToken();
+            else if(_currentToken.type != Token.Type.RBRACE)
+                throw new ScriptCompileException("Key value pairs must be separated by ','", _currentToken);
+        }
+        nextToken(); // eat the }
+        if(keys.length != valueExpressions.length)
+            throw new ScriptCompileException("Number of keys must match values in object literal", _currentToken);
+        return new ObjectLiteralNode(keys, valueExpressions);
     }
 
     Node[] parseCommaSeparatedExpressions(in Token.Type stop)
