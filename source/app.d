@@ -2,6 +2,8 @@ import std.file: readText;
 import std.stdio;
 import std.string: strip;
 
+import arsd.terminal;
+
 import mildew.context;
 import mildew.exceptions;
 import mildew.interpreter;
@@ -58,6 +60,7 @@ void evaluateWithErrorChecking(Interpreter interpreter, in string code, in strin
 
 int main(string[] args)
 {
+    auto terminal = Terminal(ConsoleOutputType.linear);
     auto interpreter = new Interpreter();
     interpreter.initializeStdlib();
     interpreter.forceSetGlobal("testPrint", new ScriptFunction("testPrint", &native_testPrint), true);
@@ -73,17 +76,24 @@ int main(string[] args)
     {
         while(true)
         {
-            write("mildew> ");
-            string input = strip(readln());
-            if(input == "#exit" || input == "")
-                break;
-            while(input.length > 0 && input[$-1]=='\\')
+            try 
             {
-                write(">>> ");
-                input = input[0..$-1];
-                input ~= "\n" ~ strip(readln());
+                write("mildew> ");
+                string input = strip(terminal.getline("mildew> "));
+                if(input == "#exit" || input == "")
+                    break;
+                while(input.length > 0 && input[$-1]=='\\')
+                {
+                    write(">>> ");
+                    input = input[0..$-1];
+                    input ~= "\n" ~ strip(terminal.getline(">>> "));
+                }
+                evaluateWithErrorChecking(interpreter, input);
             }
-            evaluateWithErrorChecking(interpreter, input);
+            catch(UserInterruptionException ex)
+            {
+                break;
+            }
         }
         writeln("");
     }

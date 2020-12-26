@@ -36,7 +36,7 @@ public:
         auto lexer = Lexer(code);
         auto tokens = lexer.tokenize();
         auto parser = Parser(tokens);
-        writeln(tokens);
+        debug writeln(tokens);
         auto programBlock = parser.parseProgram();
         auto vr = visitBlockStatementNode(programBlock); // @suppress(dscanner.suspicious.unmodified)
         if(vr.exception !is null)
@@ -240,7 +240,7 @@ private:
             auto visitResult = VisitResult(ScriptValue.UNDEFINED);
             visitResult.exception = new ScriptRuntimeException("Attempt to access undefined variable " 
                 ~ node.varToken.text);
-            writeln("Unable to access var " ~ node.varToken.text);
+            debug writeln("Unable to access var " ~ node.varToken.text);
             return visitResult;
         }
     }
@@ -823,7 +823,7 @@ private:
     {
         debug import std.stdio: writefln;
         auto vr = visitNode(node.expressionNode);
-        writefln("The result of the expression statement is %s", vr.value);
+        debug writefln("The result of the expression statement is %s", vr.value);
         vr.value = ScriptValue.UNDEFINED; // they should never return a result
         return vr;
     }

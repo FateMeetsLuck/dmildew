@@ -1,0 +1,24 @@
+function Person(name, age) {
+    this.name = name;
+    this.age = age;
+}
+
+Person.prototype.greet = function() {
+    testPrint(this.name + " says hello.");
+};
+
+function Employee(name, age, placeOfWork) {
+    Person.call(this, name, age);
+    this.placeOfWork = placeOfWork;
+}
+
+Employee.prototype = Object.create(Person.prototype);
+Employee.prototype.work = function() {
+    testPrint(this.name + " is working.");
+};
+
+var e1 = new Employee("Courtney", 30, "Gas station");
+e1.greet();
+e1.work();
+testPrint(e1);
+

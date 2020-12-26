@@ -691,6 +691,25 @@ public:
         return "Function " ~ _functionName;
     }
 
+    override ScriptValue opIndexAssign(ScriptValue value, in string index)
+    {
+        if(index == "prototype")
+        {
+            if(value.isObject)
+            {
+                _members[index] = value;
+                _prototype = value.toValue!ScriptObject;
+                return value;
+            }
+            return ScriptValue.UNDEFINED;
+        }
+        else
+        {
+            _members[index] = value;
+        }
+        return value;
+    }
+
     auto type() const { return _type; }
     auto functionName() const { return _functionName; }
     auto argNames() { return _argNames; }

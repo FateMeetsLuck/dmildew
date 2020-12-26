@@ -153,6 +153,7 @@ private:
 
     /// parses a single statement
     StatementNode parseStatement()
+        in { assert(_loopStack >= 0); } do
     {
         StatementNode statement;
         immutable lineNumber = _currentToken.position.line;
@@ -177,21 +178,29 @@ private:
         // check for while statement TODO check for label
         else if(_currentToken.isKeyword("while"))
         {
+            ++_loopStack;
             statement = parseWhileStatement();
+            --_loopStack;
         }
         // check for do-while statement TODO check for label
         else if(_currentToken.isKeyword("do"))
         {
+            ++_loopStack;
             statement = parseDoWhileStatement();
+            --_loopStack;
         }
         // check for for loop TODO check label
         else if(_currentToken.isKeyword("for"))
         {
+            ++_loopStack;
             statement = parseForStatement();
+            --_loopStack;
         }
         // break statement?
         else if(_currentToken.isKeyword("break"))
         {
+            if(_loopStack == 0)
+                throw new ScriptCompileException("Break statements only allowed in loops", _currentToken);
             statement = new BreakStatementNode(lineNumber);
             nextToken();
             // TODO support labels
@@ -202,6 +211,8 @@ private:
         // continue statement
         else if(_currentToken.isKeyword("continue"))
         {
+            if(_loopStack == 0)
+                throw new ScriptCompileException("Break statements only allowed in loops", _currentToken);
             statement = new ContinueStatementNode(lineNumber);
             nextToken();
             // TODO support labels
@@ -287,7 +298,7 @@ private:
                 primaryLeft = new BinaryOpNode(opToken, primaryLeft, primaryRight);
             }
         }
-        writeln(primaryLeft.toString());
+        debug writeln(primaryLeft.toString());
         return primaryLeft;
     }
 
@@ -637,5 +648,5 @@ private:
     Token[] _tokens;
     size_t _tokenIndex = 0;
     Token _currentToken;
-    bool _inLoop = false;
+    int _loopStack = 0;
 }
