@@ -9,6 +9,5 @@ Person.prototype.greet = function() {
 };
 
 var p1 = new Person("Santa", 79);
+
 testPrint(p1);
-testPrint(p1.building);
-p1.greet();

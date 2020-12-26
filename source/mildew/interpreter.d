@@ -20,6 +20,13 @@ public:
         _currentContext = _globalContext;
     }
 
+    /// initializes the Mildew standard library
+    void initializeStdlib()
+    {
+        import mildew.stdlib.object: initializeObjectLibrary;
+        initializeObjectLibrary(this);
+    }
+
     /// evaluates a list of statements in the code. void for now
     ScriptValue evaluateStatements(in string code)
     {
@@ -344,7 +351,8 @@ private:
         return vr;
     }
 
-    VisitResult visitFunctionCallNode(FunctionCallNode node, bool returnThis = false)
+    VisitResult visitFunctionCallNode(FunctionCallNode node, 
+            bool returnThis = false)
     {
         debug import std.stdio: writefln;
 
@@ -358,79 +366,55 @@ private:
         if(fnVR.exception !is null)
             return fnVR;
         auto fnToCall = fnVR.value;
-        // TODO: set up "this" for natives
-        if(fnToCall.type == ScriptValue.Type.NATIVE_FUNCTION || fnToCall.type == ScriptValue.Type.NATIVE_DELEGATE)
+        if(fnToCall.type == ScriptValue.Type.FUNCTION)
         {
-            // valid function to call so gather expressions;
-            auto exprVR = VisitResult(ScriptValue.UNDEFINED);
-            ScriptValue[] args = [];
-            NativeFunctionError nfe = NativeFunctionError.NO_ERROR;
-            ScriptValue retVal = ScriptValue.UNDEFINED;
-            foreach(argExpr ; node.expressionArgs)
-            {
-                exprVR = visitNode(argExpr);
-                if(exprVR.exception !is null)
-                    return exprVR;
-                args ~= exprVR.value;
-            }
-
-            if(fnToCall.type == ScriptValue.Type.NATIVE_FUNCTION)
-            {
-                auto fn = fnToCall.toValue!NativeFunction();
-                retVal = fn(_currentContext, &thisObj, args, nfe);
-            }
-            else // delegate
-            {
-                auto dg = fnToCall.toValue!NativeDelegate();
-                retVal = dg(_currentContext, &thisObj, args, nfe);
-            }
-            VisitResult finalVR = VisitResult(retVal);
-            if(returnThis)
-            {
-                finalVR.value = thisObj;
-            }
-            // check for the appropriate nfe flag
-            final switch(nfe)
-            {
-                case NativeFunctionError.NO_ERROR:
-                    break; // all good
-                case NativeFunctionError.WRONG_NUMBER_OF_ARGS:
-                    finalVR.exception = new ScriptRuntimeException("Incorrect number of args to native method");
-                    break;
-                case NativeFunctionError.WRONG_TYPE_OF_ARG:
-                    finalVR.exception = new ScriptRuntimeException("Wrong argument type to native method");
-            }
-            // finally return the result
+            ScriptValue[] args;
+            VisitResult vr = convertExpressionsToArgs(node.expressionArgs, args);
+            if(vr.exception !is null)
+                return vr;
+            auto fn = fnToCall.toValue!ScriptFunction;
+            vr = callFunction(fn, thisObj, args, returnThis);
+            return vr;
+        }
+        else 
+        {
+            auto finalVR = VisitResult(ScriptValue.UNDEFINED);
+            finalVR.exception = new ScriptRuntimeException("Unable to call non function " ~ fnToCall.toString);
             return finalVR;
         }
-        else if(fnToCall.type == ScriptValue.Type.FUNCTION)
+    }
+
+    VisitResult convertExpressionsToArgs(Node[] expressions, ref ScriptValue[] values)
+    {
+        values = [];
+        VisitResult vr;
+        foreach(expression ; expressions)
         {
-            auto sfn = fnToCall.toValue!ScriptFunction;
-            // valid function to call so gather expressions;
-            auto vr = VisitResult(ScriptValue.UNDEFINED);
-            // make sure arguments match TODO support vararg and default values
-            if(node.expressionArgs.length > sfn.argNames.length)
+            vr = visitNode(expression);
+            if(vr.exception !is null)
             {
-                vr.exception = new ScriptRuntimeException("Wrong number of arguments to function " 
-                    ~ sfn.name);
+                values = [];
                 return vr;
             }
-            ScriptValue[] args = [];
-            foreach(argExpr ; node.expressionArgs)
-            {
-                vr = visitNode(argExpr);
-                if(vr.exception !is null)
-                    return vr;
-                args ~= vr.value;
-            }
-            _currentContext = new Context(_currentContext, sfn.functionName);
+            values ~= vr.value;
+        }
+        return vr;
+    }
+
+    VisitResult callFunction(ScriptFunction fn, ScriptValue thisObj, ScriptValue[] argVals, 
+            bool returnThis = false)
+    {
+        VisitResult vr;
+        if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
+        {
+            _currentContext = new Context(_currentContext, fn.functionName);
             // push args by name as locals
-            for(size_t i=0; i < sfn.argNames.length; ++i)
-                _currentContext.forceSetVarOrConst(sfn.argNames[i], args[i], false);
+            for(size_t i=0; i < fn.argNames.length; ++i)
+                _currentContext.forceSetVarOrConst(fn.argNames[i], argVals[i], false);
             if(returnThis)
-                thisObj = new ScriptObject(sfn.functionName, sfn.prototype, null);
+                thisObj = new ScriptObject(fn.functionName, fn.prototype, null);
             _currentContext.forceSetVarOrConst("this", thisObj, true);
-            foreach(statement ; sfn.statementNodes)
+            foreach(statement ; fn.statementNodes)
             {
                 vr = visitStatementNode(statement);
                 if(vr.breakFlag) // can't break out of a function
@@ -449,13 +433,39 @@ private:
                 vr.value = *(_currentContext.lookupVariableOrConst("this", _));
             }
             _currentContext = _currentContext.parent;
-            return vr;
+            return vr;                           
         }
         else 
         {
-            auto finalVR = VisitResult(ScriptValue.UNDEFINED);
-            finalVR.exception = new ScriptRuntimeException("Unable to call non function " ~ fnToCall.toString);
-            return finalVR;
+            ScriptValue returnValue;
+            NativeFunctionError nfe = NativeFunctionError.NO_ERROR;
+            if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
+            {
+                auto nativefn = fn.nativeFunction;
+                returnValue = nativefn(_currentContext, &thisObj, argVals, nfe);
+            }
+            else // delegate
+            {
+                auto nativedg = fn.nativeDelegate;
+                returnValue = nativedg(_currentContext, &thisObj, argVals, nfe);
+            }
+            if(returnThis)
+                vr.value = thisObj;
+            else 
+                vr.value = returnValue;
+            // check for the appropriate nfe flag
+            final switch(nfe)
+            {
+                case NativeFunctionError.NO_ERROR:
+                    break; // all good
+                case NativeFunctionError.WRONG_NUMBER_OF_ARGS:
+                    vr.exception = new ScriptRuntimeException("Incorrect number of args to native method");
+                    break;
+                case NativeFunctionError.WRONG_TYPE_OF_ARG:
+                    vr.exception = new ScriptRuntimeException("Wrong argument type to native method");
+            }
+            // finally return the result
+            return vr;               
         }
     }
 

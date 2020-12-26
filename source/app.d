@@ -59,8 +59,9 @@ void evaluateWithErrorChecking(Interpreter interpreter, in string code, in strin
 int main(string[] args)
 {
     auto interpreter = new Interpreter();
-    interpreter.forceSetGlobal("testPrint", &native_testPrint, true);
-    interpreter.forceSetGlobal("testSum", &native_testSum, true);
+    interpreter.initializeStdlib();
+    interpreter.forceSetGlobal("testPrint", new ScriptFunction("testPrint", &native_testPrint), true);
+    interpreter.forceSetGlobal("testSum", new ScriptFunction("testSum", &native_testSum), true);
 
     if(args.length > 1)
     {

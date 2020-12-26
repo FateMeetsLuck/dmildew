@@ -28,7 +28,6 @@ public:
     {
         NULL=0, UNDEFINED, BOOLEAN, INTEGER, DOUBLE, STRING, ARRAY, // add more later
         FUNCTION, OBJECT,
-        NATIVE_FUNCTION, NATIVE_DELEGATE
     }
 
     /// constructor
@@ -165,12 +164,6 @@ public:
             (_type == Type.OBJECT && other._type == Type.OBJECT))
             return _asObjectOrFunction is other._asObjectOrFunction;
 
-        // if both are native functions or native delegates we can compare for exact address
-        if(_type == Type.NATIVE_FUNCTION && other._type == Type.NATIVE_FUNCTION)
-            return _asNativeFunction == other._asNativeFunction;
-        if(_type == Type.NATIVE_DELEGATE && other._type == Type.NATIVE_DELEGATE)
-            return _asNativeDelegate == other._asNativeDelegate;
-
         // if we get to this point the objects are not equal
         return false;
     }
@@ -263,10 +256,6 @@ public:
                 return typeid(_asArray).getHash(&_asArray);
             case Type.FUNCTION: case Type.OBJECT:
                 return typeid(_asObjectOrFunction).getHash(&_asObjectOrFunction);
-            case Type.NATIVE_FUNCTION:
-                return typeid(_asNativeFunction).getHash(&_asNativeFunction);
-            case Type.NATIVE_DELEGATE:
-                return typeid(_asNativeDelegate).getHash(&_asNativeDelegate);
         }    
     }
 
@@ -293,10 +282,6 @@ public:
                 return _asArray == other._asArray;
             case Type.FUNCTION: case Type.OBJECT:
                 return _asObjectOrFunction is other._asObjectOrFunction;
-            case Type.NATIVE_FUNCTION:
-                return _asNativeFunction == other._asNativeFunction;
-            case Type.NATIVE_DELEGATE:
-                return _asNativeDelegate == other._asNativeDelegate;
         }
     }
 
@@ -319,6 +304,12 @@ public:
     auto isInteger() const nothrow @nogc
     {
         return _type == Type.NULL || _type == Type.BOOLEAN || _type == Type.INTEGER;
+    }
+
+    /// whether it is a ScriptObject or subtype thereof
+    auto isObject() const nothrow @nogc
+    {
+        return _type == Type.OBJECT || _type == Type.FUNCTION;
     }
 
     /// attempts to convert to respective values with exception throwing
@@ -366,10 +357,6 @@ public:
             }
             case Type.FUNCTION: case Type.OBJECT:
                 return _asObjectOrFunction.toString;
-            case Type.NATIVE_FUNCTION:
-                return format("native function %x", &_asNativeFunction);
-            case Type.NATIVE_DELEGATE:
-                return format("native delegate %x", &_asNativeDelegate);
         }
     }
 
@@ -411,16 +398,6 @@ private:
                 _asArray ~= ScriptValue(item);
             }
         }
-        else static if(is(T == NativeFunction))
-        {
-            _type = Type.NATIVE_FUNCTION;
-            _asNativeFunction = value;
-        }
-        else static if(is(T == NativeDelegate))
-        {
-            _type = Type.NATIVE_DELEGATE;
-            _asNativeDelegate = value;
-        }
         else static if(is(T == ScriptFunction)) // only accept pointers
         {
             _type = Type.FUNCTION;
@@ -456,12 +433,6 @@ private:
                     break;
                 case Type.FUNCTION: case Type.OBJECT:
                     this._asObjectOrFunction = cast(ScriptObject)(value._asObjectOrFunction);
-                    break;
-                case Type.NATIVE_FUNCTION:
-                    this._asNativeFunction = value._asNativeFunction;
-                    break;
-                case Type.NATIVE_DELEGATE:
-                    this._asNativeDelegate = value._asNativeDelegate;
                     break;
             }
         }
@@ -571,34 +542,6 @@ private:
             }
         }
         // else TODO cast NativeObjects from the stored in ScriptObject
-        else static if(is(T == NativeFunction))
-        {
-            if(_type != Type.NATIVE_FUNCTION)
-            {
-                if(throwing)
-                    throw new ScriptValueException("ScriptValue " ~ toString ~ " is not a native function", this);
-                else
-                    return cast(T)null;
-            }
-            else
-            {
-                return _asNativeFunction;
-            }
-        }
-        else static if(is(T == NativeDelegate))
-        {
-            if(_type != Type.NATIVE_DELEGATE)
-            {
-                if(throwing)
-                    throw new ScriptValueException("ScriptValue " ~ toString ~ " is not a native delegate", this);
-                else
-                    return cast(T)null;
-            }
-            else
-            {
-                return _asNativeDelegate;
-            }
-        }
     }
 
     Type _type = Type.UNDEFINED;
@@ -712,6 +655,8 @@ class ScriptFunction : ScriptObject
 {
     import mildew.nodes: StatementNode;
 public:
+    enum Type { SCRIPT_FUNCTION, NATIVE_FUNCTION, NATIVE_DELEGATE }
+
     this(string fnname, string[] args, StatementNode[] statementNodes)
     {
         super("Function", new ScriptObject(), null);
@@ -719,6 +664,25 @@ public:
         _argNames = args;
         _statementNodes = statementNodes;
         _members["prototype"] = _prototype;
+        _type = Type.SCRIPT_FUNCTION;
+    }
+
+    this(string fname, NativeFunction nfunc)
+    {
+        super("Function", new ScriptObject(), null);
+        _functionName = fname;
+        _members["prototype"] = _prototype;
+        _type = Type.NATIVE_FUNCTION;
+        _nativeFunction = nfunc;
+    }
+
+    this(string fname, NativeDelegate ndele)
+    {
+        super("Function", new ScriptObject(), null);
+        _functionName = fname;
+        _members["prototype"] = _prototype;
+        _type = Type.NATIVE_DELEGATE;
+        _nativeDelegate = ndele;
     }
 
     override string toString() const
@@ -726,14 +690,40 @@ public:
         return "Function " ~ _functionName;
     }
 
+    auto type() const { return _type; }
     auto functionName() const { return _functionName; }
     auto argNames() { return _argNames; }
     auto statementNodes() { return _statementNodes; }
 
+    // must check type before using these properties or one gets an exception
+
+    /// get the native function ONLY if it is one
+    auto nativeFunction()
+    {
+        if(_type == Type.NATIVE_FUNCTION)
+            return _nativeFunction;
+        else
+            throw new Exception("This is not a native function");
+    }
+
+    /// get the delegate only if it is one
+    auto nativeDelegate()
+    {
+        if(_type == Type.NATIVE_DELEGATE)
+            return _nativeDelegate;
+        else
+            throw new Exception("This is not a native delegate");
+    }
+
 private:
+    Type _type;
     string _functionName;
     string[] _argNames;
     StatementNode[] _statementNodes;
+    union {
+        NativeFunction _nativeFunction;
+        NativeDelegate _nativeDelegate;
+    }
 }
 
 /// exception thrown on failed conversions
