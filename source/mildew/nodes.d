@@ -28,7 +28,7 @@ class BinaryOpNode : Node
 
     override string toString() const
     {
-        return format("BinaryOpNode: (%s %s %s)", leftNode, opToken, rightNode);
+        return format("(%s %s %s)", leftNode, opToken.symbol, rightNode);
     }
 
     Token opToken;
@@ -46,7 +46,7 @@ class UnaryOpNode : Node
 
     override string toString() const
     {
-        return format("(%s %s)", opToken, operandNode);
+        return format("(%s %s)", opToken.symbol, operandNode);
     }
 
     Token opToken;
@@ -95,7 +95,14 @@ class ObjectLiteralNode : Node
 
     override string toString() const
     {
-        return "(object literal node)";
+        // return "(object literal node)";
+        if(keys.length != values.length)
+            return "{invalid_object}";
+        auto result = "{";
+        for(size_t i = 0; i < keys.length; ++i)
+            result ~= keys[i] ~ ":" ~ values[i].toString;
+        result ~= "}";
+        return result;
     }
 
     string[] keys;
@@ -111,7 +118,7 @@ class VarAccessNode : Node
 
     override string toString() const
     {
-        return format("VarAccessNode %s", varToken.text);
+        return varToken.text;
     }
 
     Token varToken;
@@ -127,7 +134,7 @@ class FunctionCallNode : Node
 
     override string toString() const
     {
-        auto str = "FunctionCallNode " ~ functionToCall.toString ~ "(";
+        auto str = functionToCall.toString ~ "(";
         for(size_t i = 0; i < expressionArgs.length; ++i)
         {
             str ~= expressionArgs[i].toString;
@@ -139,7 +146,6 @@ class FunctionCallNode : Node
     }
 
     Node functionToCall;
-    // todo handle "this", the object that calls
     Node[] expressionArgs;
 }
 
@@ -248,7 +254,7 @@ class BlockStatementNode: StatementNode
         string str = "{\n";
         foreach(st ; statementNodes)
         {
-            str ~= st.toString ~ "\n";
+            str ~= "  " ~ st.toString ~ "\n";
         }
         str ~= "}";
         return str;
@@ -356,7 +362,7 @@ class BreakStatementNode : StatementNode
 
     override string toString() const
     {
-        return "break statement";
+        return "break;";
     }
 }
 
@@ -369,7 +375,7 @@ class ContinueStatementNode : StatementNode
 
     override string toString() const
     {
-        return "continue statement";
+        return "continue;";
     }
 }
 
@@ -383,10 +389,10 @@ class ReturnStatementNode : StatementNode
 
     override string toString() const
     {
-        auto str = "return ";
+        auto str = "return";
         if(expressionNode !is null)
-            str ~= expressionNode.toString;
-        return str;
+            str ~= " " ~ expressionNode.toString;
+        return str ~ ";";
     }
 
     Node expressionNode;
@@ -434,8 +440,8 @@ class ExpressionStatementNode: StatementNode
     override string toString() const
     {
         if(expressionNode is null)
-            return "empty statement";
-        return "expression statement: " ~ expressionNode.toString();
+            return ";";
+        return expressionNode.toString() ~ ";";
     }
 
     Node expressionNode;

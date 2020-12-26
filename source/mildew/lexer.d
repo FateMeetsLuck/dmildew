@@ -78,6 +78,59 @@ struct Token
         return str;
     }
 
+    ///  helps print nicer nodes
+    string symbol() const
+    {
+        final switch(type)
+        {
+        case Type.EOF:
+            return "\0";
+        case Type.KEYWORD: case Type.INTEGER: case Type.DOUBLE: case Type.STRING: case Type.IDENTIFIER:
+            return text;
+        case Type.NOT: return "!";
+        case Type.AND: return "&&";
+        case Type.OR: return "||";
+        case Type.GT: return ">";
+        case Type.GE: return ">=";
+        case Type.LT: return "<";
+        case Type.LE: return "<=";
+        case Type.EQUALS: return "==";
+        case Type.NEQUALS: return "!=";
+        case Type.STRICT_EQUALS: return "===";
+        case Type.STRICT_NEQUALS: return "!==";
+        case Type.ASSIGN: return "=";
+        case Type.PLUS_ASSIGN: return "+=";
+        case Type.DASH_ASSIGN: return "-=";
+        case Type.PLUS: return "+";
+        case Type.DASH: return "-";
+        case Type.STAR: return "*";
+        case Type.FSLASH: return "/";
+        case Type.PERCENT: return "%";
+        case Type.POW: return "**";
+        case Type.DOT: return ".";
+        case Type.INC: return "++";
+        case Type.DEC: return "--"; 
+        case Type.BIT_AND: return "&";
+        case Type.BIT_XOR: return "^";
+        case Type.BIT_OR: return "|";
+        case Type.BIT_NOT: return "~";
+        case Type.BIT_LSHIFT: return "<<";
+        case Type.BIT_RSHIFT: return ">>";
+        case Type.BIT_URSHIFT: return ">>>";
+        case Type.LPAREN: return "(";
+        case Type.RPAREN: return ")";
+        case Type.LBRACE: return "{";
+        case Type.RBRACE: return "}";
+        case Type.LBRACKET: return "[";
+        case Type.RBRACKET: return "]";
+        case Type.SEMICOLON: return ";";
+        case Type.COMMA: return ",";
+        case Type.LABEL: return text ~ ":";
+        case Type.COLON: return ":";
+        case Type.INVALID: return "#";
+        }
+    }
+
     /// tests if a token is a specific keyword
     bool isKeyword(in string keyword)
     {
