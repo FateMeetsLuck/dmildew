@@ -382,28 +382,32 @@ private:
             return vr;
         }
         auto index = van.varToken.text;
-        auto obj = vr.value.toValue!ScriptObject;
 
-        switch(op.type)
+        if(vr.value.isObject)
         {
-            case Token.Type.PLUS_ASSIGN:
-                obj[index] = obj[index] + value;
-                break;
-            case Token.Type.DASH_ASSIGN:
-                obj[index] = obj[index] - value;
-                break;
-            case Token.Type.ASSIGN:
-                obj[index] = value;
-                break;
-            default:
-                throw new Exception("Something has gone terrible wrong");
-        }
-        vr.value = obj[index];
-        if(vr.value.type == ScriptValue.Type.FUNCTION)
-        {
-            auto func = vr.value.toValue!ScriptFunction;
-            if(func.functionName == "<anonymous function>")
-                func.functionName = man.toString();
+            auto obj = vr.value.toValue!ScriptObject;
+
+            switch(op.type)
+            {
+                case Token.Type.PLUS_ASSIGN:
+                    obj[index] = obj[index] + value;
+                    break;
+                case Token.Type.DASH_ASSIGN:
+                    obj[index] = obj[index] - value;
+                    break;
+                case Token.Type.ASSIGN:
+                    obj[index] = value;
+                    break;
+                default:
+                    throw new Exception("Something has gone terrible wrong");
+            }
+            vr.value = obj[index];
+            if(vr.value.type == ScriptValue.Type.FUNCTION)
+            {
+                auto func = vr.value.toValue!ScriptFunction;
+                if(func.functionName == "<anonymous function>")
+                    func.functionName = man.toString();
+            }
         }
         return vr;
     }
@@ -462,14 +466,14 @@ private:
             bool returnThis = false)
     {
         VisitResult vr;
+        if(returnThis)
+            thisObj = new ScriptObject(fn.functionName, fn.prototype, null);
         if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
         {
             _currentContext = new Context(_currentContext, fn.functionName);
             // push args by name as locals
             for(size_t i=0; i < fn.argNames.length; ++i)
                 _currentContext.forceSetVarOrConst(fn.argNames[i], argVals[i], false);
-            if(returnThis)
-                thisObj = new ScriptObject(fn.functionName, fn.prototype, null);
             _currentContext.forceSetVarOrConst("this", thisObj, true);
             foreach(statement ; fn.statementNodes)
             {

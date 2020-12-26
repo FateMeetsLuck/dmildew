@@ -59,6 +59,20 @@ public:
         
         static if(op == "+")
         {
+            // if both are arrays concatenante
+            if(_type == Type.ARRAY && rhs._type == Type.ARRAY)
+            {
+                auto concat = _asArray ~ rhs._asArray;
+                return ScriptValue(cast(ScriptValue[])concat);
+            }
+
+            // if first is array and second isn't, concat second to first
+            if(_type == Type.ARRAY && rhs._type != Type.ARRAY)
+            {
+                auto concat = _asArray ~ rhs;
+                return ScriptValue(cast(ScriptValue[])concat);
+            }
+
             // if either is string convert both to string and concatenate
             if(_type == Type.STRING || rhs._type == Type.STRING)
             {
@@ -587,6 +601,7 @@ public:
         _name = typename;
         _prototype = proto;
         _nativeObject = native;
+        _members["__proto__"] = ScriptValue(proto);
     }
 
     /// empty constructor
@@ -616,7 +631,8 @@ public:
 
     ScriptValue opIndexAssign(ScriptValue value, in string index)
     {
-        // TODO make __proto__ writable
+        if(index == "__proto__")
+            _prototype = value.toValue!ScriptObject; // can be null if not object
         _members[index] = value;
         return _members[index];
     }
@@ -632,6 +648,15 @@ public:
 
     /// members
     auto members() { return _members; }
+
+    /// to native object
+    T nativeObject(T)()
+    {
+        static if(is(T == class) || is(T == interface))
+            return cast(T)nativeObject;
+        else
+            static assert(false, "This method can only be used with D classes and interfaces");
+    }
 
     /// as string
     override string toString() const
@@ -711,8 +736,11 @@ public:
         return "Function " ~ _functionName;
     }
 
+    // TODO opIndex and __proto__ handling
+
     override ScriptValue opIndexAssign(ScriptValue value, in string index)
     {
+        // __proto__ should be a function but IDK what
         if(index == "prototype")
         {
             if(value.isObject)

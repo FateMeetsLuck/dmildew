@@ -238,7 +238,7 @@ class VarDeclarationStatementNode : StatementNode
     }
 
     Token qualifier; // must be var, let, or const
-    Node[] varAccessOrAssignmentNodes; // must be VarAccessNode or VarAssignmentNode. should be validated by parser
+    Node[] varAccessOrAssignmentNodes; // must be VarAccessNode or BinaryOpNode. should be validated by parser
 }
 
 class BlockStatementNode: StatementNode
