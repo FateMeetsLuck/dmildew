@@ -994,7 +994,7 @@ private:
     VisitResult visitFunctionDeclarationStatementNode(FunctionDeclarationStatementNode node)
     {
         auto func = new ScriptFunction(node.name, node.argNames, node.statementNodes);
-        immutable okToDeclare = _globalContext.declareVariableOrConst(node.name, ScriptValue(func), false);
+        immutable okToDeclare = _currentContext.declareVariableOrConst(node.name, ScriptValue(func), false);
         VisitResult vr = VisitResult(ScriptValue.UNDEFINED);
         if(!okToDeclare)
         {

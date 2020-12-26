@@ -6,5 +6,6 @@
 	"description": "Port of PyMilDew to D",
     "license": "GPL-3.0",
     "name": "dmildew",
-    "targetType": "library"
+    "targetType": "library",
+    "subPackages": ["repl"]
 }

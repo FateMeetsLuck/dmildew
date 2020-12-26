@@ -1,3 +1,5 @@
+module app;
+
 import std.file: readText;
 import std.stdio;
 import std.string: strip;
