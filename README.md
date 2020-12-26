@@ -4,6 +4,12 @@ A scripting language for the D programming language inspired by Lua and JavaScri
 
 This is still very much a work in progress.
 
+## Compiling
+
+Once you build the local dmildew library you have to go up one directory and run `dub add-local dmildew`
+
+After that the subpackages (REPL and interpreter) should build.
+
 ## Usage
 
 The examples folder contains example scripts. It should look familiar to anyone who knows JavaScript. However, Mildew is not a full feature JavaScript implementation.

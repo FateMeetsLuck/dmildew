@@ -1,0 +1,13 @@
+{
+	"authors": [
+		"Johnny Postblock"
+	],
+	"copyright": "Copyright © 2020, Johnny Postblock",
+	"description": "REPL for the mildew library",
+	"license": "GPL-3.0",
+    "name": "mildew_repl",
+    "dependencies": { 
+        "dmildew": "~main", 
+        "arsd-official:terminal": "~>9.0.4" 
+    }
+}
