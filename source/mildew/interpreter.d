@@ -271,6 +271,7 @@ private:
                 return vResult;
             }
             // else we have a valid pointer at this point
+            // we also want to set anonymous function names if they are stored in a regular variable
         }
         // if it is an array index node, it has to return a valid pointer
         else if(auto ain = cast(ArrayIndexNode)left) 
@@ -314,6 +315,12 @@ private:
                 throw new Exception("We should have never gotten here (assignment)");
         }
         vResult.value = *varRef;
+        if(varRef.type == ScriptValue.Type.FUNCTION)
+        {
+            auto func = varRef.toValue!ScriptFunction;
+            if(func.functionName == "<anonymous function>")
+                func.functionName = left.toString;            
+        }
         return vResult;
     }
 
@@ -388,7 +395,13 @@ private:
             default:
                 throw new Exception("Something has gone terrible wrong");
         }
-        vr.value = value;
+        vr.value = obj[index];
+        if(vr.value.type == ScriptValue.Type.FUNCTION)
+        {
+            auto func = vr.value.toValue!ScriptFunction;
+            if(func.functionName == "<anonymous function>")
+                func.functionName = man.toString();
+        }
         return vr;
     }
 
@@ -745,6 +758,13 @@ private:
                         // visitResult.exception.scriptTraceback ~= node;
                         return visitResult;
                     }           
+                }
+                // success so make sure anon function name matches
+                if(valueToAssign.type == ScriptValue.Type.FUNCTION)
+                {
+                    auto func = valueToAssign.toValue!ScriptFunction;
+                    if(func.functionName == "<anonymous function>")
+                        func.functionName = van.varToken.text;
                 }
             }
         }

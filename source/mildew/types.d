@@ -712,6 +712,7 @@ public:
 
     auto type() const { return _type; }
     auto functionName() const { return _functionName; }
+    auto functionName(in string fnName) { return _functionName = fnName; }
     auto argNames() { return _argNames; }
     auto statementNodes() { return _statementNodes; }
 
