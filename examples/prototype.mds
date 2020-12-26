@@ -11,3 +11,8 @@ Person.prototype.greet = function() {
 var p1 = new Person("Santa", 79);
 
 testPrint(p1);
+
+var foo = {};
+Person.call(foo, "Moron", 666);
+testPrint(foo);
+

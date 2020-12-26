@@ -11,7 +11,8 @@ enum NativeFunctionError
 {
     NO_ERROR = 0,
     WRONG_NUMBER_OF_ARGS,
-    WRONG_TYPE_OF_ARG
+    WRONG_TYPE_OF_ARG,
+    RETURN_VALUE_IS_EXCEPTION
 }
 
 /// native function signature to be usable by scripting language

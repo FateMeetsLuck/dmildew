@@ -18,6 +18,7 @@ public:
     {
         _globalContext = new Context(null, "global");
         _currentContext = _globalContext;
+        _nativeFunctionDotCall = new ScriptFunction("Function.call", &native_Function_call);
     }
 
     /// initializes the Mildew standard library
@@ -463,6 +464,10 @@ private:
                     break;
                 case NativeFunctionError.WRONG_TYPE_OF_ARG:
                     vr.exception = new ScriptRuntimeException("Wrong argument type to native method");
+                    break;
+                case NativeFunctionError.RETURN_VALUE_IS_EXCEPTION:
+                    vr.exception = new ScriptRuntimeException(vr.value.toString);
+                    break;
             }
             // finally return the result
             return vr;               
@@ -522,7 +527,11 @@ private:
                 vr.exception = new ScriptRuntimeException("Invalid member name " ~ node.memberNode.toString);
                 return vr;
             }
-            vr.value = obj[van.varToken.text];
+            // special case with Function["call"]
+            if(van.varToken.text == "call" && vr.value.type == ScriptValue.Type.FUNCTION)
+                vr.value = _nativeFunctionDotCall;
+            else
+                vr.value = obj[van.varToken.text];
         }
         else 
         {
@@ -819,6 +828,35 @@ private:
         return vr;
     }
 
+    ScriptValue native_Function_call(Context c, ScriptValue* thisIsFn, ScriptValue[] args, ref NativeFunctionError nfe)
+    {
+        // minimum args is 1 because first arg is the this to use
+        if(args.length < 1)
+        {
+            nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
+            return ScriptValue.UNDEFINED;
+        }
+        // get the function
+        if(thisIsFn.type != ScriptValue.Type.FUNCTION)
+        {
+            nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+            return ScriptValue.UNDEFINED;
+        }
+        auto fn = thisIsFn.toValue!ScriptFunction;
+        // set up the "this" to use
+        auto thisToUse = args[0];
+        // now send the remainder of the args to a called function with this setup
+        args = args[1..$];
+        auto vr = callFunction(fn, thisToUse, args, false);
+        if(vr.exception !is null)
+        {
+            nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+            return ScriptValue(vr.exception.message);
+        }
+        return vr.value;
+    }
+
+    ScriptValue _nativeFunctionDotCall;
     Context _globalContext;
     Context _currentContext;
 }
