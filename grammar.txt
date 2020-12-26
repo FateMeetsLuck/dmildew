@@ -28,7 +28,7 @@
 3   ASSIGN, PLUS_ASSIGN, DASH_ASSIGN (right-assoc)
 
 
-# GRAMMAR
+# GRAMMAR (TODO clean this up to reflect parser code)
 
 program         ::=     statement*
 
@@ -50,7 +50,9 @@ block           ::=     LBRACE statement* RBRACE
 
 var-decl        ::=     (KEYWORD:var|KEYWORD:let) IDENTIFIER (ASSIGN expr)? (COMMA IDENTIFIER (ASSIGN expr)?)*
 
-expr            ::=     primary-expr 
+expr            ::=     primary-expr
+                        | func-call
+                        | expr LBRACKET expr RBRACKET
                         | expr POW expr 
                         | expr (STAR|FSLASH|PERCENT) expr 
                         | expr (PLUS|DASH) expr
@@ -66,11 +68,13 @@ expr            ::=     primary-expr
 
 primary-expr    ::=     (NOT|PLUS|DASH) primary-expr
                         | LPAREN expr RPAREN | INTEGER | DOUBLE 
-                        | (KEYWORD:true|KEYWORD:false|KEYWORD:undefined|KEYWORD:null) 
+                        | (KEYWORD:true|KEYWORD:false|KEYWORD:undefined|KEYWORD:null)
+                        | anon-func
                         | KEYWORD:function LPAREN (IDENTIFIER (COMMA IDENTIFIER)*)? RPAREN LBRACE statement* RBRACE
                         | STRING | IDENTIFIER 
                         | LBRACKET (expr (COMMA expr)*)? RBRACKET
-                        | func-call 
 
-func-call       :: =    primary-expr LPAREN (expr (COMMA expr)*)? RPAREN
+func-call       ::=     expr LPAREN (expr (COMMA expr)*)? RPAREN
+
+anon-func       ::=     KEYWORD:function LPAREN (IDENTIFIER (COMMA IDENTIFIER)*)? RPAREN block
                         

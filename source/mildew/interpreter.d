@@ -247,6 +247,7 @@ private:
 
     VisitResult handleAssignment(Token assignToken, Node left, Node right)
     {
+        debug import std.stdio: writefln;
         // first get the value of what we're going to assign
         auto vResult = visitNode(right);
         if(vResult.exception !is null)
@@ -274,12 +275,15 @@ private:
         // if it is an array index node, it has to return a valid pointer
         else if(auto ain = cast(ArrayIndexNode)left) 
         {
+            debug writefln("AIN: left=%s, right=%s", left, right);
             vResult = visitNode(left);
             if(vResult.varPointer == null)
             {
-                vResult.exception = new ScriptRuntimeException("Cannot assign values to this array index");
-                return vResult;
+                // vResult.exception = new ScriptRuntimeException("Cannot assign values to this array index");
+                // return vResult;
+                return handleArrayIndexAssign(assignToken, ain, value);
             }
+            debug writefln(" PTR=%x", vResult.varPointer);
             varRef = vResult.varPointer;
             // else we have a valid pointer
         }
@@ -311,6 +315,42 @@ private:
         }
         vResult.value = *varRef;
         return vResult;
+    }
+
+    VisitResult handleArrayIndexAssign(Token opToken, ArrayIndexNode ain, ScriptValue value)
+    {
+        VisitResult vr;
+        vr = visitNode(ain.objectNode);
+        if(vr.exception !is null)
+            return vr;
+        if(vr.value.isObject)
+        {
+            auto obj = vr.value.toValue!(ScriptObject);
+            vr = visitNode(ain.indexValueNode);
+            if(vr.exception !is null)
+                return vr;
+            auto index = vr.value.toString;
+            switch(opToken.type)
+            {
+                case Token.Type.PLUS_ASSIGN:
+                    obj[index] = obj[index] + value;
+                    break;
+                case Token.Type.DASH_ASSIGN:
+                    obj[index] = obj[index] - value;
+                    break;
+                case Token.Type.ASSIGN:
+                    obj[index] = value;
+                    break;
+                default:
+                    throw new Exception("Something has gone terrible wrong");
+            }
+            vr.value = value;
+        }
+        else 
+        {
+            vr.exception = new ScriptRuntimeException("Cannot assign to index of non-object");
+        }
+        return vr;
     }
 
     VisitResult handleDotAssignment(Token op, MemberAccessNode man, ScriptValue value)
@@ -483,8 +523,8 @@ private:
         vr = visitNode(node.objectNode);
         if(vr.exception !is null)
             return vr;
-        auto arrayToIndex = vr.value;
-        if(arrayToIndex.type == ScriptValue.Type.ARRAY)
+        auto objToIndex = vr.value;
+        if(objToIndex.type == ScriptValue.Type.ARRAY || objToIndex.type == ScriptValue.Type.STRING)
         {
             if(!indexSV.isNumber)
             {
@@ -492,22 +532,41 @@ private:
                 return vr;
             }
             immutable index = indexSV.toValue!long;
-            auto rawArray = arrayToIndex.toValue!(ScriptValue[]);
-            if(index < 0 || index >= rawArray.length)
+            if(objToIndex.type == ScriptValue.Type.ARRAY)
             {
-                vr.exception = new ScriptRuntimeException("Out of bounds array access");
-                return vr;
+                auto rawArray = objToIndex.toValue!(ScriptValue[]);
+                if(index < 0 || index >= rawArray.length)
+                {
+                    vr.exception = new ScriptRuntimeException("Out of bounds array access");
+                    return vr;
+                }
+                vr.value = rawArray[index];
+                vr.varPointer = &rawArray[index];
             }
-            vr.value = rawArray[index];
-            vr.varPointer = &rawArray[index];
-            return vr;            
+            else 
+            {
+                auto rawString = objToIndex.toString();
+                if(index < 0 || index >= rawString.length)
+                {
+                    vr.exception = new ScriptRuntimeException("Out of bounds string access");
+                    return vr;
+                }
+                vr.value = ScriptValue( [ rawString[index] ]);
+            }
+        }
+        else if(objToIndex.isObject)
+        {
+            immutable memberName = indexSV.toString;
+            auto obj = objToIndex.toValue!ScriptObject;
+            vr.value = obj[memberName];
+            vr.varPointer = null;
         }
         else 
         {
             vr = VisitResult(ScriptValue.UNDEFINED);
-            vr.exception = new ScriptRuntimeException("Cannot index non array " ~ arrayToIndex.toString);
-            return vr;            
+            vr.exception = new ScriptRuntimeException("Cannot index non array " ~ objToIndex.toString);
         }
+        return vr;
     }
 
     // this can only be used to retrieve values not for assignment
@@ -517,21 +576,38 @@ private:
         VisitResult vr = visitNode(node.objectNode);
         if(vr.exception !is null)
             return vr;
+        // get the member name from the right node which must be var acess
+        auto van = cast(VarAccessNode)node.memberNode;
+        if(van is null)
+        {
+            vr.exception = new ScriptRuntimeException("Invalid member name " ~ node.memberNode.toString);
+            return vr;
+        }
+
         if(vr.value.type == ScriptValue.Type.FUNCTION || vr.value.type == ScriptValue.Type.OBJECT)
         {
             auto obj = vr.value.toValue!ScriptObject;
-            // get the member name from the right node which must be var acess
-            auto van = cast(VarAccessNode)node.memberNode;
-            if(van is null)
-            {
-                vr.exception = new ScriptRuntimeException("Invalid member name " ~ node.memberNode.toString);
-                return vr;
-            }
             // special case with Function["call"]
             if(van.varToken.text == "call" && vr.value.type == ScriptValue.Type.FUNCTION)
                 vr.value = _nativeFunctionDotCall;
             else
                 vr.value = obj[van.varToken.text];
+        }
+        else if(vr.value.type == ScriptValue.Type.ARRAY)
+        {
+            immutable arrayValue = cast(immutable(ScriptValue[]))vr.value.toValue!(ScriptValue[]);
+            if(van.varToken.text == "length")
+                vr.value = arrayValue.length;
+            else 
+                vr.value = ScriptValue.UNDEFINED;            
+        }
+        else if(vr.value.type == ScriptValue.Type.STRING)
+        {
+            immutable stringValue = vr.value.toString;
+            if(van.varToken.text == "length")
+                vr.value = stringValue.length;
+            else 
+                vr.value = ScriptValue.UNDEFINED;
         }
         else 
         {
