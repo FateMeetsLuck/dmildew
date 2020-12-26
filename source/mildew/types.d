@@ -21,6 +21,7 @@ alias NativeFunction = ScriptValue function(Context, ScriptValue* thisObj, Scrip
 alias NativeDelegate = ScriptValue delegate(Context, ScriptValue* thisObj, ScriptValue[] args, ref NativeFunctionError);
 
 /// runtime polymorphic value type to hold anything usable in Mildew
+/// TODO Arrays should be a subclass of ScriptObject to reflect JS semantics
 struct ScriptValue
 {
 public:
@@ -78,9 +79,6 @@ public:
             {
                 return ScriptValue(toString() ~ rhs.toString());
             }
-            // if either is array, convert both to string and concatenate
-            if(_type == Type.ARRAY || rhs._type == Type.ARRAY)
-                return ScriptValue(toString ~ rhs.toString);
             
             // if they are both numerical
             if(this.isNumber && rhs.isNumber)
@@ -249,7 +247,8 @@ public:
         // TODO handle object and functions
 
         // TODO handle native functions and delegates. Not sure how that comparison should work
-        throw new ScriptValueException("Unable to compare " ~ this.toString ~ " to " ~ other.toString, other);
+        // throw new ScriptValueException("Unable to compare " ~ this.toString ~ " to " ~ other.toString, other);
+        return -1; // for now
     }
 
     size_t toHash() const nothrow
@@ -471,6 +470,7 @@ private:
         else static if(is(T == typeof(null)))
         {
             _type = Type.NULL;
+            _asObjectOrFunction = null;
         }
         else
             static assert(false, "This type is not supported: " ~ T.stringof);
