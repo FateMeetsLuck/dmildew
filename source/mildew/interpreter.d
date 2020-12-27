@@ -8,8 +8,7 @@ import mildew.exceptions: ScriptRuntimeException;
 import mildew.lexer: Token, Lexer;
 import mildew.nodes;
 import mildew.parser;
-import mildew.types: ScriptValue, NativeFunction, NativeDelegate, 
-                     NativeFunctionError, ScriptFunction, ScriptObject;
+import mildew.types: ScriptValue;
 
 /**
  * This is the main interface for the host application to interface with scripts.
@@ -27,7 +26,6 @@ public:
     {
         _globalContext = new Context(null, "global");
         _currentContext = _globalContext;
-        // _nativeFunctionDotCall = new ScriptFunction("Function.call", &native_Function_call);
     }
 
     /**

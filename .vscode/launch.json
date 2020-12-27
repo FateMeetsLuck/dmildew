@@ -8,7 +8,7 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/dmildew",
+            "program": "${workspaceFolder}/repl/dmildew_repl",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

@@ -1212,7 +1212,9 @@ class ExpressionStatementNode : StatementNode
 
     override VisitResult visit(Context c)
     {
-        auto vr = expressionNode.visit(c);
+        VisitResult vr;
+        if(expressionNode !is null)
+            vr = expressionNode.visit(c);
         if(vr.exception !is null)
             vr.exception.scriptTraceback ~= this;
         vr.result = ScriptValue.UNDEFINED; // they should never return a result
