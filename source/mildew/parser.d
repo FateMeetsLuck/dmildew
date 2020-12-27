@@ -294,9 +294,7 @@ private:
     /// parse a single expression. See https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
     /// for algorithm.
     Node parseExpression(int minPrec = 1)
-    {
-        debug import std.stdio: writeln, writefln;
-        
+    {      
         Node primaryLeft = null;
 
         immutable unOpPrec = _currentToken.unaryOpPrecedence;
@@ -333,7 +331,6 @@ private:
                 }
                 else
                     primaryLeft = new MemberAccessNode(primaryLeft, right);
-                debug writefln("UnOpPriority=%s, prec=%s", unOpPrec, prec);
             }
             else if(opToken.type == Token.Type.LBRACKET)
             {
@@ -367,7 +364,6 @@ private:
                 primaryLeft = new BinaryOpNode(opToken, primaryLeft, primaryRight);
             }
         }
-        debug writeln(primaryLeft.toString());
         return primaryLeft;
     }
 

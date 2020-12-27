@@ -54,7 +54,7 @@ public:
         auto lexer = Lexer(code);
         auto tokens = lexer.tokenize();
         auto parser = Parser(tokens);
-        debug writeln(tokens);
+        // debug writeln(tokens);
         auto programBlock = parser.parseProgram();
         auto vr = visitBlockStatementNode(programBlock); // @suppress(dscanner.suspicious.unmodified)
         if(vr.exception !is null)
@@ -1117,9 +1117,7 @@ private:
 
     VisitResult visitExpressionStatementNode(ExpressionStatementNode node)
     {
-        debug import std.stdio: writefln;
         auto vr = visitNode(node.expressionNode);
-        debug writefln("The result of the expression statement is %s", vr.value);
         vr.value = ScriptValue.UNDEFINED; // they should never return a result
         return vr;
     }

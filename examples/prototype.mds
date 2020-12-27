@@ -13,6 +13,7 @@ var p1 = new Person("Santa", 79);
 console.log(p1);
 
 var foo = {};
-Person.call(foo, "Moron", 666);
+Person.call(foo, "Testvalue", -500);
 console.log(foo);
+console.log(foo.__proto__);
 

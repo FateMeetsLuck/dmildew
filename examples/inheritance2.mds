@@ -1,0 +1,10 @@
+var topLevel = { top: 99 };
+var middleLevel = Object.create(topLevel);
+middleLevel.middle = 50;
+var bottomLevel = Object.create(middleLevel);
+bottomLevel.bottom = 4;
+console.log(bottomLevel.bottom);
+console.log(bottomLevel.middle);
+console.log(bottomLevel.top);
+delete bottomLevel.top;
+console.log(bottomLevel.top); // should still print 99

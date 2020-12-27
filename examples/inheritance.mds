@@ -18,11 +18,14 @@ Employee.prototype.work = function() {
 };
 
 var e1 = new Employee("Courtney", 30, "Gas station");
-var e2 = new Employee("Retard Doge", 12, "Internet");
+var e2 = new Employee("Doge", 11, "Internet");
 e1.greet();
 e1.work();
 console.log(e1);
 e2.greet();
 e2.work();
 console.log(e2);
-
+console.log(e2.__proto__);
+var p1 = new Person("Joseph Stalin", 74);
+p1.greet();
+console.log(p1.__proto__);
