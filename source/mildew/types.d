@@ -648,7 +648,20 @@ private:
                 return cast(T)_asObjectOrFunction;
             }
         }
-        // else TODO cast NativeObjects from the stored in ScriptObject
+        else static if(is(T == class) || is(T == interface))
+        {
+            if(_type != Type.OBJECT)
+            {
+                if(throwing)
+                    throw new ScriptValueException("ScriptValue " ~ toString ~ " does not store a D object", this);
+                else
+                    return cast(T)null;
+            }
+            else
+            {
+                return _asObjectOrFunction.nativeObject!T;
+            }
+        }
     }
 
     Type _type = Type.UNDEFINED;
@@ -763,10 +776,10 @@ public:
      * Note that one must always check that the return value isn't null because all functions can be
      * called with invalid "this" objects using functionName.call.
      */
-    T nativeObject(T)()
+    T nativeObject(T)() const
     {
         static if(is(T == class) || is(T == interface))
-            return cast(T)nativeObject;
+            return cast(T)_nativeObject;
         else
             static assert(false, "This method can only be used with D classes and interfaces");
     }
