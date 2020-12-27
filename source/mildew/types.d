@@ -606,7 +606,12 @@ private:
     }
 }
 
-/// Object class
+/**
+ * General Object class. Unlike JavaScript, the \_\_proto\_\_ property only shows up when asked for. This allows
+ * allows objects to be used as dictionaries without extraneous values showing up in the for-of loop. Also,
+ * objects' default \_\_proto\_\_ value is null unless native code creates an object with a specific prototype
+ * object during construction.
+ */
 class ScriptObject
 {
 public:
@@ -616,7 +621,6 @@ public:
         _name = typename;
         _prototype = proto;
         _nativeObject = native;
-        _members["__proto__"] = ScriptValue(proto);
     }
 
     /// empty constructor
@@ -627,7 +631,7 @@ public:
 
     ScriptValue opIndex(in string index)
     {
-        // first handle special property __proto__
+        // first handle special metaproperty __proto__
         if(index == "__proto__")
         {
             auto proto = ScriptValue(_prototype);
@@ -647,9 +651,15 @@ public:
     ScriptValue opIndexAssign(ScriptValue value, in string index)
     {
         if(index == "__proto__")
+        {
             _prototype = value.toValue!ScriptObject; // can be null if not object
-        _members[index] = value;
-        return _members[index];
+            return ScriptValue(_prototype);
+        }
+        else
+        {
+            _members[index] = value;
+            return _members[index];
+        }
     }
 
     /// name property

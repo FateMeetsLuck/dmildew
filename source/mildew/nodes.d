@@ -356,6 +356,7 @@ class ForStatementNode : StatementNode
     StatementNode bodyNode;
 }
 
+/// for of can't do let {a,b} but it can do let a,b and be used the same as for in in JS
 class ForOfStatementNode : StatementNode
 {
     this(size_t lineNo, Token qual, VarAccessNode[] vans, Node obj, StatementNode bnode)
