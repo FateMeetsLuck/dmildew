@@ -674,6 +674,10 @@ private:
             vr = visitReturnStatementNode(rnode);
         else if(auto fnode = cast(FunctionDeclarationStatementNode)node)
             vr = visitFunctionDeclarationStatementNode(fnode);
+        else if(auto tnode = cast(ThrowStatementNode)node)
+            vr = visitThrowStatementNode(tnode);
+        else if(auto tcnode = cast(TryCatchBlockStatementNode)node)
+            vr = visitTryCatchBlockStatementNode(tcnode);
         else 
             throw new Exception("Unknown StatementNode type " ~ typeid(node).toString);
 
@@ -1000,6 +1004,36 @@ private:
         {
             vr.exception = new ScriptRuntimeException("Cannot redeclare variable or const " ~ node.name 
                 ~ " with a function declaration");
+        }
+        return vr;
+    }
+
+    VisitResult visitThrowStatementNode(ThrowStatementNode node)
+    {
+        auto vr = visitNode(node.expressionNode);
+        if(vr.exception !is null)
+            return vr;
+        vr.exception = new ScriptRuntimeException("Uncaught script exception");
+        vr.exception.thrownValue = vr.value;
+        vr.value = ScriptValue.UNDEFINED;
+        return vr;
+    }
+
+    VisitResult visitTryCatchBlockStatementNode(TryCatchBlockStatementNode node)
+    {
+        auto vr = visitStatementNode(node.tryBlockNode);
+        // if there was an exception we need to start a new context and set it as a local variable
+        if(vr.exception !is null)
+        {
+            _currentContext = new Context(_currentContext);
+            if(vr.exception.thrownValue != ScriptValue.UNDEFINED)
+                _currentContext.forceSetVarOrConst(node.exceptionName, vr.exception.thrownValue, false);
+            else 
+                _currentContext.forceSetVarOrConst(node.exceptionName, ScriptValue(vr.exception.message), false);
+            vr.exception = null;
+            // if another exception is thrown in the catch block, it will propagate through this return value
+            vr = visitStatementNode(node.catchBlockNode);
+            _currentContext = _currentContext.parent();
         }
         return vr;
     }

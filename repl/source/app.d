@@ -46,6 +46,8 @@ void evaluateWithErrorChecking(Interpreter interpreter, in string code, in strin
     {
         writeln("In file " ~ fileName);
         writefln("%s", ex);
+        if(ex.thrownValue.type != ScriptValue.Type.UNDEFINED)
+            writefln("Value thrown: %s", ex.thrownValue);
     }
 }
 

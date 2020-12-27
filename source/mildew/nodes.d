@@ -464,7 +464,44 @@ class FunctionDeclarationStatementNode : StatementNode
     StatementNode[] statementNodes;
 }
 
-class ExpressionStatementNode: StatementNode
+class ThrowStatementNode : StatementNode
+{
+    this(size_t lineNo, Node expr)
+    {
+        super(lineNo);
+        expressionNode = expr;
+    }
+
+    override string toString() const
+    {
+        return "throw " ~ expressionNode.toString() ~ ";";
+    }
+
+    Node expressionNode;
+}
+
+class TryCatchBlockStatementNode : StatementNode
+{
+    this(size_t lineNo, StatementNode tryBlock, string name, StatementNode catchBlock)
+    {
+        super(lineNo);
+        tryBlockNode = tryBlock;
+        exceptionName = name;
+        catchBlockNode = catchBlock;
+    }
+
+    override string toString() const
+    {
+        return "try " ~ tryBlockNode.toString ~ " catch(" ~ exceptionName ~ ")"
+            ~ catchBlockNode.toString;
+    }
+
+    StatementNode tryBlockNode;
+    string exceptionName;
+    StatementNode catchBlockNode;
+}
+
+class ExpressionStatementNode : StatementNode
 {
     this(size_t lineNo, Node expression)
     {

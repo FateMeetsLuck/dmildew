@@ -241,6 +241,19 @@ private:
         {
             statement = parseFunctionDeclarationStatement();
         }
+        else if(_currentToken.isKeyword("throw"))
+        {
+            nextToken();
+            auto expr = parseExpression();
+            if(_currentToken.type != Token.Type.SEMICOLON)
+                throw new ScriptCompileException("Expected ';' after throw expression", _currentToken);
+            nextToken();
+            statement = new ThrowStatementNode(lineNumber, expr);
+        }
+        else if(_currentToken.isKeyword("try"))
+        {
+            statement = parseTryCatchBlockStatement();
+        }
         else // for now has to be one expression followed by semicolon or EOF
         {
             if(_currentToken.type == Token.Type.SEMICOLON)
@@ -646,6 +659,28 @@ private:
         auto statements = parseStatements(Token.Type.RBRACE);
         nextToken(); // eat the }
         return new FunctionDeclarationStatementNode(lineNumber, name, argNames, statements);
+    }
+
+    TryCatchBlockStatementNode parseTryCatchBlockStatement()
+    {
+        immutable lineNumber = _currentToken.position.line;
+        nextToken(); // eat the 'try'
+        auto tryBlock = parseStatement();
+        if(!_currentToken.isKeyword("catch"))
+            throw new ScriptCompileException("Catch block required after try block", _currentToken);
+        nextToken(); // eat the catch
+        if(_currentToken.type != Token.Type.LPAREN)
+            throw new ScriptCompileException("Missing '(' after catch", _currentToken);
+        nextToken(); // eat the '('
+        if(_currentToken.type != Token.Type.IDENTIFIER)
+            throw new ScriptCompileException("Name of exception required in catch block", _currentToken);
+        auto name = _currentToken.text;
+        nextToken();
+        if(_currentToken.type != Token.Type.RPAREN)
+            throw new ScriptCompileException("Missing ')' after exception name", _currentToken);
+        nextToken(); // eat the ')'
+        auto catchBlock = parseStatement();
+        return new TryCatchBlockStatementNode(lineNumber, tryBlock, name, catchBlock);
     }
 
     ObjectLiteralNode parseObjectLiteral()

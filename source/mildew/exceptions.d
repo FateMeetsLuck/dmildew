@@ -26,6 +26,7 @@ class ScriptCompileException : Exception
 class ScriptRuntimeException : Exception
 {
     import mildew.nodes: Node, StatementNode;
+    import mildew.types: ScriptValue;
     
     /// ctor
     this(string msg, string file = __FILE__, size_t line = __LINE__)
@@ -47,4 +48,6 @@ class ScriptRuntimeException : Exception
 
     /// a chain of statement nodes where the exception occurred
     StatementNode[] scriptTraceback;
+    /// if it is thrown by a script, this is the value that was thrown
+    ScriptValue thrownValue = ScriptValue.UNDEFINED; 
 }
