@@ -181,6 +181,17 @@ public:
         }
     }
 
+    /// climb context stack until finding one without a parent
+    Context getGlobalContext()
+    {
+        Context c = this;
+        while(c._parent !is null)
+        {
+            c = c._parent;
+        }
+        return c;
+    }
+
     /// returns the parent property
     Context parent()
     {
