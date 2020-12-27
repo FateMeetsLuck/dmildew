@@ -1,3 +1,6 @@
+/**
+ * This module implements functions for the "Math" namespace in the scripting language
+ */
 module mildew.stdlib.math;
 
 import math=std.math;

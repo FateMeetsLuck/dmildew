@@ -1,3 +1,6 @@
+/**
+ * This module implements the Interpreter class, the main class used by host applications to run scripts
+ */
 module mildew.interpreter;
 
 import mildew.context;

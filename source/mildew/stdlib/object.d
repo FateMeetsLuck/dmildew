@@ -1,3 +1,6 @@
+/**
+ * This module implements functions for the "Object" namespace in the scripting language
+ */
 module mildew.stdlib.object;
 
 import mildew.context;

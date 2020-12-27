@@ -1,3 +1,6 @@
+/**
+ * This module implements the Node subclasses, which are used internally as a syntax tree by the Interpreter
+ */
 module mildew.nodes;
 
 import std.format: format;

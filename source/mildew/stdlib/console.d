@@ -1,3 +1,6 @@
+/**
+ * This module implements functions for the "console" namespace in the scripting language
+ */
 module mildew.stdlib.console;
 
 import mildew.context;

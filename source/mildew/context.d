@@ -1,3 +1,6 @@
+/**
+ * This module implements the Context class.
+ */
 module mildew.context;
 
 import mildew.types;

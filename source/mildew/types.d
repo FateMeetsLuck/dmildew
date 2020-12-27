@@ -1,3 +1,11 @@
+/**
+ * This module implements the main "duck type" of the scripting language, ScriptValue, a variant that
+ * can hold any of the types usable in the scripting language. This module also contains the implementation
+ * of ScriptObject, which can hold a dictionary of key-ScriptValue pairs as well as any D class object. It
+ * also contains the implementation of ScriptFunction, which can hold a script defined function or native
+ * functions or delegates with the NativeFunction or NativeDelegate signature. Both ScriptObject and 
+ * ScriptFunction can be stored inside of a ScriptValue.
+ */
 module mildew.types;
 
 debug import std.stdio;

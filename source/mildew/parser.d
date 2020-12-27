@@ -1,3 +1,6 @@
+/**
+ * This module implements the Parser struct, which generates Nodes that are used internally by the Interpreter
+ */
 module mildew.parser;
 
 import std.conv: to, parse;

@@ -1,3 +1,6 @@
+/**
+ * This module implements the Token and Lexer structs
+ */
 module mildew.lexer;
 
 import mildew.exceptions: ScriptCompileException;

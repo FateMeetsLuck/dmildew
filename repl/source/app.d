@@ -1,3 +1,6 @@
+/**
+ * This module contains the main function for the REPL. It also runs script files.
+ */
 module app;
 
 import std.file: readText;

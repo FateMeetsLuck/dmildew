@@ -1,3 +1,8 @@
+/**
+ * This module implements the exception classes that can be thrown by the script. These should be
+ * caught and printed to provide meaningful information about why an exception was thrown while
+ * parsing or executing a script.
+ */
 module mildew.exceptions;
 
 import mildew.lexer: Token;
