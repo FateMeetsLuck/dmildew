@@ -1,5 +1,7 @@
 module mildew.types;
 
+debug import std.stdio;
+
 import std.conv: to;
 import std.traits;
 
@@ -721,10 +723,21 @@ public:
     ScriptValue opIndex(in string index)
     {
         // first handle special metaproperty __proto__
-        if(index == "__proto__")
+        if(name != "Function")
         {
-            auto proto = ScriptValue(_prototype);
-            return proto;
+            if(index == "__proto__")
+            {
+                auto proto = ScriptValue(_prototype);
+                return proto;
+            }
+        }
+        else
+        {
+            if(index == "prototype")
+            {
+                auto proto = ScriptValue(_prototype);
+                return proto;
+            }
         }
 
         auto objectToSearch = this;
@@ -747,16 +760,25 @@ public:
      */
     ScriptValue opIndexAssign(ScriptValue value, in string index)
     {
-        if(index == "__proto__")
+        if(name == "Function")
         {
-            _prototype = value.toValue!ScriptObject; // can be null if not object
-            return ScriptValue(_prototype);
+            if(index == "prototype")
+            {
+                _prototype = value.toValue!ScriptObject;
+                return ScriptValue(_prototype);
+            }
         }
         else
         {
-            _members[index] = value;
-            return _members[index];
+            if(index == "__proto__")
+            {
+                _prototype = value.toValue!ScriptObject; // can be null if not object
+                return ScriptValue(_prototype);
+            }
         }
+
+        _members[index] = value;
+        return _members[index];
     }
 
     /// name property
@@ -770,12 +792,6 @@ public:
 
     /// members. This property provides direct access to the dictionary
     auto members() { return _members; }
-
-    void addPrototypeToChain(ScriptObject proto)
-    {
-        proto._prototype = _prototype;
-        _prototype = proto;
-    }
 
     /**
      * If a native object was stored inside this ScriptObject, it can be retrieved with this function.
@@ -845,7 +861,7 @@ private:
     /// it can also hold a native object
     Object _nativeObject;
     /// prototype 
-    ScriptObject _prototype;
+    ScriptObject _prototype = null;
 }
 
 /**
@@ -896,33 +912,6 @@ public:
     override string toString() const
     {
         return "Function " ~ _functionName;
-    }
-
-    // TODO opIndex and __proto__ handling
-
-    /**
-     * This override allows direct access to the prototype object by using "prototype" as
-     * an index. Unlike ScriptObject's \_\_proto\_\_ this prototype member shows up in
-     * for-of loops.
-     */
-    override ScriptValue opIndexAssign(ScriptValue value, in string index)
-    {
-        // __proto__ should be a function but IDK what
-        if(index == "prototype")
-        {
-            if(value.isObject)
-            {
-                _members[index] = value;
-                _prototype = value.toValue!ScriptObject;
-                return value;
-            }
-            return ScriptValue.UNDEFINED;
-        }
-        else
-        {
-            _members[index] = value;
-        }
-        return value;
     }
 
     /// Returns the type of function stored, such as native function, delegate, or script function
