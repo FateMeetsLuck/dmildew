@@ -154,6 +154,84 @@ public:
             static assert(false, "The binary operation " ~ op ~ " is not supported for this type");
     }
 
+    /// convenient access of arrays or objects
+    ScriptValue opIndex(T)(T index)
+    {
+        static if(isSomeString!T)
+        {
+            // has to be object
+            if(!isObject)
+            {
+                // or a string or array querying "length"
+                if(_type == Type.STRING && index == "length")
+                {
+                    return ScriptValue(_asString.length);
+                }
+                else if(_type == Type.ARRAY && index == "length")
+                {
+                    return ScriptValue(_asArray.length);
+                }
+                return ScriptValue.UNDEFINED;
+            }
+            return _asObjectOrFunction[index.to!string];
+        }
+        else static if(isIntegral!T)
+        {
+            // has to be an array or string
+            if(_type == Type.ARRAY)
+            {
+                if(index < 0 || index >= _asArray.length)
+                    return ScriptValue.UNDEFINED;
+                return _asArray[index];
+            }
+            else if(_type == Type.STRING)
+            {
+                if(index < 0 || index >= _asString.length)
+                    return ScriptValue.UNDEFINED;
+                return ScriptValue([_asString[index]]);
+            }
+            else
+                return ScriptValue.UNDEFINED;
+        }
+        else 
+            static assert(false, "Invalid index type");
+    }
+
+    /// convenient assignment to array or object
+    ScriptValue opIndexAssign(T)(ScriptValue value, T index)
+    {
+        static if(isSomeString!T)
+        {
+            // has to be object
+            if(!isObject)
+                return ScriptValue.UNDEFINED;
+            return _asObjectOrFunction[index.to!string] = value;
+        }
+        else static if(isIntegral!T)
+        {
+            // has to be an array because strings are primitive immutables
+            if(_type == Type.ARRAY)
+            {
+                if(index < 0 || index >= _asArray.length)
+                    return ScriptValue.UNDEFINED;
+                return _asArray[index] = value;
+            }
+            else
+                return ScriptValue.UNDEFINED;
+        }
+        else 
+            static assert(false, "Invalid index type");
+    }
+
+    /// returns length of array otherwise 0
+    size_t length()
+    {
+        if(_type == Type.ARRAY)
+            return _asArray.length;
+        else
+            return 0;
+    }
+
     /**
      * Defines unary math operations for a ScriptValue. These have to be numbers otherwise the
      * result is undefined.
@@ -895,7 +973,7 @@ public:
      */
     this(string fname, NativeFunction nfunc)
     {
-        super("Function", new ScriptObject(), null);
+        super("Function", new ScriptObject("", functionPrototypeObject), null);
         _functionName = fname;
         _members["prototype"] = _prototype;
         _type = Type.NATIVE_FUNCTION;
@@ -910,7 +988,7 @@ public:
      */
     this(string fname, NativeDelegate ndele)
     {
-        super("Function", new ScriptObject(), null);
+        super("Function", new ScriptObject("", functionPrototypeObject), null);
         _functionName = fname;
         _members["prototype"] = _prototype;
         _type = Type.NATIVE_DELEGATE;
@@ -935,7 +1013,7 @@ package:
      */
     this(string fnname, string[] args, StatementNode[] statementNodes)
     {
-        super("Function", new ScriptObject(), null);
+        super("Function", new ScriptObject("", functionPrototypeObject), null);
         _functionName = fnname;
         _argNames = args;
         _statementNodes = statementNodes;
@@ -976,6 +1054,14 @@ private:
         NativeFunction _nativeFunction;
         NativeDelegate _nativeDelegate;
     }
+
+    static ScriptObject functionPrototypeObject;
+
+    static this()
+    {
+        functionPrototypeObject = new ScriptObject();
+        functionPrototypeObject["call"] = ScriptValue(new ScriptFunction("Function.call", &native_Function_call));
+    }
 }
 
 /**
@@ -995,6 +1081,40 @@ class ScriptValueException : Exception
     /// the offending value
     ScriptValue value;
 }
+
+private ScriptValue native_Function_call(Context c, ScriptValue* thisIsFn, ScriptValue[] args, 
+                                        ref NativeFunctionError nfe)
+{
+    import mildew.nodes: callFunction, VisitResult;
+
+    // minimum args is 1 because first arg is the this to use
+    if(args.length < 1)
+    {
+        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
+        return ScriptValue.UNDEFINED;
+    }
+    // get the function
+    if(thisIsFn.type != ScriptValue.Type.FUNCTION)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptValue.UNDEFINED;
+    }
+    auto fn = thisIsFn.toValue!ScriptFunction;
+    // set up the "this" to use
+    auto thisToUse = args[0];
+    // now send the remainder of the args to a called function with this setup
+    args = args[1..$];
+    auto vr = callFunction(c, fn, thisToUse, args, false);
+    if(vr.exception !is null)
+    {
+        nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+        return ScriptValue(vr.exception.message);
+    }
+
+    return vr.result;
+}
+
+ScriptValue _nativeFunctionDotCall;
 
 unittest // TODO organize this
 {

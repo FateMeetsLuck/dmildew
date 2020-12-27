@@ -448,8 +448,11 @@ private:
                     auto newToken = _currentToken;
                     nextToken();
                     auto expression = parseExpression();
-                    if(cast(FunctionCallNode)expression is null)
+                    // TODO allow new ClassName with no parameters
+                    auto fcn = cast(FunctionCallNode)expression;
+                    if(fcn is null)
                         throw new ScriptCompileException("Invalid new expression", newToken);
+                    fcn.returnThis = true;
                     left = new NewExpressionNode(expression);                    
                 }
                 else
