@@ -771,6 +771,12 @@ public:
     /// members. This property provides direct access to the dictionary
     auto members() { return _members; }
 
+    void addPrototypeToChain(ScriptObject proto)
+    {
+        proto._prototype = _prototype;
+        _prototype = proto;
+    }
+
     /**
      * If a native object was stored inside this ScriptObject, it can be retrieved with this function.
      * Note that one must always check that the return value isn't null because all functions can be
@@ -780,6 +786,17 @@ public:
     {
         static if(is(T == class) || is(T == interface))
             return cast(T)_nativeObject;
+        else
+            static assert(false, "This method can only be used with D classes and interfaces");
+    }
+
+    /**
+     * Native object can also be written in case of inheritance by script
+     */
+    T nativeObject(T)(T obj)
+    {
+        static if(is(T == class) || is(T == interface))
+            return cast(T)(_nativeObject = obj);
         else
             static assert(false, "This method can only be used with D classes and interfaces");
     }

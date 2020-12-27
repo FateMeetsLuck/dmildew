@@ -1149,6 +1149,7 @@ private:
             nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
             return ScriptValue(vr.exception.message);
         }
+
         return vr.value;
     }
 
