@@ -8,12 +8,18 @@ import mildew.parser;
 import mildew.types: ScriptValue, NativeFunction, NativeDelegate, 
                      NativeFunctionError, ScriptFunction, ScriptObject;
 
-/// public interface for language
+/**
+ * This is the main interface for the host application to interface with scripts.
+ */
 class Interpreter
 {
 public:
 
-    /// constructor
+    /**
+     * Constructs a new Interpreter with a global context. Also sets up the hidden "call" method
+     * of all created functions so that any function object can be called with an arbitrary "this"
+     * object.
+     */
     this()
     {
         _globalContext = new Context(null, "global");
@@ -21,7 +27,11 @@ public:
         _nativeFunctionDotCall = new ScriptFunction("Function.call", &native_Function_call);
     }
 
-    /// initializes the Mildew standard library
+    /**
+     * Initializes the Mildew standard library, such as Object, Math, and console namespaces. This
+     * is optional and is not called by the constructor. For a script to use these methods this
+     * must be called first.
+     */
     void initializeStdlib()
     {
         import mildew.stdlib.object: initializeObjectLibrary;
@@ -32,8 +42,12 @@ public:
         initializeMathLibrary(this);
     }
 
-    /// evaluates a list of statements in the code. void for now
-    ScriptValue evaluateStatements(in string code)
+    /**
+     * This is the main entry point for evaluating a script program.
+     * Params:
+     *  code = This is the code of a script to be executed.
+     */
+    ScriptValue evaluate(in string code)
     {
         debug import std.stdio: writeln;
 
@@ -50,7 +64,18 @@ public:
         return ScriptValue.UNDEFINED;
     }
 
-    /// force sets a global variable or constant to some value
+    // TODO: Read script from file
+
+    // TODO: Create an evaluate function with default exception handling with file name info
+
+    /**
+     * Sets a global variable or constant without checking whether or not the variable or const was already
+     * declared. This is used by host applications to define custom functions or objects.
+     * Params:
+     *  name = The name of the variable.
+     *  value = The value the variable should be set to.
+     *  isConst = Whether or not the script can overwrite the global.
+     */
     void forceSetGlobal(T)(in string name, T value, bool isConst=false)
     {
         _globalContext.forceSetVarOrConst(name, ScriptValue(value), isConst);

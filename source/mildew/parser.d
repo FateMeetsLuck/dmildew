@@ -136,17 +136,25 @@ private bool isBinaryOpLeftAssociative(in Token opToken)
     }   
 }
 
-/// parser
+/**
+ * The parser is used by the interpreter to generate a syntax tree out of tokens.
+ */
 struct Parser
 {
-    /// ctor
+    /**
+     * The constructor takes all tokens so that in the future, looking ahead for specific tokens
+     * can allow support for lambdas and other complex language features.
+     */
     this(Token[] tokens)
     {
         _tokens = tokens;
         nextToken(); // prime
     }
 
-    /// program grammar rule and starting point
+    /**
+     * The main starting point. Also the "program" grammar rule. The generates a block statement
+     * node where the interpreter iterates through each statement and executes it.
+     */
     BlockStatementNode parseProgram()
     {
         immutable lineNo = _currentToken.position.line;
@@ -284,7 +292,7 @@ private:
     }
 
     /// parse a single expression. See https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
-    ///  for algorithm.
+    /// for algorithm.
     Node parseExpression(int minPrec = 1)
     {
         debug import std.stdio: writeln, writefln;

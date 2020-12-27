@@ -7,18 +7,21 @@ import std.container.rbtree;
 import std.conv: to;
 import std.format: format;
 
-/// Position of each token
+/**
+ * This struct represents the line and column number of a token, starting at 1.
+ */
 struct Position
 {
-    /// line and column number (should start at 1)
+    /// Line and column number.
     int line, column;
 
+    /// Returns a string representing the line and column number
     string toString() const 
     {
         return format("line %s, column %s", line, column);
     }
 
-    /// determines line and column number based on char that is read
+    /// Determines line and column number based on char that is read
     void advance(char ch)
     {
         if(ch == '\0')
@@ -37,10 +40,15 @@ struct Position
     }
 }
 
-/// Tokens that make up the program
+/**
+ * This struct represents a token, a fundamental building block of all scripts. The code of a script
+ * is first separated by token so that the parser can analyze each token.
+ */
 struct Token 
 {
-    /// Type of token enum
+    /**
+     * The type of a token.
+     */
     enum Type 
     {
         EOF, KEYWORD, INTEGER, DOUBLE, STRING, IDENTIFIER, 
@@ -54,21 +62,27 @@ struct Token
         SEMICOLON, COMMA, LABEL, COLON, INVALID
     }
 
-    /// for different types of integer literals
+    /**
+     * This enum is currently unused but will be needed when hexadecimal, octal, and binary integer literals
+     * are supported.
+     */
     enum NumLiteralFlag
     {
         NONE, BINARY, OCTAL, HEXADECIMAL
     }
 
-    /// type of token
+    /// Type of token
     Type type;
-    /// position where token occurs
+    /// Position where token occurs
     Position position;
-    /// optional text for keywords and identifiers
+    /// Optional text for keywords and identifiers
     string text;
-    /// optional flag for integer literals
+    /// Optional flag for integer literals. (Currently unused)
     NumLiteralFlag numLiteralFlag = NumLiteralFlag.NONE;
 
+    /**
+     * Returns a string representing the type of the token and the optional text if present.
+     */
     string toString() const
     {
         string str = format("[%s", type.to!string);
@@ -78,7 +92,9 @@ struct Token
         return str;
     }
 
-    ///  helps print nicer nodes
+    /**
+     * Returns a textual representation of the token as it was found in the original script source code.
+     */
     string symbol() const
     {
         final switch(type)
@@ -131,19 +147,26 @@ struct Token
         }
     }
 
-    /// tests if a token is a specific keyword
+    /**
+     * Returns true if a token is both a keyword and a specific keyword.
+     */
     bool isKeyword(in string keyword)
     {
         return (type == Type.KEYWORD && text == keyword);
     }
 
-    /// returns true if this is an assignment operator
+    /**
+     * Returns true if the token is an assignment operator such as =, +=, or -=, etc.
+     */
     bool isAssignmentOperator()
     {
         return (type == Type.ASSIGN || type == Type.PLUS_ASSIGN || type == Type.DASH_ASSIGN);
     }
 
-    /// for use with error throwing
+    /**
+     * Generates an invalid token at the given position. This is used by the Lexer to throw
+     * an exception that requires a token.
+     */
     static Token createInvalidToken(in Position pos, in string text="")
     {
         auto token = Token(Token.Type.INVALID, pos, text);
@@ -167,13 +190,13 @@ private bool continuesKeywordOrIdentifier(in char ch)
 struct Lexer 
 {
 public:
-    /// constructor takes code as text to lex
+    /// Constructor takes code as text to tokenize
     this(string code)
     {
         _text = code;
     }
 
-    /// return tokens from lexing a file
+    /// Returns tokens from lexing a string of code
     Token[] tokenize()
     {
         Token[] tokens = [];
@@ -246,7 +269,7 @@ public:
         return tokens;
     }
 
-    /// Hash table of keywords. Awkward but there's no other way to do it in the stdlib
+    /// Hash table of keywords
     static immutable KEYWORDS = redBlackTree(
         "true", "false", "undefined", "null",
         "var", "let", "const", 
@@ -260,6 +283,7 @@ public:
     /// AA of look up for escape chars based on character after \
     static immutable char[char] ESCAPE_CHARS;
 
+    /// Initializes the associative array of escape chars
     shared static this()
     {
         ESCAPE_CHARS = [

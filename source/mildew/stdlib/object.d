@@ -6,7 +6,10 @@ import mildew.types;
 
 // builtins for the Object namespace
 
-/// initializes the library
+/**
+ * Initializes the Object library. Interpreter.initializeStdlib calls this function. Functions are
+ * stored in the Object global and are accessed such as "Object.keys"
+ */
 public void initializeObjectLibrary(Interpreter interpreter)
 {
     auto objNamespace = new ScriptObject("Object", null);
@@ -16,7 +19,10 @@ public void initializeObjectLibrary(Interpreter interpreter)
     interpreter.forceSetGlobal("Object", objNamespace);
 }
 
-/// creates an object whose prototype is the argument
+/**
+ * Object.create: This can be called by the script to create a new object whose prototype is the
+ * parameter.
+ */
 private ScriptValue native_Object_create(Context context,  // @suppress(dscanner.style.phobos_naming_convention)
         ScriptValue* thisObj, 
         ScriptValue[] args, 

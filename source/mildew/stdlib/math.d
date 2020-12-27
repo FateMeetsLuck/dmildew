@@ -6,7 +6,10 @@ import mildew.context;
 import mildew.interpreter;
 import mildew.types;
 
-/// initializes the Math object
+/**
+ * Initializes the math library. This is called by Interpreter.initializeStdlib. Functions
+ * are stored in the global Math object and are accessed such as "Math.acos"
+ */
 public void initializeMathLibrary(Interpreter interpreter)
 {
     // TODO rewrite this mess with mixins
@@ -502,8 +505,7 @@ private ScriptValue native_Math_trunc(Context context,
 
 
 /// software implementation of CLZ32 because I don't know assembly
-// courtesy of https://embeddedgurus.com/state-space/2014/09/fast-deterministic-and-portable-counting-leading-zeros/
-
+/// courtesy of https://embeddedgurus.com/state-space/2014/09/fast-deterministic-and-portable-counting-leading-zeros/
 pragma(inline) 
 uint CLZ1(uint x) 
 {

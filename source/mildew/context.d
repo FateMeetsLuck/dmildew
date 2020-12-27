@@ -4,11 +4,23 @@ import mildew.types;
 
 private alias VariableTable = ScriptValue[string];
 
-/// holds context for variables and consts
+/**
+ * Holds the variables and consts of a script stack frame. The global context can be accessed by
+ * climbing the Context.parent chain until reaching the Context whose parent is null. This allows
+ * native functions to define local and global variables. Note that calling a native function does
+ * not create a stack frame so one could write a native function that adds local variables to the
+ * stack frame where it was called.
+ */
 class Context
 {
 public:
-    /// constructor
+    /**
+     * Constructs a new Context.
+     * Params:
+     *  par = The parent context, which should be null when the global context is created
+     *  nam = The name of the context. When script functions are called this is set to the name
+     *        of the function being called.
+     */
     this(Context par = null, in string nam = "<context>")
     {
         _parent = par;
@@ -16,9 +28,15 @@ public:
     }
 
     /**
-     Attempts to look up existing variable or const throughout the stack. If found, returns a pointer to the variable
-     location, and if it is const, sets isConst to true. Note, this pointer should not be stored by native functions
-     because the variable table may be modified between function calls.
+     * Attempts to look up existing variable or const throughout the stack. If found, returns a pointer to the 
+     * variable location, and if it is const, sets isConst to true. Note, this pointer should not be stored by 
+     * native functions because the variable table may be modified between function calls.
+     * Params:
+     *  name = The name of the variable to look up.
+     *  isConst = Whether or not the found variable is constant. Will remain false if variable is not found
+     * Returns:
+     *  A pointer to the located variable, or null if the variable was not found. If this value is needed for later
+     *  the caller should make a copy of the variable immediately.
      */
     ScriptValue* lookupVariableOrConst(in string name, out bool isConst)
     {
@@ -41,7 +59,12 @@ public:
         return null; // found nothing
     }
 
-    /// removes a variable from the context chain if it exists
+    /**
+     * Removes a variable from anywhere on the Context stack it is located. This function cannot
+     * be used to unset consts.
+     * Params:
+     *  name = The name of the variable.
+     */
     void unsetVariable(in string name)
     {
         auto context = this;
@@ -56,7 +79,15 @@ public:
         }
     }
 
-    /// attempt to declare and assign a new variable in the current context. Returns false if already exists
+    /** 
+     * Attempt to declare and assign a new variable in the current context. Returns false if it already exists.
+     * Params:
+     *  nam = the name of the variable to set.
+     *  value = the initial value of the variable. This can be ScriptValue.UNDEFINED
+     *  isConst = whether or not the variable was declared as a const
+     * Returns:
+     *  True if the declaration was successful, otherwise false.
+     */
     bool declareVariableOrConst(in string nam, ScriptValue value, in bool isConst)
     {
         if(nam in _varTable || nam in _constTable)
@@ -73,7 +104,14 @@ public:
         return true;
     }
 
-    /// searches context stack for a const or variable and returns true if it exists else false
+    /**
+     * Searches the entire Context stack for a variable starting with the current context and climbing the parent
+     * chain.
+     * Params:
+     *  name = The name of the variable to look for.
+     * Returns:
+     *  True if the variable is found, otherwise false.
+     */
     bool variableOrConstExists(in string name)
     {
         auto context = this;
@@ -89,10 +127,17 @@ public:
     }
 
     /**
-     Attempts to reassign a variable anywhere in the stack and returns a pointer to the variable or null
-     if the variable doesn't exist or is const. If the failure is due to const, failedBecauseConst is
-     set to true. Note: this pointer should not be stored by native functions due to modifications
-     to the variable table that may invalidate it and result in undefined behavior.
+     * Attempts to reassign a variable anywhere in the stack and returns a pointer to the variable or null
+     * if the variable doesn't exist or is const. If the failure is due to const, failedBecauseConst is
+     * set to true. Note: this pointer should not be stored by native functions due to modifications
+     * to the variable table that may invalidate it and result in undefined behavior.
+     * Params:
+     *  name = The name of the variable to reassign.
+     *  newValue = The value to assign. If this is undefined and the variable isn't const, the variable
+     *             will be deleted from the table where it is found.
+     *  failedBecauseConst = If the reassignment fails due to the variable being a const, this is set to true
+     * Returns:
+     *  A pointer to the variable in the table where it is found, or null if it was const or not located.
      */
     ScriptValue* reassignVariable(in string name, ScriptValue newValue, out bool failedBecauseConst)
     {
@@ -113,7 +158,14 @@ public:
         return scriptValuePtr;
     }
 
-    /// force sets a variable or constant. should only be used by host application
+    /**
+     * Force sets a variable or const no matter if the variable was declared already or is const. This is
+     * used by the host application to set globals or locals.
+     * Params:
+     *  name = The name of the variable or const
+     *  value = The value of the variable
+     *  isConst = Whether or not the variable should be considered const and unable to be overwritten by the script
+     */
     void forceSetVarOrConst(in string name, ScriptValue value, bool isConst)
     {
         if(isConst)
@@ -132,12 +184,13 @@ public:
         return _parent;
     }
 
-    /// returns the name property
+    /// returns the name property of the Context
     string name() const
     {
         return _name;
     }
 
+    /// Returns a string representing the type and name
     override string toString() const
     {
         return "Context: " ~ _name;

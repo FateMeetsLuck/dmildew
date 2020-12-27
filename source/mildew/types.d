@@ -5,8 +5,11 @@ import std.traits;
 
 import mildew.context: Context;
 
-/// When a native function or delegate encounters an error with the arguments sent,
-/// the last reference parameter should be set to the appropriate enum value.
+/** When a native function or delegate encounters an error with the arguments sent,
+ *  the last reference parameter should be set to the appropriate enum value.
+ *  A specific exception can be thrown by setting the flag to RETURN_VALUE_IS_EXCEPTION and
+ *  returning a string.
+ */
 enum NativeFunctionError 
 {
     NO_ERROR = 0,
@@ -20,8 +23,10 @@ alias NativeFunction = ScriptValue function(Context, ScriptValue* thisObj, Scrip
 /// native delegate signature to be usable by scripting language
 alias NativeDelegate = ScriptValue delegate(Context, ScriptValue* thisObj, ScriptValue[] args, ref NativeFunctionError);
 
-/// runtime polymorphic value type to hold anything usable in Mildew
-/// TODO Arrays should be a subclass of ScriptObject to reflect JS semantics
+/** runtime polymorphic value type to hold anything usable in Mildew. Note, Arrays are currently
+ *  primitives and can only be modified by concatenation with '+' and returning a new Array.
+ *  This may change in the future according to needs.
+ */
 struct ScriptValue
 {
 public:
@@ -356,7 +361,7 @@ public:
             case Type.INTEGER: return "integer";
             case Type.DOUBLE: return "double";
             case Type.STRING: return "string";
-            case Type.ARRAY: return "array"; // add more later
+            case Type.ARRAY: return "array";
             case Type.FUNCTION: return "function";
             case Type.OBJECT: return "object";
         }
@@ -600,8 +605,6 @@ private:
         double _asDouble;
         string _asString;
         ScriptValue[] _asArray;
-        NativeFunction _asNativeFunction;
-        NativeDelegate _asNativeDelegate;
         ScriptObject _asObjectOrFunction;
     }
 }
@@ -895,9 +898,5 @@ unittest // TODO organize this
     { 
         return ScriptValue.UNDEFINED; 
     }
-    foo = cast(NativeDelegate)&rightSig;
-    assertNotThrown(cast(NativeDelegate)foo);
-    auto func = cast(NativeDelegate)foo;
-    NativeFunctionError nfe;
-    assert(func(null, null, nfe) == ScriptValue.UNDEFINED);
+    foo = new ScriptFunction("rightSig", &rightSig);
 }

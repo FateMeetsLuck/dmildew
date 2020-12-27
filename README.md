@@ -8,9 +8,11 @@ This is still very much a work in progress.
 
 The examples folder contains example scripts. It should look familiar to anyone who knows JavaScript. However, Mildew is not a full feature JavaScript implementation.
 
+This project is in its early stages so you should probably use the ~main version to get the latest bug fixes. The release tags are only so that it is usable in dub.
+
 ## Binding
 
-See mildew/stdlib files for how to bind functions. Classes can be bound by wrapping the object inside a ScriptObject when constructing the new ScriptObject and retrieved from the ScriptObject. Methods can be written as free functions stored inside the bound constructor's prototype object. In the future, there might be a more trivial way to bind using D metaprogramming.
+See mildew/stdlib files for how to bind functions. Classes can be bound by wrapping the object inside a ScriptObject when constructing the new ScriptObject and retrieved from the ScriptObject. Methods can be written as free functions or delegates stored inside the bound constructor's prototype object. In the future, there might be a more trivial way to bind using D metaprogramming.
 
 Binding structs can only be done by wrapping the struct inside a class and storing the class object in a ScriptObject.
 

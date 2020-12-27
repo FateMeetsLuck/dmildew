@@ -13,28 +13,14 @@ import mildew.lexer;
 import mildew.parser;
 import mildew.types;
 
-/// testing errors
-ScriptValue native_testSum(Context c, ScriptValue* thisObj, ScriptValue[] args, ref NativeFunctionError nfe)
-{
-    double sum = 0.0;
-    foreach(arg ; args)
-    {
-        if(!arg.isNumber)
-        {
-            nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
-            return ScriptValue.UNDEFINED;
-        }
-        sum += arg.toValue!double;
-    }
-    return ScriptValue(sum);
-}
-
-/// for now just parses an expression
+/**
+ * This runs a script program and prints the appropriate error message when a script exception is caught.
+ */
 void evaluateWithErrorChecking(Interpreter interpreter, in string code, in string fileName = "<stdin>")
 {
     try 
     {
-        auto result = interpreter.evaluateStatements(code);
+        auto result = interpreter.evaluate(code);
         writefln("The program successfully returned " ~ result.toString);
     }
     catch(ScriptCompileException ex)
@@ -51,12 +37,15 @@ void evaluateWithErrorChecking(Interpreter interpreter, in string code, in strin
     }
 }
 
+/**
+ * Main function for the REPL or interpreter. If no command line arguments are specified, it enters
+ * interactive REPL mode, otherwise it attempts to execute the first argument as a script file.
+ */
 int main(string[] args)
 {
     auto terminal = Terminal(ConsoleOutputType.linear);
     auto interpreter = new Interpreter();
     interpreter.initializeStdlib();
-    interpreter.forceSetGlobal("testSum", new ScriptFunction("testSum", &native_testSum), true);
 
     if(args.length > 1)
     {

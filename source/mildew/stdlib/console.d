@@ -4,7 +4,10 @@ import mildew.context;
 import mildew.interpreter;
 import mildew.types;
 
-/// initialize the console library
+/** 
+ * Initializes the console library. This is called by Interpreter.initializeStdlib. The console
+ * functions are stored in the "console" global variable and are accessed such as "console.log"
+ */
 public void initializeConsoleLibrary(Interpreter interpreter)
 {
     auto consoleNamespace = new ScriptObject("Console", null);
