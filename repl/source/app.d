@@ -21,7 +21,7 @@ void evaluateWithErrorChecking(Interpreter interpreter, in string code, in strin
     try 
     {
         auto result = interpreter.evaluate(code);
-        writefln("The program successfully returned " ~ result.toString);
+        writefln("\nThe program successfully returned " ~ result.toString);
     }
     catch(ScriptCompileException ex)
     {
@@ -59,13 +59,11 @@ int main(string[] args)
         {
             try 
             {
-                write("mildew> ");
                 string input = strip(terminal.getline("mildew> "));
                 if(input == "#exit" || input == "")
                     break;
                 while(input.length > 0 && input[$-1]=='\\')
                 {
-                    write(">>> ");
                     input = input[0..$-1];
                     input ~= "\n" ~ strip(terminal.getline(">>> "));
                 }

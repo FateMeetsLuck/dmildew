@@ -18,6 +18,8 @@ Binding structs can only be done by wrapping the struct inside a class and stori
 
 The function or delegate signature that can be wrapped inside a ScriptValue (and thus ScriptFunction) is `ScriptValue function(Context, ScriptValue* thisObj, ScriptValue[] args, ref NativeFunctionError);` And such a function is wrapped by `ScriptValue(new ScriptFunction("name of function", &nativeFunction))`. This is analogous to how Lua bindings work.
 
+`bindingexample.zip` in the examples folder contains a simple program that binds a class and its public methods and properties. D classes that are bound can be extended by the script as long as the native function constructor checks that the `thisObj` parameter is an object and assigns the native object to it or otherwise creates a brand new ScriptObject with the native object assigned to it.
+
 ## Caveats
 
 Unlike JavaScript, arrays in Mildew are primitives and can be concatenated with the '+' operator. It is not possible to reassign the length property of an array.
@@ -25,4 +27,3 @@ Unlike JavaScript, arrays in Mildew are primitives and can be concatenated with 
 This language is more strict than JavaScript. Global variables cannot be redeclared unless they are undefined by setting them to
 `undefined`. Local variables cannot be redeclared in the same scope likewise. Semicolons are always required.
 
-There are a million debug messages that should be ignored if you build it with the release flag.
