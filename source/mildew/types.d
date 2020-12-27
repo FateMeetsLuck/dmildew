@@ -1,7 +1,7 @@
 /**
  * This module implements the main "duck type" of the scripting language, ScriptValue, a variant that
  * can hold any of the types usable in the scripting language. This module also contains the implementation
- * of ScriptObject, which can hold a dictionary of key-ScriptValue pairs as well as any D class object. It
+ * of ScriptObject, which can hold a dictionary of string-ScriptValue pairs as well as any D class object. It
  * also contains the implementation of ScriptFunction, which can hold a script defined function or native
  * functions or delegates with the NativeFunction or NativeDelegate signature. Both ScriptObject and 
  * ScriptFunction can be stored inside of a ScriptValue.
@@ -33,9 +33,10 @@ alias NativeFunction = ScriptValue function(Context, ScriptValue* thisObj, Scrip
 /// native delegate signature to be usable by scripting language
 alias NativeDelegate = ScriptValue delegate(Context, ScriptValue* thisObj, ScriptValue[] args, ref NativeFunctionError);
 
-/** runtime polymorphic value type to hold anything usable in Mildew. Note, Arrays are currently
+/** Runtime polymorphic value type to hold anything usable in Mildew. Note, Arrays are currently
  *  primitives and can only be modified by concatenation with '+' and returning a new Array.
- *  This may change in the future according to needs.
+ *  This may change in the future according to needs. Also, strings cannot be automatically
+ *  converted to numbers using this type. The script must call parseInt or parseFloat to do so.
  */
 struct ScriptValue
 {
@@ -222,7 +223,7 @@ public:
     /**
      * The comparison operations. Note that this only returns a meaningful, usable value if the values
      * are similar enough in type to be compared. For the purpose of the scripting language, invalid
-     * comparisons to not throw an exception but they return a meaningless incorrect result.
+     * comparisons do not throw an exception but they return a meaningless incorrect result.
      */
     int opCmp(const ScriptValue other) const
     {
@@ -415,7 +416,7 @@ public:
         return convertValue!T(false);    
     }
 
-    /// for use with typeof operator
+    /// For use with the scripting language's typeof operator
     string typeToString() const
     {
         final switch(_type)
@@ -977,7 +978,12 @@ private:
     }
 }
 
-/// exception thrown on failed conversions
+/**
+ * This exception is only thrown when using ScriptValue.checkValue. If checkValue is used to check arguments, the host
+ * application running a script should catch this exception in addition to catching ScriptRuntimeException and
+ * ScriptCompileException. Otherwise it makes sense to just use toValue after checking the type field of the ScriptValue
+ * and setting the NativeFunctionError flag appropriately then returning ScriptValue.UNDEFINED.
+ */
 class ScriptValueException : Exception
 {
     /// ctor

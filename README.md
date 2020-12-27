@@ -24,6 +24,16 @@ The function or delegate signature that can be wrapped inside a ScriptValue (and
 
 Unlike JavaScript, arrays in Mildew are primitives and can be concatenated with the '+' operator. It is not possible to reassign the length property of an array.
 
-This language is more strict than JavaScript. Global variables cannot be redeclared unless they are undefined by setting them to
-`undefined`. Local variables cannot be redeclared in the same scope likewise. Semicolons are always required.
+This language is stricter than JavaScript. Global variables cannot be redeclared unless they are undefined by setting them to `undefined`. Local variables cannot be redeclared in the same scope likewise. Semicolons are always required.
+
+## Current Goals
+
+* Implement the class and extends keywords as syntactic sugar for the existing prototype inheritance.
+* Implement labelled loops and break and continue with labels.
+* Implement postfix and prefix increment and decrement operators.
+* Refactor code to easily implement all math assignment operators (such as `*=`).
+* Refactor Interpreter so that all functions automatically have a `call` method in their prototype. Currently `someFunction.call` works but `someFunction["call"]` does not.
+* Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
+* Bind classes with one line of code with mixins and template metaprogramming.
+* Write a more complete and robust standard library for the scripting language.
 

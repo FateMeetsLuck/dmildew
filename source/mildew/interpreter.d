@@ -1160,7 +1160,7 @@ private:
 }
 
 /// holds information from visiting nodes
-private struct VisitResult
+package struct VisitResult
 {
     this(T)(T val)
     {
@@ -1185,6 +1185,7 @@ private struct VisitResult
     bool returnFlag = false;
     bool breakFlag = false;
     bool continueFlag = false;
+    string labelName = "";
 
     ScriptRuntimeException exception = null;
 }
