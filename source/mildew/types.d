@@ -30,33 +30,49 @@ alias NativeDelegate = ScriptValue delegate(Context, ScriptValue* thisObj, Scrip
 struct ScriptValue
 {
 public:
-    /// What type is currently being held
+    /**
+     * Enumeration of what type is held by a ScriptValue. Note that a function can be used
+     * as an object.
+     */
     enum Type 
     {
         NULL=0, UNDEFINED, BOOLEAN, INTEGER, DOUBLE, STRING, ARRAY, // add more later
         FUNCTION, OBJECT,
     }
 
-    /// constructor
+    /**
+     * Constructs a new ScriptValue based on the value given.
+     * Params:
+     *  value = This can be any valid type such as null, bool, signed or unsigned ints or longs, floats,
+     *          or doubles, strings, even primitive arrays, as well as ScriptObject or ScriptFunction
+     */
     this(T)(T value)
     {
         setValue!T(value);
     }
 
-    /// opCast will be the error throwing checks for now
+    /**
+     * Note that opCast calls the checkValue method. This will throw an exception if the type is
+     * incorrect and the cast is invalid.
+     */
     T opCast(T)() const
     {
         return checkValue!T();
     }
 
-    /// opAssign
+    /**
+     * Assigns a value.
+     */
     auto opAssign(T)(T value)
     {
         setValue(value);
         return this;
     }
 
-    /// binary operations are only defined between ScriptValues. One must wrap a value in ScriptValue
+    /**
+     * Implements binary math operations between two ScriptValues and returns a ScriptValue. If the
+     * operation makes no sense, the result is always ScriptValue.UNDEFINED
+     */
     auto opBinary(string op)(auto ref const ScriptValue rhs) const
     {
         // if either value is undefined return undefined
@@ -127,7 +143,10 @@ public:
             static assert(false, "The binary operation " ~ op ~ " is not supported for this type");
     }
 
-    /// unary ops. They must return a ScriptValue as well
+    /**
+     * Defines unary math operations for a ScriptValue. These have to be numbers otherwise the
+     * result is undefined.
+     */
     auto opUnary(string op)()
     {
         // any unary operation on undefined is undefined. Any of these on non-numbers is also undefined
@@ -150,6 +169,10 @@ public:
             static assert(false, "Unary operator " ~ op ~ " is not implemented for this type");
     }
 
+    /**
+     * Tests for equality by casting similar types to the same type and comparing values. If the types
+     * are too different to do this, the result is false.
+     */
     bool opEquals(const ScriptValue other) const
     {
         // if both are undefined then return true
@@ -186,6 +209,11 @@ public:
         return false;
     }
 
+    /**
+     * The comparison operations. Note that this only returns a meaningful, usable value if the values
+     * are similar enough in type to be compared. For the purpose of the scripting language, invalid
+     * comparisons to not throw an exception but they return a meaningless incorrect result.
+     */
     int opCmp(const ScriptValue other) const
     {
         // undefined is always less than any defined value
@@ -256,6 +284,10 @@ public:
         return -1; // for now
     }
 
+    /**
+     * This allows ScriptValue to be used as a key index in a table, however the scripting language currently
+     * only uses strings.
+     */
     size_t toHash() const nothrow
     {
         final switch(_type)
@@ -278,7 +310,10 @@ public:
         }    
     }
 
-    /// for primitives must be same exact type and value
+    /**
+     * This implements the '===' and '!==' operators. Objects must be exactly the same in type and value.
+     * This operator should not be used on numerical primitives because true === 1 will return false.
+     */
     bool strictEquals(const ScriptValue other)
     {
         if(_type != other._type)
@@ -304,13 +339,20 @@ public:
         }
     }
 
-    /// type property
+    /**
+     * Returns the read-only type property. This should always be checked before using the
+     * toValue or checkValue template to retrieve the stored D value.
+     */
     auto type() const nothrow @nogc { return _type; }
 
-    /// undefined property
+    /**
+     * Returns true if the type is UNDEFINED.
+     */
     auto isUndefined() const nothrow @nogc { return _type == Type.UNDEFINED; }
 
-    /// null property
+    /**
+     * Returns true if the type is NULL or if it an object or function whose stored value is null
+     */
     auto isNull() const nothrow @nogc 
     { 
         if(_type == Type.NULL)
@@ -320,31 +362,44 @@ public:
         return false;
     }
 
-    /// isNumber property
+    /**
+     * Returns true if the value stored is a numerical type or anything that can be converted into a
+     * valid number such as boolean, or even null, which gets converted to 0.
+     */
     auto isNumber() const nothrow @nogc
     {
         return _type == Type.NULL || _type == Type.BOOLEAN || _type == Type.INTEGER || _type == Type.DOUBLE;
     }
 
-    /// isInteger property
+    /**
+     * Returns true if the value stored is a valid integer, but not a floating point number.
+     */
     auto isInteger() const nothrow @nogc
     {
         return _type == Type.NULL || _type == Type.BOOLEAN || _type == Type.INTEGER;
     }
 
-    /// whether it is a ScriptObject or subtype thereof
+    /**
+     * This should always be used instead of checking type==OBJECT because ScriptFunction is a valid
+     * subclass of ScriptObject.
+     */
     auto isObject() const nothrow @nogc
     {
         return _type == Type.OBJECT || _type == Type.FUNCTION;
     }
 
-    /// attempts to convert to respective values with exception throwing
+    /**
+     * Converts a stored value back into a D value if it is valid, otherwise throws an exception.
+     */
     T checkValue(T)() const
     {
         return convertValue!T(true);
     }
 
-    /// attempts to convert to respective sane value with no exception throwing
+    /**
+     * Similar to checkValue except if the type is invalid and doesn't match the template type, a sane
+     * default value such as 0 is returned instead of throwing an exception.
+     */
     T toValue(T)() const
     {
         return convertValue!T(false);    
@@ -367,7 +422,7 @@ public:
         }
     }
 
-    /// toString
+    /// Returns a string representation of the stored value
     auto toString() const
     {
         import std.format: format;
@@ -407,9 +462,9 @@ public:
         }
     }
 
-    /// represents null (probably will be replaced by DObject with null value)
-    static immutable NULL = ScriptValue(null);
-    /// represents undefined results
+    /**
+     * This should always be used to return an undefined value.
+     */
     static immutable UNDEFINED = ScriptValue();
 
 private:
@@ -618,7 +673,16 @@ private:
 class ScriptObject
 {
 public:
-    /// constructor
+    /**
+     * Constructs a new ScriptObject that can be stored inside ScriptValue.
+     * Params:
+     *  typename = This does not have to be set to a meaningful value but constructors (calling script functions
+     *             with the new keyword) set this value to the name of the function.
+     *  proto = The object's \_\_proto\_\_ property. If a value is not found inside the current object's table, a chain
+     *          of prototypes is searched until reaching a null prototype. This can be null.
+     *  native = A ScriptObject can contain a native D object that can be accessed later. This is used for binding
+     *           D classes.
+     */
     this(in string typename, ScriptObject proto, Object native = null)
     {
         _name = typename;
@@ -626,12 +690,21 @@ public:
         _nativeObject = native;
     }
 
-    /// empty constructor
+    /**
+     * Empty constructor that leaves name, prototype, and nativeObject as null.
+     */
     this()
     {
 
     }
 
+    /**
+     * Searches the immediate object for a value by key and if not found, searches the prototype chain.
+     * Params:
+     *  index = The name of the property to locate.
+     * Returns:
+     *  A script value representing the found property or ScriptValue.UNDEFINED if it was not found.
+     */
     ScriptValue opIndex(in string index)
     {
         // first handle special metaproperty __proto__
@@ -651,6 +724,14 @@ public:
         return ScriptValue.UNDEFINED;
     }
 
+    /**
+     * Creates or overwrites a property in only this object.
+     * Params:
+     *  value = The value to set the property to
+     *  index = The name of the property.
+     * Returns:
+     *  The value represented by the value parameter.
+     */
     ScriptValue opIndexAssign(ScriptValue value, in string index)
     {
         if(index == "__proto__")
@@ -671,13 +752,17 @@ public:
     /// prototype property
     auto prototype() { return _prototype; }
 
-    /// property set prototype
+    /// prototype property (setter)
     auto prototype(ScriptObject proto) { return _prototype = proto; }
 
-    /// members
+    /// members. This property provides direct access to the dictionary
     auto members() { return _members; }
 
-    /// to native object
+    /**
+     * If a native object was stored inside this ScriptObject, it can be retrieved with this function.
+     * Note that one must always check that the return value isn't null because all functions can be
+     * called with invalid "this" objects using functionName.call.
+     */
     T nativeObject(T)()
     {
         static if(is(T == class) || is(T == interface))
@@ -686,7 +771,10 @@ public:
             static assert(false, "This method can only be used with D classes and interfaces");
     }
 
-    /// as string
+    /**
+     * Returns a string with JSON like formatting representing the object's key-value pairs as well as
+     * any nested objects.
+     */
     override string toString() const
     {
         return _name ~ formattedString();
@@ -730,23 +818,26 @@ private:
     ScriptObject _prototype;
 }
 
-/// A function defined with the scripting language
+/**
+ * This class encapsulates all types of script functions including native D functions and delegates. A
+ * native function must first be wrapped in this class before it can be given to a ScriptValue assignment.
+ * When an object is created with "new FunctionName()" its prototype is assigned to the function's prototype.
+ * This allows OOP in the scripting language and is somewhat analogous to JavaScript. A function's prototype
+ * object is never null unless set to null, unlike ScriptObject.
+ */
 class ScriptFunction : ScriptObject
 {
     import mildew.nodes: StatementNode;
 public:
+    /// The type of function held by the object
     enum Type { SCRIPT_FUNCTION, NATIVE_FUNCTION, NATIVE_DELEGATE }
 
-    this(string fnname, string[] args, StatementNode[] statementNodes)
-    {
-        super("Function", new ScriptObject(), null);
-        _functionName = fnname;
-        _argNames = args;
-        _statementNodes = statementNodes;
-        _members["prototype"] = _prototype;
-        _type = Type.SCRIPT_FUNCTION;
-    }
-
+    /**
+     * Constructs a new ScriptFunction out of a native D function.
+     * Params:
+     *  fname = The name of the function.
+     *  nfunc = The address of the native function. See NativeFunction alias for correct signature
+     */
     this(string fname, NativeFunction nfunc)
     {
         super("Function", new ScriptObject(), null);
@@ -756,6 +847,12 @@ public:
         _nativeFunction = nfunc;
     }
 
+    /**
+     * Constructs a new ScriptFunction out of a native D delegate.
+     * Params:
+     *  fname = The name of the function.
+     *  nfunc = The address of the native delegate. See NativeDelegate alias for correct signature
+     */
     this(string fname, NativeDelegate ndele)
     {
         super("Function", new ScriptObject(), null);
@@ -765,6 +862,7 @@ public:
         _nativeDelegate = ndele;
     }
 
+    /// Returns a string representing the type and name.
     override string toString() const
     {
         return "Function " ~ _functionName;
@@ -772,6 +870,11 @@ public:
 
     // TODO opIndex and __proto__ handling
 
+    /**
+     * This override allows direct access to the prototype object by using "prototype" as
+     * an index. Unlike ScriptObject's \_\_proto\_\_ this prototype member shows up in
+     * for-of loops.
+     */
     override ScriptValue opIndexAssign(ScriptValue value, in string index)
     {
         // __proto__ should be a function but IDK what
@@ -792,11 +895,25 @@ public:
         return value;
     }
 
+    /// Returns the type of function stored, such as native function, delegate, or script function
     auto type() const { return _type; }
+    /// Returns the name of the function
     auto functionName() const { return _functionName; }
-    auto functionName(in string fnName) { return _functionName = fnName; }
-    auto argNames() { return _argNames; }
-    auto statementNodes() { return _statementNodes; }
+
+package:
+
+    /**
+     * Constructor for creating script defined functions.
+     */
+    this(string fnname, string[] args, StatementNode[] statementNodes)
+    {
+        super("Function", new ScriptObject(), null);
+        _functionName = fnname;
+        _argNames = args;
+        _statementNodes = statementNodes;
+        _members["prototype"] = _prototype;
+        _type = Type.SCRIPT_FUNCTION;
+    }
 
     // must check type before using these properties or one gets an exception
 
@@ -817,6 +934,10 @@ public:
         else
             throw new Exception("This is not a native delegate");
     }
+
+    auto functionName(in string fnName) { return _functionName = fnName; }
+    auto argNames() { return _argNames; }
+    auto statementNodes() { return _statementNodes; }
 
 private:
     Type _type;
