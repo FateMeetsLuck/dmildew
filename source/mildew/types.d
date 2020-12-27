@@ -850,7 +850,7 @@ private:
         }
         for(int i = 0; i < indent; ++i)
             result ~= indentation;
-        result ~= "}\n";
+        result ~= "}";
         return result;
     }
 
