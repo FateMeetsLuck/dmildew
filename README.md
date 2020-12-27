@@ -20,4 +20,7 @@ The function or delegate signature that can be wrapped inside a ScriptValue (and
 
 Unlike JavaScript, arrays in Mildew are primitives and can be concatenated with the '+' operator. It is not possible to reassign the length property of an array.
 
+This language is more strict than JavaScript. Global variables cannot be redeclared unless they are undefined by setting them to
+`undefined`. Local variables cannot be redeclared in the same scope likewise. Semicolons are always required.
+
 There are a million debug messages that should be ignored if you build it with the release flag.

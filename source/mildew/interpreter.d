@@ -678,6 +678,8 @@ private:
             vr = visitThrowStatementNode(tnode);
         else if(auto tcnode = cast(TryCatchBlockStatementNode)node)
             vr = visitTryCatchBlockStatementNode(tcnode);
+        else if(auto dnode = cast(DeleteStatementNode)node)
+            vr = visitDeleteStatementNode(dnode);
         else 
             throw new Exception("Unknown StatementNode type " ~ typeid(node).toString);
 
@@ -1034,6 +1036,56 @@ private:
             // if another exception is thrown in the catch block, it will propagate through this return value
             vr = visitStatementNode(node.catchBlockNode);
             _currentContext = _currentContext.parent();
+        }
+        return vr;
+    }
+
+    VisitResult visitDeleteStatementNode(DeleteStatementNode node)
+    {
+        VisitResult vr;
+        // it must either be array index or member access node
+        if(auto man = cast(MemberAccessNode)node.memberAccessOrArrayIndexNode)
+        {
+            vr = visitNode(man.objectNode);
+            if(vr.exception !is null)
+                return vr;
+            if(!vr.value.isObject)
+            {
+                vr.exception = new ScriptRuntimeException("Cannot delete from a non-object");
+                return vr;
+            }
+            auto obj = vr.value.toValue!ScriptObject;
+            auto van = cast(VarAccessNode)man.memberNode;
+            if(van is null)
+            {
+                vr.exception = new ScriptRuntimeException("Cannot delete invalid member");
+                return vr;
+            }
+            auto memberName = van.varToken.text;
+            obj.members.remove(memberName);
+            vr.value = ScriptValue.UNDEFINED;
+        }
+        else if(auto ain = cast(ArrayIndexNode)node.memberAccessOrArrayIndexNode)
+        {
+            vr = visitNode(ain.objectNode);
+            if(vr.exception !is null)
+                return vr;
+            if(!vr.value.isObject)
+            {
+                vr.exception = new ScriptRuntimeException("Cannot delete from a non-object");
+                return vr;
+            }
+            auto obj = vr.value.toValue!ScriptObject;
+            vr = visitNode(ain.indexValueNode);
+            if(vr.exception !is null)
+                return vr;
+            auto name = vr.value.toString;
+            obj.members.remove(name);
+            vr.value = ScriptValue.UNDEFINED;
+        }
+        else 
+        {
+            throw new Exception("The parser did not validate this delete statement!");
         }
         return vr;
     }

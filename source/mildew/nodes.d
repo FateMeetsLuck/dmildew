@@ -501,6 +501,22 @@ class TryCatchBlockStatementNode : StatementNode
     StatementNode catchBlockNode;
 }
 
+class DeleteStatementNode : StatementNode
+{
+    this(size_t lineNo, Node accessNode)
+    {
+        super(lineNo);
+        memberAccessOrArrayIndexNode = accessNode;
+    }
+
+    override string toString() const
+    {
+        return "delete " ~ memberAccessOrArrayIndexNode.toString ~ ";";
+    }
+
+    Node memberAccessOrArrayIndexNode;
+}
+
 class ExpressionStatementNode : StatementNode
 {
     this(size_t lineNo, Node expression)

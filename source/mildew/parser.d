@@ -254,6 +254,15 @@ private:
         {
             statement = parseTryCatchBlockStatement();
         }
+        else if(_currentToken.isKeyword("delete"))
+        {
+            nextToken();
+            auto tok = _currentToken;
+            auto expression = parseExpression();
+            if(cast(MemberAccessNode)expression is null && cast(ArrayIndexNode)expression is null)
+                throw new ScriptCompileException("Invalid operand for delete operation", tok);
+            statement = new DeleteStatementNode(lineNumber, expression);
+        }
         else // for now has to be one expression followed by semicolon or EOF
         {
             if(_currentToken.type == Token.Type.SEMICOLON)

@@ -253,7 +253,7 @@ public:
         "if", "else", "while", "do", "for", "of",
         "switch", "case", "default",
         "break", "continue", "return", "function",
-        "new", "typeof",
+        "new", "delete", "typeof",
         "throw", "try", "catch"
     );
 
