@@ -63,7 +63,10 @@ class LiteralNode : Node
 
     override string toString() const
     {
-        return value.toString();
+        if(value.type == ScriptValue.Type.STRING)
+            return "\"" ~ value.toString() ~ "\"";
+        else
+            return value.toString();
     }
 
     Token literalToken;

@@ -378,7 +378,7 @@ public:
             case Type.INTEGER:
                 return _asInteger.to!string;
             case Type.DOUBLE:
-                return _asDouble.to!string;
+                return format("%.15g", _asDouble);
             case Type.STRING:
                 return _asString;
             case Type.ARRAY:

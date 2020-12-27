@@ -4,13 +4,6 @@ A scripting language for the D programming language inspired by Lua and JavaScri
 
 This is still very much a work in progress.
 
-## Compiling
-
-Once you build the local dmildew library with `dub build` you have to go up one directory and run `dub add-local dmildew`.
-
-After that the subpackages (REPL and interpreter) should build by going back into dmildew/ and running `dub build :repl` and
-then the REPL can be run with `dub run :repl`
-
 ## Usage
 
 The examples folder contains example scripts. It should look familiar to anyone who knows JavaScript. However, Mildew is not a full feature JavaScript implementation.
@@ -26,3 +19,5 @@ The function or delegate signature that can be wrapped inside a ScriptValue (and
 ## Caveats
 
 Unlike JavaScript, arrays in Mildew are primitives and can be concatenated with the '+' operator. It is not possible to reassign the length property of an array.
+
+There are a million debug messages that should be ignored if you build it with the release flag.
