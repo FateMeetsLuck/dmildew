@@ -153,7 +153,7 @@ struct Token
     /**
      * Returns true if a token is both a keyword and a specific keyword.
      */
-    bool isKeyword(in string keyword)
+    bool isKeyword(in string keyword) const
     {
         return (type == Type.KEYWORD && text == keyword);
     }

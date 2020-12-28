@@ -1,0 +1,17 @@
+foo:
+while(true) {
+    while(true) {
+        while(true) {
+            break foo;
+        }
+    }
+}
+
+bar:
+for(;;) {
+    do {
+        while(1 + 1) {
+            break bar;
+        }
+    } while(true);
+}

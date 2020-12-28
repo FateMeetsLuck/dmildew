@@ -33,6 +33,8 @@ alias NativeFunction = ScriptValue function(Context, ScriptValue* thisObj, Scrip
 /// native delegate signature to be usable by scripting language
 alias NativeDelegate = ScriptValue delegate(Context, ScriptValue* thisObj, ScriptValue[] args, ref NativeFunctionError);
 
+// TODO String and Array must be objects too!
+
 /** Runtime polymorphic value type to hold anything usable in Mildew. Note, Arrays are currently
  *  primitives and can only be modified by concatenation with '+' and returning a new Array.
  *  This may change in the future according to needs. Also, strings cannot be automatically
@@ -964,7 +966,7 @@ public:
     {
         super("Function", s_functionPrototypeObject, null);
         _functionName = fname;
-        _members["prototype"] = ScriptValue(new ScriptObject("Object", null));
+        initializePrototypeProperty();
         _type = Type.NATIVE_FUNCTION;
         _nativeFunction = nfunc;
     }
@@ -979,7 +981,7 @@ public:
     {
         super("Function", s_functionPrototypeObject, null);
         _functionName = fname;
-        _members["prototype"] = ScriptValue(new ScriptObject("Object", null));
+        initializePrototypeProperty();
         _type = Type.NATIVE_DELEGATE;
         _nativeDelegate = ndele;
     }
@@ -1006,7 +1008,7 @@ package:
         _functionName = fnname;
         _argNames = args;
         _statementNodes = statementNodes;
-        _members["prototype"] = ScriptValue(new ScriptObject("Object", null));
+        initializePrototypeProperty();
         _type = Type.SCRIPT_FUNCTION;
     }
 
@@ -1042,6 +1044,12 @@ private:
     union {
         NativeFunction _nativeFunction;
         NativeDelegate _nativeDelegate;
+    }
+
+    void initializePrototypeProperty()
+    {
+        _members["prototype"] = ScriptValue(new ScriptObject("Object", null));
+        _members["prototype"]["constructor"] = ScriptValue(this);
     }
 
     static ScriptObject s_functionPrototypeObject;

@@ -3,6 +3,8 @@
  */
 module mildew.context;
 
+import std.container.rbtree;
+
 import mildew.types;
 
 private alias VariableTable = ScriptValue[string];
@@ -192,6 +194,31 @@ public:
         return c;
     }
 
+    /// inserts a label into the list of valid labels
+    void insertLabel(string label)
+    {
+        _labelList.insert(label);
+    }
+
+    /// checks context stack for a label
+    bool labelExists(string label)
+    {
+        auto context = this;
+        while(context !is null)
+        {
+            if(label in context._labelList)
+                return true;
+            context = context._parent;
+        }
+        return false;
+    }
+
+    /// removes a label from the existing context
+    void removeLabelFromCurrent(string label)
+    {
+        _labelList.removeKey(label);
+    }
+
     /// returns the parent property
     Context parent()
     {
@@ -219,4 +246,6 @@ private:
     VariableTable _varTable;
     /// holds consts, which can be shadowed by other consts or lets
     VariableTable _constTable;
+    /// holds a list of labels
+    auto _labelList = new RedBlackTree!string;
 }

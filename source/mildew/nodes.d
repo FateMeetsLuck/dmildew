@@ -719,11 +719,12 @@ class IfStatementNode : StatementNode
 
 class WhileStatementNode : StatementNode
 {
-    this(size_t lineNo, Node condition, StatementNode bnode)
+    this(size_t lineNo, Node condition, StatementNode bnode, string lbl = "")
     {
         super(lineNo);
         conditionNode = condition;
         bodyNode = bnode;
+        label = lbl;
     }
 
     override string toString() const
@@ -735,37 +736,70 @@ class WhileStatementNode : StatementNode
 
     override VisitResult visit(Context c)
     {
+        if(label != "")
+            c.insertLabel(label);
         auto vr = conditionNode.visit(c);
         while(vr.result && vr.exception is null)
         {
             vr = bodyNode.visit(c);
-            if(vr.breakFlag) // TODO labels
+            if(vr.breakFlag)
             {
-                vr.breakFlag = false;
+                if(vr.labelName == "")
+                    vr.breakFlag = false;
+                else
+                {
+                    if(c.labelExists(vr.labelName))
+                    {
+                        if(label == vr.labelName)
+                            vr.breakFlag = false;
+                    }
+                    else 
+                        vr.exception = new ScriptRuntimeException("Label " ~ vr.labelName ~ " doesn't exist");
+                }
                 break;
             }
             if(vr.continueFlag)
-                vr.continueFlag = false;
+            {
+                if(vr.labelName == "")
+                    vr.continueFlag = false;
+                else
+                {
+                    if(c.labelExists(vr.labelName))
+                    {
+                        if(label == vr.labelName)
+                            vr.continueFlag = false;
+                        else
+                            break;
+                    }
+                    else
+                    {
+                        vr.exception = new ScriptRuntimeException("Label " ~ vr.labelName ~ " doesn't exist");
+                        break;
+                    }
+                }
+            }
             if(vr.exception !is null || vr.returnFlag)
                 break;
             vr = conditionNode.visit(c);
         }
-        if(vr.exception !is null)
-            vr.exception.scriptTraceback ~= this;
+        if(label != "")
+            c.removeLabelFromCurrent(label);
         return vr;
     }
 
     Node conditionNode;
     StatementNode bodyNode;
+    string label;
 }
 
 class DoWhileStatementNode : StatementNode
 {
-    this(size_t lineNo, StatementNode bnode, Node condition)
+    this(size_t lineNo, StatementNode bnode, Node condition, string lbl="")
     {
         super(lineNo);
         bodyNode = bnode;
         conditionNode = condition;
+        label = lbl;
     }
 
     override string toString() const
@@ -778,16 +812,47 @@ class DoWhileStatementNode : StatementNode
     override VisitResult visit(Context c)
     {
         auto vr = VisitResult(ScriptValue.UNDEFINED);
+        if(label != "")
+            c.insertLabel(label);
         do 
         {
             vr = bodyNode.visit(c);
-            if(vr.breakFlag) // TODO labels
+            if(vr.breakFlag)
             {
-                vr.breakFlag = false;
+                if(vr.labelName == "")
+                    vr.breakFlag = false;
+                else
+                {
+                    if(c.labelExists(vr.labelName))
+                    {
+                        if(label == vr.labelName)
+                            vr.breakFlag = false;
+                    }
+                    else 
+                        vr.exception = new ScriptRuntimeException("Label " ~ vr.labelName ~ " doesn't exist");
+                }
                 break;
             }
             if(vr.continueFlag)
-                vr.continueFlag = false;
+            {
+                if(vr.labelName == "")
+                    vr.continueFlag = false;
+                else
+                {
+                    if(c.labelExists(vr.labelName))
+                    {
+                        if(label == vr.labelName)
+                            vr.continueFlag = false;
+                        else
+                            break;
+                    }
+                    else
+                    {
+                        vr.exception = new ScriptRuntimeException("Label " ~ vr.labelName ~ " doesn't exist");
+                        break;
+                    }
+                }
+            }
             if(vr.exception !is null || vr.returnFlag)
                 break; 
             vr = conditionNode.visit(c);
@@ -795,22 +860,27 @@ class DoWhileStatementNode : StatementNode
         while(vr.result && vr.exception is null);
         if(vr.exception !is null)
             vr.exception.scriptTraceback ~= this;
+        if(label != "")
+            c.removeLabelFromCurrent(label);
         return vr;
     }
 
     StatementNode bodyNode;
     Node conditionNode;
+    string label;
 }
 
 class ForStatementNode : StatementNode
 {
-    this(size_t lineNo, VarDeclarationStatementNode decl, Node condition, Node increment, StatementNode bnode)
+    this(size_t lineNo, VarDeclarationStatementNode decl, Node condition, Node increment, 
+         StatementNode bnode, string lbl="")
     {
         super(lineNo);
         varDeclarationStatement = decl;
         conditionNode = condition;
         incrementNode = increment;
         bodyNode = bnode;
+        label = lbl;
     }
 
     override string toString() const
@@ -826,6 +896,8 @@ class ForStatementNode : StatementNode
     override VisitResult visit(Context context)
     {
         context = new Context(context, "<outer_for_loop>");
+        if(label != "")
+            context.insertLabel(label);
         auto vr = VisitResult(ScriptValue.UNDEFINED);
         if(varDeclarationStatement !is null)
             vr = varDeclarationStatement.visit(context);
@@ -837,11 +909,40 @@ class ForStatementNode : StatementNode
                 vr = bodyNode.visit(context);
                 if(vr.breakFlag)
                 {
-                    vr.breakFlag = false;
+                    if(vr.labelName == "")
+                        vr.breakFlag = false;
+                    else
+                    {
+                        if(context.labelExists(vr.labelName))
+                        {
+                            if(label == vr.labelName)
+                                vr.breakFlag = false;
+                        }
+                        else 
+                            vr.exception = new ScriptRuntimeException("Label " ~ vr.labelName ~ " doesn't exist");
+                    }
                     break;
                 }
                 if(vr.continueFlag)
-                    vr.continueFlag = false;
+                {
+                    if(vr.labelName == "")
+                        vr.continueFlag = false;
+                    else
+                    {
+                        if(context.labelExists(vr.labelName))
+                        {
+                            if(label == vr.labelName)
+                                vr.continueFlag = false;
+                            else
+                                break;
+                        }
+                        else
+                        {
+                            vr.exception = new ScriptRuntimeException("Label " ~ vr.labelName ~ " doesn't exist");
+                            break;
+                        }
+                    }
+                }
                 if(vr.exception !is null || vr.returnFlag)
                     break; 
                 vr = incrementNode.visit(context);
@@ -850,6 +951,8 @@ class ForStatementNode : StatementNode
                 vr = conditionNode.visit(context);
             }
         }
+        if(label != "")
+            context.removeLabelFromCurrent(label);
         context = context.parent;
         if(vr.exception !is null)
             vr.exception.scriptTraceback ~= this;
@@ -860,18 +963,20 @@ class ForStatementNode : StatementNode
     Node conditionNode;
     Node incrementNode;
     StatementNode bodyNode;
+    string label;
 }
 
 // for of can't do let {a,b} but it can do let a,b and be used the same as for in in JS
 class ForOfStatementNode : StatementNode
 {
-    this(size_t lineNo, Token qual, VarAccessNode[] vans, Node obj, StatementNode bnode)
+    this(size_t lineNo, Token qual, VarAccessNode[] vans, Node obj, StatementNode bnode, string lbl="")
     {
         super(lineNo);
         qualifierToken = qual;
         varAccessNodes = vans;
         objectToIterateNode = obj;
         bodyNode = bnode;
+        label = lbl;
     }
 
     override string toString() const
@@ -898,7 +1003,10 @@ class ForOfStatementNode : StatementNode
             vr.exception.scriptTraceback ~= this;
             return vr;
         }
-        
+
+        if(label != "")
+            context.insertLabel(label);
+
         if(vr.result.isObject)
         {
             auto obj = vr.result.toValue!ScriptObject;
@@ -916,15 +1024,44 @@ class ForOfStatementNode : StatementNode
                 context = context.parent;
                 if(vr.breakFlag)
                 {
-                    vr.breakFlag = false;
+                    if(vr.labelName == "")
+                        vr.breakFlag = false;
+                    else
+                    {
+                        if(context.labelExists(vr.labelName))
+                        {
+                            if(label == vr.labelName)
+                                vr.breakFlag = false;
+                        }
+                        else 
+                            vr.exception = new ScriptRuntimeException("Label " ~ vr.labelName ~ " doesn't exist");
+                    }
                     break;
                 }
                 if(vr.continueFlag)
-                    vr.continueFlag = false;
+                {
+                    if(vr.labelName == "")
+                        vr.continueFlag = false;
+                    else
+                    {
+                        if(context.labelExists(vr.labelName))
+                        {
+                            if(label == vr.labelName)
+                                vr.continueFlag = false;
+                            else
+                                break;
+                        }
+                        else
+                        {
+                            vr.exception = new ScriptRuntimeException("Label " ~ vr.labelName ~ " doesn't exist");
+                            break;
+                        }
+                    }
+                }
                 if(vr.exception !is null || vr.returnFlag)
                     break; 
                 if(vr.exception !is null)
-                    break;  
+                    break;
             }
         }
         else if(vr.result.type == ScriptValue.Type.ARRAY)
@@ -951,15 +1088,42 @@ class ForOfStatementNode : StatementNode
                 context = context.parent;
                 if(vr.breakFlag)
                 {
-                    vr.breakFlag = false;
+                    if(vr.labelName == "")
+                        vr.breakFlag = false;
+                    else
+                    {
+                        if(context.labelExists(vr.labelName))
+                        {
+                            if(label == vr.labelName)
+                                vr.breakFlag = false;
+                        }
+                        else 
+                            vr.exception = new ScriptRuntimeException("Label " ~ vr.labelName ~ " doesn't exist");
+                    }
                     break;
                 }
                 if(vr.continueFlag)
-                    vr.continueFlag = false;
+                {
+                    if(vr.labelName == "")
+                        vr.continueFlag = false;
+                    else
+                    {
+                        if(context.labelExists(vr.labelName))
+                        {
+                            if(label == vr.labelName)
+                                vr.continueFlag = false;
+                            else
+                                break;
+                        }
+                        else
+                        {
+                            vr.exception = new ScriptRuntimeException("Label " ~ vr.labelName ~ " doesn't exist");
+                            break;
+                        }
+                    }
+                }
                 if(vr.exception !is null || vr.returnFlag)
-                    break; 
-                if(vr.exception !is null)
-                    break;                 
+                    break;
             }
         }
         else 
@@ -967,8 +1131,8 @@ class ForOfStatementNode : StatementNode
             vr.exception = new ScriptRuntimeException("Cannot iterate over " ~ objectToIterateNode.toString);
         }
 
-        if(vr.exception !is null)
-            vr.exception.scriptTraceback ~= this;
+        if(label != "")
+            context.removeLabelFromCurrent(label);
 
         return vr;
     }
@@ -977,50 +1141,55 @@ class ForOfStatementNode : StatementNode
     VarAccessNode[] varAccessNodes;
     Node objectToIterateNode;
     StatementNode bodyNode;
+    string label;
 }
 
 class BreakStatementNode : StatementNode
 {
-    this(size_t lineNo)
+    this(size_t lineNo, string lbl="")
     {
         super(lineNo);
+        label = lbl;
     }
 
     override string toString() const
     {
-        return "break;";
+        return "break " ~ label ~ ";";
     }
 
     override VisitResult visit(Context c)
     {
         auto vr = VisitResult(ScriptValue.UNDEFINED);
         vr.breakFlag = true;
+        vr.labelName = label;
         return vr;
     }
 
-    // TODO add label field
+    string label;
 }
 
 class ContinueStatementNode : StatementNode
 {
-    this(size_t lineNo)
+    this(size_t lineNo, string lbl = "")
     {
         super(lineNo);
+        label = lbl;
     }
 
     override string toString() const
     {
-        return "continue;";
+        return "continue " ~ label ~ ";";
     }
 
     override VisitResult visit(Context c)
     {
         auto vr = VisitResult(ScriptValue.UNDEFINED);
         vr.continueFlag = true;
+        vr.labelName = label;
         return vr;
     }
 
-    // TODO add label field
+    string label;
 }
 
 class ReturnStatementNode : StatementNode

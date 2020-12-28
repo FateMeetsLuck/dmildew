@@ -139,6 +139,14 @@ private bool isBinaryOpLeftAssociative(in Token opToken)
     }   
 }
 
+private bool tokenBeginsLoops(const Token tok)
+{
+    return tok.type == Token.Type.LABEL 
+        || tok.isKeyword("while")
+        || tok.isKeyword("do")
+        || tok.isKeyword("for");
+}
+
 /**
  * The parser is used by the interpreter to generate a syntax tree out of tokens.
  */
@@ -191,50 +199,44 @@ private:
         {
             statement = parseIfStatement();
         }
-        // check for while statement TODO check for label
-        else if(_currentToken.isKeyword("while"))
+        // check for loops
+        else if(_currentToken.tokenBeginsLoops())
         {
-            ++_loopStack;
-            statement = parseWhileStatement();
-            --_loopStack;
-        }
-        // check for do-while statement TODO check for label
-        else if(_currentToken.isKeyword("do"))
-        {
-            ++_loopStack;
-            statement = parseDoWhileStatement();
-            --_loopStack;
-        }
-        // check for for loop TODO check label
-        else if(_currentToken.isKeyword("for"))
-        {
-            ++_loopStack;
-            statement = parseForStatement();
-            --_loopStack;
+            statement = parseLoopStatement();
         }
         // break statement?
         else if(_currentToken.isKeyword("break"))
         {
             if(_loopStack == 0)
                 throw new ScriptCompileException("Break statements only allowed in loops", _currentToken);
-            statement = new BreakStatementNode(lineNumber);
             nextToken();
-            // TODO support labels
+            string label = "";
+            if(_currentToken.type == Token.Type.IDENTIFIER)
+            {
+                label = _currentToken.text;
+                nextToken();
+            }
             if(_currentToken.type != Token.Type.SEMICOLON)
                 throw new ScriptCompileException("Expected ';' after break", _currentToken);
             nextToken();
+            statement = new BreakStatementNode(lineNumber, label);
         }
         // continue statement
         else if(_currentToken.isKeyword("continue"))
         {
             if(_loopStack == 0)
                 throw new ScriptCompileException("Continue statements only allowed in loops", _currentToken);
-            statement = new ContinueStatementNode(lineNumber);
             nextToken();
-            // TODO support labels
+            string label = "";
+            if(_currentToken.type == Token.Type.IDENTIFIER)
+            {
+                label = _currentToken.text;
+                nextToken();
+            }
             if(_currentToken.type != Token.Type.SEMICOLON)
                 throw new ScriptCompileException("Expected ';' after continue", _currentToken);
             nextToken();
+            statement = new ContinueStatementNode(lineNumber, label);
         }
         // return statement with optional expression
         else if(_currentToken.isKeyword("return"))
@@ -533,7 +535,39 @@ private:
         return new IfStatementNode(lineNumber, condition, ifTrueStatement, elseStatement);
     }
 
-    WhileStatementNode parseWhileStatement()
+    StatementNode parseLoopStatement()
+    {
+        string label = "";
+        if(_currentToken.type == Token.Type.LABEL)
+        {
+            label = _currentToken.text;
+            nextToken();
+        }
+        StatementNode statement;
+        if(_currentToken.isKeyword("while"))
+        {
+            ++_loopStack;
+            statement = parseWhileStatement(label);
+            --_loopStack;
+        }
+        // check for do-while statement TODO check for label
+        else if(_currentToken.isKeyword("do"))
+        {
+            ++_loopStack;
+            statement = parseDoWhileStatement(label);
+            --_loopStack;
+        }
+        // check for for loop TODO check label
+        else if(_currentToken.isKeyword("for"))
+        {
+            ++_loopStack;
+            statement = parseForStatement(label);
+            --_loopStack;
+        }
+        return statement;
+    }
+
+    WhileStatementNode parseWhileStatement(string label = "")
     {
         immutable lineNumber = _currentToken.position.line;
         nextToken();
@@ -545,10 +579,10 @@ private:
             throw new ScriptCompileException("Expected ')' after while condition", _currentToken);
         nextToken();
         auto loopBody = parseStatement();
-        return new WhileStatementNode(lineNumber, condition, loopBody);
+        return new WhileStatementNode(lineNumber, condition, loopBody, label);
     }
 
-    DoWhileStatementNode parseDoWhileStatement()
+    DoWhileStatementNode parseDoWhileStatement(string label = "")
     {
         immutable lineNumber = _currentToken.position.line;
         nextToken();
@@ -566,10 +600,10 @@ private:
         if(_currentToken.type != Token.Type.SEMICOLON)
             throw new ScriptCompileException("Expected ';' after do-while statement", _currentToken);
         nextToken();
-        return new DoWhileStatementNode(lineNumber, loopBody, condition);
+        return new DoWhileStatementNode(lineNumber, loopBody, condition, label);
     }
 
-    StatementNode parseForStatement()
+    StatementNode parseForStatement(string label = "")
     {
         immutable lineNumber = _currentToken.position.line;
         nextToken();
@@ -579,8 +613,6 @@ private:
         VarDeclarationStatementNode decl = null;
         if(_currentToken.type != Token.Type.SEMICOLON)
             decl = parseVarDeclarationStatement(false);
-        else
-            nextToken();
         if(_currentToken.isKeyword("of"))
         {
             // first we need to validate the VarDeclarationStatementNode to make sure it only consists
@@ -606,7 +638,7 @@ private:
                 throw new ScriptCompileException("Expected ')' after array or object", _currentToken);
             nextToken();
             auto bodyStatement = parseStatement();
-            return new ForOfStatementNode(lineNumber, qualifier, vans, objToIterateExpr, bodyStatement);
+            return new ForOfStatementNode(lineNumber, qualifier, vans, objToIterateExpr, bodyStatement, label);
         }
         else if(_currentToken.type == Token.Type.SEMICOLON)
         {
@@ -636,7 +668,7 @@ private:
                 throw new ScriptCompileException("Expected ')' before for loop body", _currentToken);
             nextToken();
             auto bodyNode = parseStatement();
-            return new ForStatementNode(lineNumber, decl, condition, increment, bodyNode);
+            return new ForStatementNode(lineNumber, decl, condition, increment, bodyNode, label);
         }
         else
             throw new ScriptCompileException("Invalid for statement", _currentToken);
