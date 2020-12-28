@@ -12,7 +12,8 @@ debug
 import mildew.exceptions: ScriptCompileException;
 import mildew.lexer: Token;
 import mildew.nodes;
-import mildew.types: ScriptValue, ScriptObject, ScriptFunction;
+import mildew.types.any: ScriptAny;
+import mildew.types.func: ScriptFunction;
 
 private int unaryOpPrecedence(Token opToken)
 {
@@ -388,31 +389,31 @@ private:
                 left = parseObjectLiteral();
                 break;
             case Token.Type.DOUBLE:
-                left = new LiteralNode(_currentToken, ScriptValue(to!double(_currentToken.text)));
+                left = new LiteralNode(_currentToken, ScriptAny(to!double(_currentToken.text)));
                 nextToken();
                 break;
             case Token.Type.INTEGER:
-                left = new LiteralNode(_currentToken, ScriptValue(to!long(_currentToken.text)));
+                left = new LiteralNode(_currentToken, ScriptAny(to!long(_currentToken.text)));
                 nextToken();
                 break;
             case Token.Type.STRING:
-                left = new LiteralNode(_currentToken, ScriptValue(_currentToken.text));
+                left = new LiteralNode(_currentToken, ScriptAny(_currentToken.text));
                 nextToken();
                 break;
             case Token.Type.KEYWORD:
                 if(_currentToken.text == "true" || _currentToken.text == "false")
                 {
-                    left = new LiteralNode(_currentToken, ScriptValue(to!bool(_currentToken.text)));
+                    left = new LiteralNode(_currentToken, ScriptAny(to!bool(_currentToken.text)));
                     nextToken();
                 }
                 else if(_currentToken.text == "null")
                 {
-                    left = new LiteralNode(_currentToken, ScriptValue(null));
+                    left = new LiteralNode(_currentToken, ScriptAny(null));
                     nextToken();
                 }
                 else if(_currentToken.text == "undefined")
                 {
-                    left = new LiteralNode(_currentToken, ScriptValue.UNDEFINED);
+                    left = new LiteralNode(_currentToken, ScriptAny.UNDEFINED);
                     nextToken();
                 }
                 else if(_currentToken.text == "function") // function literal
@@ -443,7 +444,7 @@ private:
                     auto statements = parseStatements(Token.Type.RBRACE);
                     nextToken();
                     auto func = new ScriptFunction(name, argNames, statements);
-                    left = new LiteralNode(funcToken, ScriptValue(func));
+                    left = new LiteralNode(funcToken, ScriptAny(func));
                 }
                 else if(_currentToken.text == "new")
                 {
@@ -652,7 +653,7 @@ private:
             }
             else
             {
-                condition = new LiteralNode(_currentToken, ScriptValue(true));
+                condition = new LiteralNode(_currentToken, ScriptAny(true));
             }
             nextToken();
             Node increment = null;
@@ -662,7 +663,7 @@ private:
             }
             else
             {
-                increment = new LiteralNode(_currentToken, ScriptValue(true));
+                increment = new LiteralNode(_currentToken, ScriptAny(true));
             }
             if(_currentToken.type != Token.Type.RPAREN)
                 throw new ScriptCompileException("Expected ')' before for loop body", _currentToken);
