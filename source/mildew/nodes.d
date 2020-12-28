@@ -8,7 +8,7 @@ import std.format: format;
 import mildew.context: Context;
 import mildew.exceptions: ScriptRuntimeException;
 import mildew.lexer: Token;
-import mildew.types: ScriptValue, ScriptFunction, ScriptObject;
+import mildew.types;
 
 package:
 
@@ -26,7 +26,7 @@ abstract class Node
 
 class LiteralNode : Node 
 {
-    this(Token token, ScriptValue val)
+    this(Token token, ScriptAny val)
     {
         literalToken = token;
         value = val;
@@ -34,7 +34,7 @@ class LiteralNode : Node
 
     override string toString() const
     {
-        if(value.type == ScriptValue.Type.STRING)
+        if(value.type == ScriptAny.Type.STRING)
             return "\"" ~ literalToken.text ~ "\"";
         else
             return literalToken.text;
@@ -46,7 +46,7 @@ class LiteralNode : Node
     }
 
     Token literalToken;
-    ScriptValue value;
+    ScriptAny value;
 }
 
 class ArrayLiteralNode : Node 
@@ -64,7 +64,7 @@ class ArrayLiteralNode : Node
     override VisitResult visit(Context c)
     {
         VisitResult vr;
-        ScriptValue[] values = [];
+        ScriptAny[] values = [];
         foreach(expression ; valueNodes)
         {
             vr = expression.visit(c);
@@ -103,7 +103,7 @@ class ObjectLiteralNode : Node
     {
         if(keys.length != valueNodes.length)
             throw new Exception("Error with object literal node");
-        ScriptValue[] vals = [];
+        ScriptAny[] vals = [];
         VisitResult vr;
         foreach(valueNode ; valueNodes)
         {
@@ -116,7 +116,7 @@ class ObjectLiteralNode : Node
         auto obj = new ScriptObject("", null, null);
         for(size_t i = 0; i < keys.length; ++i)
         {
-            obj[keys[i]] = vals[i];
+            obj.assignProperty(keys[i], vals[i]);
         }
         vr.result = obj;
         return vr;
@@ -262,7 +262,7 @@ class UnaryOpNode : Node
             default:
                 if(opToken.isKeyword("typeof"))
                     return VisitResult(value.typeToString());
-                return VisitResult(ScriptValue.UNDEFINED);
+                return VisitResult(ScriptAny.UNDEFINED);
         }
     }
 
@@ -323,7 +323,7 @@ class FunctionCallNode : Node
 
     override VisitResult visit(Context c)
     {
-        ScriptValue thisObj; // TODO get the possible global "this" object
+        ScriptAny thisObj; // TODO get the possible global "this" object
         auto vr = functionToCall.visit(c);
 
         if(vr.exception !is null)
@@ -336,9 +336,9 @@ class FunctionCallNode : Node
         }
 
         auto fnToCall = vr.result;
-        if(fnToCall.type == ScriptValue.Type.FUNCTION)
+        if(fnToCall.type == ScriptAny.Type.FUNCTION)
         {
-            ScriptValue[] args;
+            ScriptAny[] args;
             vr = convertExpressionsToArgs(c, expressionArgs, args);
             if(vr.exception !is null)
                 return vr;
@@ -348,7 +348,7 @@ class FunctionCallNode : Node
         }
         else 
         {
-            vr.result = ScriptValue.UNDEFINED;
+            vr.result = ScriptAny.UNDEFINED;
             vr.exception = new ScriptRuntimeException("Unable to call non function " ~ fnToCall.toString);
             return vr;
         }
@@ -385,28 +385,46 @@ class ArrayIndexNode : Node
             return objVR;
 
         // also need to validate that the object can be accessed
-        if(!objVR.result.isObject && objVR.result.type != ScriptValue.Type.ARRAY 
-                && objVR.result.type != ScriptValue.Type.STRING)
+        if(!objVR.result.isObject)
         {
             vr.exception = new ScriptRuntimeException("Cannot index value " ~ objVR.result.toString);
             return vr;
         }
 
-        if(index.type == ScriptValue.Type.STRING)
+        if(index.type == ScriptAny.Type.STRING)
         {
             // we have to be accessing an object or trying to
+            auto indexAsStr = index.toString();
             vr.accessType = VisitResult.AccessType.OBJECT_ACCESS;
             vr.memberOrVarToAccess = index.toString();
             vr.objectToAccess = objVR.result;
-            vr.result = vr.objectToAccess[vr.memberOrVarToAccess];
+            vr.result = vr.objectToAccess.lookupProperty(indexAsStr);
         }
         else if(index.isNumber)
         {
-            // we have to be accessing a string or array or trying to
+            auto indexAsNum = index.toValue!size_t;
             vr.accessType = VisitResult.AccessType.ARRAY_ACCESS;
-            vr.indexToAccess = index.toValue!size_t;
+            vr.indexToAccess = indexAsNum;
             vr.objectToAccess = objVR.result;
-            vr.result = vr.objectToAccess[vr.indexToAccess];
+            if(auto asString = objVR.result.toValue!ScriptString)
+            {
+                auto str = asString.toString();
+                if(indexAsNum >= str.length)
+                    vr.result = ScriptAny.UNDEFINED;
+                else
+                    vr.result = ScriptAny([ str[indexAsNum] ]);
+            }
+            else if(auto asArray = objVR.result.toValue!ScriptArray)
+            {
+                if(indexAsNum >= asArray.array.length)
+                    vr.result = ScriptAny.UNDEFINED;
+                else
+                    vr.result = asArray.array[indexAsNum];
+            }
+            else
+            {
+                vr.exception = new ScriptRuntimeException("Attempt to index a non-string or non-array");
+            }
         }
         else
         {
@@ -462,7 +480,7 @@ class MemberAccessNode : Node
         vr.accessType = VisitResult.AccessType.OBJECT_ACCESS;
         vr.objectToAccess = objVR.result;
         vr.memberOrVarToAccess = memberName;
-        vr.result = objVR.result[memberName];
+        vr.result = objVR.result.lookupProperty(memberName);
         return vr;
     }
 
@@ -541,7 +559,7 @@ class VarDeclarationStatementNode : StatementNode
                 if(qualifier.text == "var")
                 {
                     if(!context.getGlobalContext.declareVariableOrConst(v.varToken.text, 
-                            ScriptValue.UNDEFINED, false))
+                            ScriptAny.UNDEFINED, false))
                     {
                         // throw new Exception("Attempt to redeclare global " ~ v.varToken.text);
                         visitResult.exception = new ScriptRuntimeException("Attempt to redeclare global "
@@ -552,7 +570,7 @@ class VarDeclarationStatementNode : StatementNode
                 }
                 else if(qualifier.text == "let")
                 {
-                    if(!context.declareVariableOrConst(v.varToken.text, ScriptValue.UNDEFINED, false))
+                    if(!context.declareVariableOrConst(v.varToken.text, ScriptAny.UNDEFINED, false))
                     {
                         // throw new Exception("Attempt to redeclare local " ~ v.varToken.text);
                         visitResult.exception = new ScriptRuntimeException("Attempt to redeclare local "
@@ -563,7 +581,7 @@ class VarDeclarationStatementNode : StatementNode
                 }
                 else if(qualifier.text == "const")
                 {
-                    if(!context.declareVariableOrConst(v.varToken.text, ScriptValue.UNDEFINED, true))
+                    if(!context.declareVariableOrConst(v.varToken.text, ScriptAny.UNDEFINED, true))
                     {
                         // throw new Exception("Attempt to redeclare const " ~ v.varToken.text);
                         visitResult.exception = new ScriptRuntimeException("Attempt to redeclare const "
@@ -621,7 +639,7 @@ class VarDeclarationStatementNode : StatementNode
                     }           
                 }
                 // success so make sure anon function name matches
-                if(valueToAssign.type == ScriptValue.Type.FUNCTION)
+                if(valueToAssign.type == ScriptAny.Type.FUNCTION)
                 {
                     auto func = valueToAssign.toValue!ScriptFunction;
                     if(func.functionName == "<anonymous function>")
@@ -629,7 +647,7 @@ class VarDeclarationStatementNode : StatementNode
                 }
             }
         }
-        return VisitResult(ScriptValue.UNDEFINED);
+        return VisitResult(ScriptAny.UNDEFINED);
     }
 
     Token qualifier; // must be var, let, or const
@@ -658,7 +676,7 @@ class BlockStatementNode: StatementNode
     override VisitResult visit(Context context)
     {
         context = new Context(context, "<scope>");
-        auto result = VisitResult(ScriptValue.UNDEFINED);
+        auto result = VisitResult(ScriptAny.UNDEFINED);
         foreach(statement ; statementNodes)
         {
             result = statement.visit(context);
@@ -811,7 +829,7 @@ class DoWhileStatementNode : StatementNode
 
     override VisitResult visit(Context c)
     {
-        auto vr = VisitResult(ScriptValue.UNDEFINED);
+        auto vr = VisitResult(ScriptAny.UNDEFINED);
         if(label != "")
             c.insertLabel(label);
         do 
@@ -898,7 +916,7 @@ class ForStatementNode : StatementNode
         context = new Context(context, "<outer_for_loop>");
         if(label != "")
             context.insertLabel(label);
-        auto vr = VisitResult(ScriptValue.UNDEFINED);
+        auto vr = VisitResult(ScriptAny.UNDEFINED);
         if(varDeclarationStatement !is null)
             vr = varDeclarationStatement.visit(context);
         if(vr.exception is null)
@@ -1011,15 +1029,15 @@ class ForOfStatementNode : StatementNode
         {
             auto obj = vr.result.toValue!ScriptObject;
             // first value is key, second value is value if there
-            foreach(key, val; obj.members)
+            foreach(key, val; obj.dictionary)
             {
                 // TODO optimize this to reassign variables instead of creating new ones each iteration
                 context = new Context(context, "<for_of_loop>");
                 context.declareVariableOrConst(varAccessNodes[0].varToken.text,
-                    ScriptValue(key), qualifierToken.text == "const" ? true: false);
+                    ScriptAny(key), qualifierToken.text == "const" ? true: false);
                 if(varAccessNodes.length > 1)
                     context.declareVariableOrConst(varAccessNodes[1].varToken.text,
-                        ScriptValue(val), qualifierToken.text == "const" ? true: false);
+                        ScriptAny(val), qualifierToken.text == "const" ? true: false);
                 vr = bodyNode.visit(context);              
                 context = context.parent;
                 if(vr.breakFlag)
@@ -1064,9 +1082,9 @@ class ForOfStatementNode : StatementNode
                     break;
             }
         }
-        else if(vr.result.type == ScriptValue.Type.ARRAY)
+        else if(vr.result.type == ScriptAny.Type.ARRAY)
         {
-            auto arr = vr.result.toValue!(ScriptValue[]);
+            auto arr = vr.result.toValue!(ScriptAny[]);
             for(size_t i = 0; i < arr.length; ++i)
             {
                 // TODO optimize this to reassign variables instead of creating new contexts each iteration
@@ -1080,7 +1098,7 @@ class ForOfStatementNode : StatementNode
                 else 
                 {
                     context.declareVariableOrConst(varAccessNodes[0].varToken.text,
-                        ScriptValue(i), qualifierToken.text == "const"? true: false);
+                        ScriptAny(i), qualifierToken.text == "const"? true: false);
                     context.declareVariableOrConst(varAccessNodes[1].varToken.text,
                         arr[i], qualifierToken.text == "const"? true: false);
                 }
@@ -1159,7 +1177,7 @@ class BreakStatementNode : StatementNode
 
     override VisitResult visit(Context c)
     {
-        auto vr = VisitResult(ScriptValue.UNDEFINED);
+        auto vr = VisitResult(ScriptAny.UNDEFINED);
         vr.breakFlag = true;
         vr.labelName = label;
         return vr;
@@ -1183,7 +1201,7 @@ class ContinueStatementNode : StatementNode
 
     override VisitResult visit(Context c)
     {
-        auto vr = VisitResult(ScriptValue.UNDEFINED);
+        auto vr = VisitResult(ScriptAny.UNDEFINED);
         vr.continueFlag = true;
         vr.labelName = label;
         return vr;
@@ -1210,7 +1228,7 @@ class ReturnStatementNode : StatementNode
 
     override VisitResult visit(Context c)
     {
-        VisitResult vr = VisitResult(ScriptValue.UNDEFINED);
+        VisitResult vr = VisitResult(ScriptAny.UNDEFINED);
         if(expressionNode !is null)
         {
             vr = expressionNode.visit(c);
@@ -1256,8 +1274,8 @@ class FunctionDeclarationStatementNode : StatementNode
     override VisitResult visit(Context c)
     {
         auto func = new ScriptFunction(name, argNames, statementNodes);
-        immutable okToDeclare = c.declareVariableOrConst(name, ScriptValue(func), false);
-        VisitResult vr = VisitResult(ScriptValue.UNDEFINED);
+        immutable okToDeclare = c.declareVariableOrConst(name, ScriptAny(func), false);
+        VisitResult vr = VisitResult(ScriptAny.UNDEFINED);
         if(!okToDeclare)
         {
             vr.exception = new ScriptRuntimeException("Cannot redeclare variable or const " ~ name 
@@ -1295,7 +1313,7 @@ class ThrowStatementNode : StatementNode
         }
         vr.exception = new ScriptRuntimeException("Uncaught script exception");
         vr.exception.thrownValue = vr.result;
-        vr.result = ScriptValue.UNDEFINED;
+        vr.result = ScriptAny.UNDEFINED;
         return vr;
     }
 
@@ -1325,10 +1343,10 @@ class TryCatchBlockStatementNode : StatementNode
         if(vr.exception !is null)
         {
             context = new Context(context);
-            if(vr.exception.thrownValue != ScriptValue.UNDEFINED)
+            if(vr.exception.thrownValue != ScriptAny.UNDEFINED)
                 context.forceSetVarOrConst(exceptionName, vr.exception.thrownValue, false);
             else 
-                context.forceSetVarOrConst(exceptionName, ScriptValue(vr.exception.message), false);
+                context.forceSetVarOrConst(exceptionName, ScriptAny(vr.exception.message), false);
             vr.exception = null;
             // if another exception is thrown in the catch block, it will propagate through this return value
             vr = catchBlockNode.visit(context);
@@ -1369,9 +1387,9 @@ class DeleteStatementNode : StatementNode
         if(vr.objectToAccess.isObject)
         {
             auto obj = vr.objectToAccess.toValue!ScriptObject;
-            obj.members.remove(vr.memberOrVarToAccess);
+            obj.dictionary.remove(vr.memberOrVarToAccess);
         }
-        vr.result = ScriptValue.UNDEFINED;
+        vr.result = ScriptAny.UNDEFINED;
         return vr;
     }
 
@@ -1400,14 +1418,14 @@ class ExpressionStatementNode : StatementNode
             vr = expressionNode.visit(c);
         if(vr.exception !is null)
             vr.exception.scriptTraceback ~= this;
-        vr.result = ScriptValue.UNDEFINED; // they should never return a result
+        vr.result = ScriptAny.UNDEFINED; // they should never return a result
         return vr; // caller will handle any exception
     }
 
     Node expressionNode;
 }
 
-VisitResult handleVarReassignment(Context c, Token opToken, string varToAccess, ScriptValue value)
+VisitResult handleVarReassignment(Context c, Token opToken, string varToAccess, ScriptAny value)
 {
     bool isConst; // @suppress(dscanner.suspicious.unmodified)
     auto ptr = c.lookupVariableOrConst(varToAccess, isConst);
@@ -1438,17 +1456,19 @@ VisitResult handleVarReassignment(Context c, Token opToken, string varToAccess, 
     return vr;
 }
 
-VisitResult handleArrayReassignment(Context c, Token opToken, ScriptValue arr, 
-                                    size_t index, ScriptValue value)
+VisitResult handleArrayReassignment(Context c, Token opToken, ScriptAny arr, 
+                                    size_t index, ScriptAny value)
 {
     VisitResult vr;
-    if(arr.type != ScriptValue.Type.ARRAY)
+    if(arr.type != ScriptAny.Type.ARRAY)
     {
         vr.exception = new ScriptRuntimeException("Cannot index non-array");
         return vr;
     }
-    if(index >= arr.length)
+    auto scriptArray = arr.toValue!ScriptArray;
+    if(index >= scriptArray.length)
     {
+        // TODO expand the array instead
         vr.exception = new ScriptRuntimeException("Out of bounds array assignment");
         return vr;
     }
@@ -1456,23 +1476,23 @@ VisitResult handleArrayReassignment(Context c, Token opToken, ScriptValue arr,
     switch(opToken.type)
     {
         case Token.Type.ASSIGN:
-            arr[index] = value;
+            scriptArray.array[index] = value;
             break;
         case Token.Type.PLUS_ASSIGN:
-            arr[index] = arr[index] + value;
+            scriptArray.array[index] = scriptArray.array[index] + value;
             break;
         case Token.Type.DASH_ASSIGN:
-            arr[index] = arr[index] - value;
+            scriptArray.array[index] = scriptArray.array[index] - value;
             break;
         default:
             throw new Exception("Something has gone terribly wrong");
     }
-    vr.result = arr[index];
+    vr.result = scriptArray.array[index];
     return vr;
 }
 
-VisitResult handleObjectReassignment(Context c, Token opToken, ScriptValue objectToAccess, string index, 
-                                    ScriptValue value)
+VisitResult handleObjectReassignment(Context c, Token opToken, ScriptAny objectToAccess, string index, 
+                                    ScriptAny value)
 {
     VisitResult vr;
     if(!objectToAccess.isObject)
@@ -1481,25 +1501,27 @@ VisitResult handleObjectReassignment(Context c, Token opToken, ScriptValue objec
         return vr;
     }
 
+    auto obj = objectToAccess.toValue!ScriptObject;
+
     switch(opToken.type)
     {
         case Token.Type.ASSIGN:
-            objectToAccess[index] = value;
+            obj.assignProperty(index, value);
             break;
         case Token.Type.PLUS_ASSIGN:
-            objectToAccess[index] = objectToAccess[index] + value;
+            obj.assignProperty(index, obj.lookupProperty(index) + value);
             break;
         case Token.Type.DASH_ASSIGN:
-            objectToAccess[index] = objectToAccess[index] - value;
+            obj.assignProperty(index, obj.lookupProperty(index) - value);
             break;
         default:
             throw new Exception("Something has gone terribly wrong");
     }
-    vr.result = objectToAccess[index];
+    vr.result = obj.lookupProperty(index);
     return vr;
 }
 
-VisitResult convertExpressionsToArgs(Context c, Node[] expressions, out ScriptValue[] args)
+VisitResult convertExpressionsToArgs(Context c, Node[] expressions, out ScriptAny[] args)
 {
     args = [];
     VisitResult vr;
@@ -1516,8 +1538,8 @@ VisitResult convertExpressionsToArgs(Context c, Node[] expressions, out ScriptVa
     return vr;
 }
 
-VisitResult callFunction(Context context, ScriptFunction fn, ScriptValue thisObj, 
-                         ScriptValue[] args, bool returnThis = false)
+VisitResult callFunction(Context context, ScriptFunction fn, ScriptAny thisObj, 
+                         ScriptAny[] args, bool returnThis = false)
 {
     import mildew.types : NativeFunctionError;
 
@@ -1554,7 +1576,7 @@ VisitResult callFunction(Context context, ScriptFunction fn, ScriptValue thisObj
     }
     else 
     {
-        ScriptValue returnValue;
+        ScriptAny returnValue;
         NativeFunctionError nfe = NativeFunctionError.NO_ERROR;
         if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
         {
@@ -1597,18 +1619,18 @@ struct VisitResult
 
     this(T)(T val)
     {
-        result = ScriptValue(val);
+        result = ScriptAny(val);
     }
 
-    this(T : ScriptValue)(T val)
+    this(T : ScriptAny)(T val)
     {
         result = val;
     }
 
-    ScriptValue result;
+    ScriptAny result;
 
     AccessType accessType;
-    ScriptValue objectToAccess;
+    ScriptAny objectToAccess;
     string memberOrVarToAccess;
     size_t indexToAccess;
 

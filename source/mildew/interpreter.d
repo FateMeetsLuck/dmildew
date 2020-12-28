@@ -8,7 +8,7 @@ import mildew.exceptions: ScriptRuntimeException;
 import mildew.lexer: Token, Lexer;
 import mildew.nodes;
 import mildew.parser;
-import mildew.types: ScriptValue;
+import mildew.types.any: ScriptAny;
 
 /**
  * This is the main interface for the host application to interface with scripts.
@@ -48,7 +48,7 @@ public:
      * Params:
      *  code = This is the code of a script to be executed.
      */
-    ScriptValue evaluate(in string code)
+    ScriptAny evaluate(in string code)
     {
         debug import std.stdio: writeln;
 
@@ -62,7 +62,7 @@ public:
             throw vr.exception;
         if(vr.returnFlag)
             return vr.result;
-        return ScriptValue.UNDEFINED;
+        return ScriptAny.UNDEFINED;
     }
 
     // TODO: Read script from file
@@ -79,7 +79,7 @@ public:
      */
     void forceSetGlobal(T)(in string name, T value, bool isConst=false)
     {
-        _globalContext.forceSetVarOrConst(name, ScriptValue(value), isConst);
+        _globalContext.forceSetVarOrConst(name, ScriptAny(value), isConst);
     }
 
 private:

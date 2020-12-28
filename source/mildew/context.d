@@ -5,9 +5,9 @@ module mildew.context;
 
 import std.container.rbtree;
 
-import mildew.types;
+import mildew.types.any;
 
-private alias VariableTable = ScriptValue[string];
+private alias VariableTable = ScriptAny[string];
 
 /**
  * Holds the variables and consts of a script stack frame. The global context can be accessed by
@@ -43,7 +43,7 @@ public:
      *  A pointer to the located variable, or null if the variable was not found. If this value is needed for later
      *  the caller should make a copy of the variable immediately.
      */
-    ScriptValue* lookupVariableOrConst(in string name, out bool isConst)
+    ScriptAny* lookupVariableOrConst(in string name, out bool isConst)
     {
         auto context = this;
         while(context !is null)
@@ -88,12 +88,12 @@ public:
      * Attempt to declare and assign a new variable in the current context. Returns false if it already exists.
      * Params:
      *  nam = the name of the variable to set.
-     *  value = the initial value of the variable. This can be ScriptValue.UNDEFINED
+     *  value = the initial value of the variable. This can be ScriptAny.UNDEFINED
      *  isConst = whether or not the variable was declared as a const
      * Returns:
      *  True if the declaration was successful, otherwise false.
      */
-    bool declareVariableOrConst(in string nam, ScriptValue value, in bool isConst)
+    bool declareVariableOrConst(in string nam, ScriptAny value, in bool isConst)
     {
         if(nam in _varTable || nam in _constTable)
             return false;
@@ -144,11 +144,11 @@ public:
      * Returns:
      *  A pointer to the variable in the table where it is found, or null if it was const or not located.
      */
-    ScriptValue* reassignVariable(in string name, ScriptValue newValue, out bool failedBecauseConst)
+    ScriptAny* reassignVariable(in string name, ScriptAny newValue, out bool failedBecauseConst)
     {
         bool isConst; // @suppress(dscanner.suspicious.unmodified)
-        auto scriptValuePtr = lookupVariableOrConst(name, isConst);
-        if(scriptValuePtr == null)
+        auto scriptAnyPtr = lookupVariableOrConst(name, isConst);
+        if(scriptAnyPtr == null)
         {
             failedBecauseConst = false;
             return null;
@@ -158,9 +158,9 @@ public:
             failedBecauseConst = true;
             return null;
         }
-        *scriptValuePtr = newValue;
+        *scriptAnyPtr = newValue;
         failedBecauseConst = false;
-        return scriptValuePtr;
+        return scriptAnyPtr;
     }
 
     /**
@@ -171,7 +171,7 @@ public:
      *  value = The value of the variable
      *  isConst = Whether or not the variable should be considered const and unable to be overwritten by the script
      */
-    void forceSetVarOrConst(in string name, ScriptValue value, bool isConst)
+    void forceSetVarOrConst(in string name, ScriptAny value, bool isConst)
     {
         if(isConst)
         {

@@ -16,9 +16,9 @@ import mildew.types;
 public void initializeObjectLibrary(Interpreter interpreter)
 {
     auto objNamespace = new ScriptObject("Object", null);
-    objNamespace["create"] = ScriptValue(new ScriptFunction("Object.create", &native_Object_create));
-    objNamespace["keys"] = ScriptValue(new ScriptFunction("Object.keys", &native_Object_keys));
-    objNamespace["values"] = ScriptValue(new ScriptFunction("Object.values", &native_Object_values));
+    objNamespace["create"] = ScriptAny(new ScriptFunction("Object.create", &native_Object_create));
+    objNamespace["keys"] = ScriptAny(new ScriptFunction("Object.keys", &native_Object_keys));
+    objNamespace["values"] = ScriptAny(new ScriptFunction("Object.values", &native_Object_values));
     interpreter.forceSetGlobal("Object", objNamespace);
 }
 
@@ -26,58 +26,58 @@ public void initializeObjectLibrary(Interpreter interpreter)
  * Object.create: This can be called by the script to create a new object whose prototype is the
  * parameter.
  */
-private ScriptValue native_Object_create(Context context,  // @suppress(dscanner.style.phobos_naming_convention)
-        ScriptValue* thisObj, 
-        ScriptValue[] args, 
+private ScriptAny native_Object_create(Context context,  // @suppress(dscanner.style.phobos_naming_convention)
+        ScriptAny* thisObj, 
+        ScriptAny[] args, 
         ref NativeFunctionError nfe)
 {
     if(args.length < 1)
     {
         nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
-        return ScriptValue.UNDEFINED;
+        return ScriptAny.UNDEFINED;
     }
 
     if(!args[0].isObject)
     {
         nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
-        return ScriptValue.UNDEFINED;
+        return ScriptAny.UNDEFINED;
     }
 
     auto newObj = new ScriptObject("", args[0].toValue!ScriptObject);
 
-    return ScriptValue(newObj);
+    return ScriptAny(newObj);
 }
 
 /// returns an array of keys of an object (or function)
-private ScriptValue native_Object_keys(Context context,
-        ScriptValue* thisObj,
-        ScriptValue[] args,
+private ScriptAny native_Object_keys(Context context,
+        ScriptAny* thisObj,
+        ScriptAny[] args,
         ref NativeFunctionError nfe)
 {
     if(args.length < 1)
-        return ScriptValue.UNDEFINED;
+        return ScriptAny.UNDEFINED;
     
     if(!args[0].isObject)
-        return ScriptValue.UNDEFINED;
+        return ScriptAny.UNDEFINED;
 
     auto sobj = args[0].toValue!ScriptObject;
-    auto keys = ScriptValue(sobj.members.keys);
+    auto keys = ScriptAny(sobj.dictionary.keys);
     return keys;
 }
 
 /// returns an array of values of an object (or function)
-private ScriptValue native_Object_values(Context context,
-        ScriptValue* thisObj,
-        ScriptValue[] args,
+private ScriptAny native_Object_values(Context context,
+        ScriptAny* thisObj,
+        ScriptAny[] args,
         ref NativeFunctionError nfe)
 {
     if(args.length < 1)
-        return ScriptValue.UNDEFINED;
+        return ScriptAny.UNDEFINED;
     
     if(!args[0].isObject)
-        return ScriptValue.UNDEFINED;
+        return ScriptAny.UNDEFINED;
 
     auto sobj = args[0].toValue!ScriptObject;
-    auto values = ScriptValue(sobj.members.values);
+    auto values = ScriptAny(sobj.dictionary.values);
     return values;
 }
