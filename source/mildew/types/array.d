@@ -11,12 +11,12 @@ class ScriptArray : ScriptObject
 public:
 
     /**
-     * Takes a primitive array.
+     * Takes a D array of ScriptAnys
      */
     this(ScriptAny[] values)
     {
-        // TODO set up the prototype for all strings
-        super("String", null, null);
+        import mildew.types.prototypes: getStringPrototype;
+        super("String", getStringPrototype, null);
         _array = values;
     }
 
@@ -68,5 +68,7 @@ public:
     ref ScriptAny[] array() { return _array; }
 
 private:
+
     ScriptAny[] _array;
 }
+

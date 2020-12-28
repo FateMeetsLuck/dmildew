@@ -44,7 +44,8 @@ public:
      */
     this(string fname, NativeFunction nfunc)
     {
-        super("Function", s_functionPrototypeObject, null);
+        import mildew.types.prototypes: getFunctionPrototype;
+        super("Function", getFunctionPrototype, null);
         _functionName = fname;
         initializePrototypeProperty();
         _type = Type.NATIVE_FUNCTION;
@@ -59,7 +60,8 @@ public:
      */
     this(string fname, NativeDelegate ndele)
     {
-        super("Function", s_functionPrototypeObject, null);
+        import mildew.types.prototypes: getFunctionPrototype;
+        super("Function", getFunctionPrototype, null);
         _functionName = fname;
         initializePrototypeProperty();
         _type = Type.NATIVE_DELEGATE;
@@ -71,7 +73,8 @@ public:
      */
     this(string fnname, string[] args, StatementNode[] statementNodes)
     {
-        super("Function", s_functionPrototypeObject, null);
+        import mildew.types.prototypes: getFunctionPrototype;
+        super("Function", getFunctionPrototype, null);
         _functionName = fnname;
         _argNames = args;
         _statementNodes = statementNodes;
@@ -132,49 +135,5 @@ private:
         _dictionary["prototype"]["constructor"] = ScriptAny(this);
     }
 
-    static ScriptObject s_functionPrototypeObject;
-
-    static this()
-    {
-        s_functionPrototypeObject = new ScriptObject("function()");
-        s_functionPrototypeObject.assignProperty("call", 
-            ScriptAny(new ScriptFunction("Function.call", &native_Function_call)));
-    }
-}
-
-//
-// Methods in the prototype ///////////////////////////////////////////////////
-//
-
-private ScriptAny native_Function_call(Context c, ScriptAny* thisIsFn, ScriptAny[] args, 
-                                        ref NativeFunctionError nfe)
-{
-    import mildew.nodes: callFunction, VisitResult;
-
-    // minimum args is 1 because first arg is the this to use
-    if(args.length < 1)
-    {
-        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
-        return ScriptAny.UNDEFINED;
-    }
-    // get the function
-    if(thisIsFn.type != ScriptAny.Type.FUNCTION)
-    {
-        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
-        return ScriptAny.UNDEFINED;
-    }
-    auto fn = thisIsFn.toValue!ScriptFunction;
-    // set up the "this" to use
-    auto thisToUse = args[0];
-    // now send the remainder of the args to a called function with this setup
-    args = args[1..$];
-    auto vr = callFunction(c, fn, thisToUse, args, false);
-    if(vr.exception !is null)
-    {
-        nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
-        return ScriptAny(vr.exception.message);
-    }
-
-    return vr.result;
 }
 

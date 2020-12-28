@@ -13,8 +13,8 @@ public:
      */
     this(in string str)
     {
-        // TODO prototype
-        super("String", null, null);
+        import mildew.types.prototypes: getStringPrototype;
+        super("String", getStringPrototype, null);
         _string = str;
     }
 

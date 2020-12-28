@@ -16,23 +16,19 @@ See mildew/stdlib files for how to bind functions. Classes can be bound by wrapp
 
 Binding structs can only be done by wrapping the struct inside a class and storing the class object in a ScriptObject.
 
-The function or delegate signature that can be wrapped inside a ScriptValue (and thus ScriptFunction) is `ScriptValue function(Context, ScriptValue* thisObj, ScriptValue[] args, ref NativeFunctionError);` And such a function is wrapped by `ScriptValue(new ScriptFunction("name of function", &nativeFunction))`. This is analogous to how Lua bindings work.
+The function or delegate signature that can be wrapped inside a ScriptAny (and thus ScriptFunction) is `ScriptAny function(Context, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError);` And such a function is wrapped by `ScriptAny(new ScriptFunction("name of function", &nativeFunction))`. This is analogous to how Lua bindings work.
 
-`bindingexample.zip` in the examples folder contains a simple program that binds a class and its public methods and properties. D classes that are bound can be extended by the script as long as the native function constructor checks that the `thisObj` parameter is an object and assigns the native object to it or otherwise creates a brand new ScriptObject with the native object assigned to it.
+`bindingexample.zip` in the examples folder contains a simple program that binds a class and its public methods and properties. D classes that are bound can be extended by the script as long as the native function constructor checks that the `thisObj` parameter is an object and assigns the native object to it.
 
 ## Caveats
-
-Unlike JavaScript, arrays in Mildew are primitives and can be concatenated with the '+' operator. It is not possible to reassign the length property of an array.
 
 This language is stricter than JavaScript. Global variables cannot be redeclared unless they are undefined by setting them to `undefined`. Local variables cannot be redeclared in the same scope likewise. Semicolons are always required.
 
 ## Current Goals
 
 * Implement the class and extends keywords as syntactic sugar for the existing prototype inheritance.
-* Implement labelled loops and break and continue with labels.
 * Implement postfix and prefix increment and decrement operators.
 * Refactor code to easily implement all math assignment operators (such as `*=`).
-* Refactor Interpreter so that all functions automatically have a `call` method in their prototype. Currently `someFunction.call` works but `someFunction["call"]` does not.
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
 * Bind classes with one line of code with mixins and template metaprogramming.
 * Write a more complete and robust standard library for the scripting language.

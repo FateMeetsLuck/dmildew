@@ -22,18 +22,17 @@ public:
      */
     this(in string typename, ScriptObject proto, Object native = null)
     {
-        // TODO, this version of the function should use the default Object_prototype if proto is null,
-        // while the other constructor can leave __proto__ as null.
+        import mildew.types.prototypes: getObjectPrototype;
         _name = typename;
         if(proto !is null)
             _prototype = proto;
         else
-            _prototype = s_objectDefaultPrototype;
+            _prototype = getObjectPrototype;
         _nativeObject = native;
     }
 
     /**
-     * Empty constructor that leaves name, prototype, and nativeObject as null.
+     * Empty constructor that leaves prototype, and nativeObject as null.
      */
     this(in string typename)
     {
@@ -93,9 +92,15 @@ public:
     /**
      * Shorthand for assignProperty
      */
-    ScriptAny opIndexAssign(ScriptAny value, in string index)
+    ScriptAny opIndexAssign(T)(T value, in string index)
     {
-        return assignProperty(index, value);
+        static if(is(T==ScriptAny))
+            return assignProperty(index, value);
+        else
+        {
+            ScriptAny any = value;
+            return assignProperty(index, any);
+        }
     }
 
     /**
@@ -162,13 +167,6 @@ private:
         result ~= "}";
         return result;
     }
-
-    static ScriptObject s_objectDefaultPrototype;
-    static this()
-    {
-        s_objectDefaultPrototype = new ScriptObject("Object");
-        s_objectDefaultPrototype.assignProperty("testValue", ScriptAny(222.22));
-    }   
 
     /// type name (Function or whatever)
     string _name;
