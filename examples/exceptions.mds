@@ -1,0 +1,5 @@
+try {
+    foo = 22;
+} catch(e) {
+    console.error("Caught exception: " + e);
+}

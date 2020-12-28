@@ -1340,7 +1340,7 @@ VisitResult callFunction(Context context, ScriptFunction fn, ScriptValue thisObj
 
     VisitResult vr;
     if(returnThis)
-        thisObj = new ScriptObject(fn.functionName, fn.prototype, null);
+        thisObj = new ScriptObject(fn.functionName, fn["prototype"].toValue!ScriptObject, null);
     if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
     {
         context = new Context(context, fn.functionName);

@@ -810,21 +810,10 @@ public:
     ScriptValue opIndex(in string index)
     {
         // first handle special metaproperty __proto__
-        if(name != "Function")
+        if(index == "__proto__")
         {
-            if(index == "__proto__")
-            {
-                auto proto = ScriptValue(_prototype);
-                return proto;
-            }
-        }
-        else
-        {
-            if(index == "prototype")
-            {
-                auto proto = ScriptValue(_prototype);
-                return proto;
-            }
+            auto proto = ScriptValue(_prototype);
+            return proto;
         }
 
         auto objectToSearch = this;
@@ -847,23 +836,11 @@ public:
      */
     ScriptValue opIndexAssign(ScriptValue value, in string index)
     {
-        if(name == "Function")
+        if(index == "__proto__")
         {
-            if(index == "prototype")
-            {
-                _prototype = value.toValue!ScriptObject;
-                return ScriptValue(_prototype);
-            }
+            _prototype = value.toValue!ScriptObject; // can be null if not object
+            return ScriptValue(_prototype);
         }
-        else
-        {
-            if(index == "__proto__")
-            {
-                _prototype = value.toValue!ScriptObject; // can be null if not object
-                return ScriptValue(_prototype);
-            }
-        }
-
         _members[index] = value;
         return _members[index];
     }
@@ -973,9 +950,9 @@ public:
      */
     this(string fname, NativeFunction nfunc)
     {
-        super("Function", new ScriptObject("", functionPrototypeObject), null);
+        super("Function", functionPrototypeObject, null);
         _functionName = fname;
-        _members["prototype"] = _prototype;
+        _members["prototype"] = ScriptValue(new ScriptObject());
         _type = Type.NATIVE_FUNCTION;
         _nativeFunction = nfunc;
     }
@@ -988,9 +965,9 @@ public:
      */
     this(string fname, NativeDelegate ndele)
     {
-        super("Function", new ScriptObject("", functionPrototypeObject), null);
+        super("Function", functionPrototypeObject, null);
         _functionName = fname;
-        _members["prototype"] = _prototype;
+        _members["prototype"] = ScriptValue(new ScriptObject());
         _type = Type.NATIVE_DELEGATE;
         _nativeDelegate = ndele;
     }
@@ -1013,11 +990,11 @@ package:
      */
     this(string fnname, string[] args, StatementNode[] statementNodes)
     {
-        super("Function", new ScriptObject("", functionPrototypeObject), null);
+        super("Function", functionPrototypeObject, null);
         _functionName = fnname;
         _argNames = args;
         _statementNodes = statementNodes;
-        _members["prototype"] = _prototype;
+        _members["prototype"] = ScriptValue(new ScriptObject());
         _type = Type.SCRIPT_FUNCTION;
     }
 
