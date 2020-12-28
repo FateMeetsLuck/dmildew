@@ -384,6 +384,14 @@ class ArrayIndexNode : Node
         if(objVR.exception !is null)
             return objVR;
 
+        // also need to validate that the object can be accessed
+        if(!objVR.result.isObject && objVR.result.type != ScriptValue.Type.ARRAY 
+                && objVR.result.type != ScriptValue.Type.STRING)
+        {
+            vr.exception = new ScriptRuntimeException("Cannot index value " ~ objVR.result.toString);
+            return vr;
+        }
+
         if(index.type == ScriptValue.Type.STRING)
         {
             // we have to be accessing an object or trying to
@@ -443,6 +451,12 @@ class MemberAccessNode : Node
         auto objVR = objectNode.visit(c);
         if(objVR.exception !is null)
             return objVR;
+        // validate that objVR.result is of type object so that it can even be accessed
+        if(!objVR.result.isObject)
+        {
+            vr.exception = new ScriptRuntimeException("Cannot access non-object " ~ objVR.result.toString());
+            return vr;
+        }
 
         // set the fields
         vr.accessType = VisitResult.AccessType.OBJECT_ACCESS;

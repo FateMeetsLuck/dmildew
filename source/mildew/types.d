@@ -787,17 +787,22 @@ public:
      */
     this(in string typename, ScriptObject proto, Object native = null)
     {
+        // TODO, this version of the function should use the default Object_prototype if proto is null,
+        // while the other constructor can leave __proto__ as null.
         _name = typename;
-        _prototype = proto;
+        if(proto !is null)
+            _prototype = proto;
+        else
+            _prototype = s_objectDefaultPrototype;
         _nativeObject = native;
     }
 
     /**
      * Empty constructor that leaves name, prototype, and nativeObject as null.
      */
-    this()
+    this(in string typename)
     {
-
+        _name = typename;
     }
 
     /**
@@ -918,6 +923,13 @@ private:
         return result;
     }
 
+    static ScriptObject s_objectDefaultPrototype;
+    static this()
+    {
+        s_objectDefaultPrototype = new ScriptObject("Object");
+        s_objectDefaultPrototype["testValue"] = ScriptValue(222.22);
+    }   
+
     /// type name (Function or whatever)
     string _name;
     /// members
@@ -950,9 +962,9 @@ public:
      */
     this(string fname, NativeFunction nfunc)
     {
-        super("Function", functionPrototypeObject, null);
+        super("Function", s_functionPrototypeObject, null);
         _functionName = fname;
-        _members["prototype"] = ScriptValue(new ScriptObject());
+        _members["prototype"] = ScriptValue(new ScriptObject("Object", null));
         _type = Type.NATIVE_FUNCTION;
         _nativeFunction = nfunc;
     }
@@ -965,9 +977,9 @@ public:
      */
     this(string fname, NativeDelegate ndele)
     {
-        super("Function", functionPrototypeObject, null);
+        super("Function", s_functionPrototypeObject, null);
         _functionName = fname;
-        _members["prototype"] = ScriptValue(new ScriptObject());
+        _members["prototype"] = ScriptValue(new ScriptObject("Object", null));
         _type = Type.NATIVE_DELEGATE;
         _nativeDelegate = ndele;
     }
@@ -990,11 +1002,11 @@ package:
      */
     this(string fnname, string[] args, StatementNode[] statementNodes)
     {
-        super("Function", functionPrototypeObject, null);
+        super("Function", s_functionPrototypeObject, null);
         _functionName = fnname;
         _argNames = args;
         _statementNodes = statementNodes;
-        _members["prototype"] = ScriptValue(new ScriptObject());
+        _members["prototype"] = ScriptValue(new ScriptObject("Object", null));
         _type = Type.SCRIPT_FUNCTION;
     }
 
@@ -1032,12 +1044,12 @@ private:
         NativeDelegate _nativeDelegate;
     }
 
-    static ScriptObject functionPrototypeObject;
+    static ScriptObject s_functionPrototypeObject;
 
     static this()
     {
-        functionPrototypeObject = new ScriptObject();
-        functionPrototypeObject["call"] = ScriptValue(new ScriptFunction("Function.call", &native_Function_call));
+        s_functionPrototypeObject = new ScriptObject("function()");
+        s_functionPrototypeObject["call"] = ScriptValue(new ScriptFunction("Function.call", &native_Function_call));
     }
 }
 
