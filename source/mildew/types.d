@@ -887,7 +887,7 @@ public:
      */
     override string toString() const
     {
-        return _name ~ formattedString();
+        return _name ~ " " ~ formattedString();
     }
 
 private:
@@ -1090,8 +1090,6 @@ private ScriptValue native_Function_call(Context c, ScriptValue* thisIsFn, Scrip
 
     return vr.result;
 }
-
-ScriptValue _nativeFunctionDotCall;
 
 unittest // TODO organize this
 {
