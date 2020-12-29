@@ -72,7 +72,7 @@ public:
     /// Returns a string representing the type and name.
     override string toString() const
     {
-        return "Function " ~ _functionName;
+        return name ~ " " ~ _functionName;
     }
 
     /// Returns the type of function stored, such as native function, delegate, or script function

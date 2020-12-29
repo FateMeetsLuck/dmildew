@@ -12,7 +12,7 @@ This project is in its early stages so you should probably use the ~main version
 
 ## Running the Examples
 
-In a terminal in the main project directory run `dub run :repl -- examples/nameOfExample.mds`. If you want to try out the interactive shell simply type `dub run :repl`. In the interactive shell it is only possible to enter multiple lines by writing '\' at the end of a line you want to continue.
+In a terminal in the main project directory run `dub run :repl -- examples/nameOfExample.mds`. If you want to try out the interactive shell simply type `dub run :repl`. In the interactive shell it is only possible to enter multiple lines by writing '\' at the end of a line you want to continue. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after.
 
 ## Binding
 
