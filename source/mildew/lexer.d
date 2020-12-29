@@ -175,6 +175,18 @@ struct Token
         auto token = Token(Token.Type.INVALID, pos, text);
         return token;
     }
+
+    /**
+     * Used by the parser
+     */
+    static Token createFakeToken(in Type t, in string txt)
+    {
+        Token tok;
+        tok.type = t;
+        tok.position = Position(0,0);
+        tok.text = txt;
+        return tok;
+    }
 }
 
 private bool startsKeywordOrIdentifier(in char ch)

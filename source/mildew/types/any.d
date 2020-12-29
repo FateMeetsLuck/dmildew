@@ -9,6 +9,7 @@ import std.traits;
 struct ScriptAny
 {
     import mildew.types.object: ScriptObject;
+    import mildew.types.func: ScriptFunction;
 
 public:
     /**
@@ -116,7 +117,7 @@ public:
      * Depending on the type of index, if it is a string it accesses a field of the object, otherwise
      * if it is numerical, attempts to access an index of an array object.
      */
-    ScriptAny lookupProperty(T)(T index, out bool success)
+    ScriptAny lookupField(T)(T index, out bool success)
     {
         import mildew.types.string: ScriptString;
         import mildew.types.array: ScriptArray;
@@ -155,23 +156,23 @@ public:
             if(!isObject)
                 return UNDEFINED;
             success = true;
-            return _asObject.lookupProperty(index.to!string);
+            return _asObject.lookupField(index.to!string);
         }
     }
 
     /**
      * Overload to ignore the bool
      */
-    ScriptAny lookupProperty(T)(T index)
+    ScriptAny lookupField(T)(T index)
     {
         bool ignore; // @suppress(dscanner.suspicious.unmodified)
-        return lookupProperty(index, ignore);
+        return lookupField(index, ignore);
     }
 
     /**
      * Attempt to assign a property of a complex object
      */
-    ScriptAny assignProperty(T)(T index, ScriptAny value, out bool success)
+    ScriptAny assignField(T)(T index, ScriptAny value, out bool success)
     {
         import mildew.types.string: ScriptString;
         import mildew.types.array: ScriptArray;
@@ -209,10 +210,30 @@ public:
     /**
      * Overload to ignore the bool
      */
-    ScriptAny assignProperty(T)(T index, ScriptAny value)
+    ScriptAny assignField(T)(T index, ScriptAny value)
     {
         bool ignore; // @suppress(dscanner.suspicious.unmodified)
-        return assignProperty(index, ignore);
+        return assignField(index, ignore);
+    }
+
+    /**
+     * Add a get method to an object
+     */
+    void addGetterProperty(in string name, ScriptFunction func)
+    {
+        if(!isObject)
+            return;
+        _asObject.addGetterProperty(name, func);
+    }
+
+    /**
+     * Add a set method to an object
+     */
+    void addSetterProperty(in string name, ScriptFunction func)
+    {
+        if(!isObject)
+            return;
+        _asObject.addSetterProperty(name, func);
     }
 
     /**
@@ -503,7 +524,7 @@ public:
     {
         if(!isObject)
             return UNDEFINED;
-        return _asObject.lookupProperty(index);
+        return _asObject.lookupField(index);
     }
 
     /**
@@ -514,7 +535,7 @@ public:
         if(!isObject)
             return UNDEFINED;
         auto any = ScriptAny(value);
-        _asObject.assignProperty(index, any);
+        _asObject.assignField(index, any);
         return any;
     }
 

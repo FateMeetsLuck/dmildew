@@ -34,8 +34,6 @@ class ScriptFunction : ScriptObject
 public:
     /// The type of function held by the object
     enum Type { SCRIPT_FUNCTION, NATIVE_FUNCTION, NATIVE_DELEGATE }
-    /// whether or not the function is to be used with UFCS
-    enum PropertyFlag { NONE, GETTER, GETSET }
 
     /**
      * Constructs a new ScriptFunction out of a native D function.
@@ -43,7 +41,7 @@ public:
      *  fname = The name of the function.
      *  nfunc = The address of the native function. See NativeFunction alias for correct signature
      */
-    this(string fname, NativeFunction nfunc, bool isClass = false, PropertyFlag propFlag = PropertyFlag.NONE)
+    this(string fname, NativeFunction nfunc, bool isClass = false)
     {
         immutable tname = isClass? "class" : "function";
         import mildew.types.prototypes: getFunctionPrototype;
@@ -51,7 +49,6 @@ public:
         _functionName = fname;
         initializePrototypeProperty();
         _type = Type.NATIVE_FUNCTION;
-        _propertyFlag = propFlag;
         _nativeFunction = nfunc;
     }
 
@@ -61,7 +58,7 @@ public:
      *  fname = The name of the function.
      *  nfunc = The address of the native delegate. See NativeDelegate alias for correct signature
      */
-    this(string fname, NativeDelegate ndele, bool isClass = false, PropertyFlag propFlag = PropertyFlag.NONE)
+    this(string fname, NativeDelegate ndele, bool isClass = false)
     {
         immutable tname = isClass? "class" : "function";
         import mildew.types.prototypes: getFunctionPrototype;
@@ -69,7 +66,6 @@ public:
         _functionName = fname;
         initializePrototypeProperty();
         _type = Type.NATIVE_DELEGATE;
-        _propertyFlag = propFlag;
         _nativeDelegate = ndele;
     }
 
@@ -81,8 +77,6 @@ public:
 
     /// Returns the type of function stored, such as native function, delegate, or script function
     auto type() const { return _type; }
-    /// Returns the property flag
-    auto propertyFlag() const { return _propertyFlag; }
     /// Returns the name of the function
     auto functionName() const { return _functionName; }
     /// Property argNames
@@ -93,8 +87,7 @@ package(mildew):
     /**
      * Constructor for creating script defined functions.
      */
-    this(string fnname, string[] args, StatementNode[] statementNodes, bool isClass=false, 
-         PropertyFlag propFlag = PropertyFlag.NONE)
+    this(string fnname, string[] args, StatementNode[] statementNodes, bool isClass=false)
     {
         immutable tname = isClass? "class" : "function";
         import mildew.types.prototypes: getFunctionPrototype;
@@ -104,7 +97,6 @@ package(mildew):
         _statementNodes = statementNodes;
         initializePrototypeProperty();
         _type = Type.SCRIPT_FUNCTION;
-        _propertyFlag = propFlag;
     }
 
     /**
@@ -150,7 +142,6 @@ package(mildew):
 
 private:
     Type _type;
-    PropertyFlag _propertyFlag;
     string _functionName;
     string[] _argNames;
     StatementNode[] _statementNodes;

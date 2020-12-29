@@ -28,23 +28,23 @@ public:
     /**
      * This override allows for the length pseudoproperty
      */
-    override ScriptAny lookupProperty(in string name)
+    override ScriptAny lookupField(in string name)
     {
         if(name == "length")
             return ScriptAny(_array.length);
         else
-            return super.lookupProperty(name);
+            return super.lookupField(name);
     }
 
     /**
      * This override allows for the length to be reassigned
      */
-    override ScriptAny assignProperty(in string name, ScriptAny value)
+    override ScriptAny assignField(in string name, ScriptAny value)
     {
         if(name == "length")
             return ScriptAny(_array.length = value.toValue!size_t);
         else
-            return super.assignProperty(name, value);
+            return super.assignField(name, value);
     }
 
     /**

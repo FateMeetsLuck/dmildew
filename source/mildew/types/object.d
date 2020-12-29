@@ -8,7 +8,9 @@ module mildew.types.object;
  */
 class ScriptObject
 {
+    import mildew.context: Context;
     import mildew.types.any: ScriptAny;
+    import mildew.types.func: ScriptFunction;
 public:
     /**
      * Constructs a new ScriptObject that can be stored inside ScriptValue.
@@ -52,16 +54,32 @@ public:
     auto dictionary() { return _dictionary; }
 
     /**
+     * Add a getter
+     */
+    void addGetterProperty(in string propName, ScriptFunction getter)
+    {
+        _getters[propName] = getter;
+    }
+
+    /**
+     * Add a setter
+     */
+    void addSetterProperty(in string propName, ScriptFunction setter)
+    {
+        _setters[propName] = setter;
+    }
+
+    /**
      * Looks up a property or pseudoproperty through the prototype chain
      */
-    ScriptAny lookupProperty(in string name)
+    ScriptAny lookupField(in string name)
     {
         if(name == "__proto__")
             return ScriptAny(_prototype);
         if(name in _dictionary)
             return _dictionary[name];
         if(_prototype !is null)
-            return _prototype.lookupProperty(name);
+            return _prototype.lookupField(name);
         return ScriptAny.UNDEFINED;
     }
 
@@ -70,13 +88,13 @@ public:
      */
     ScriptAny opIndex(in string index)
     {
-        return lookupProperty(index);
+        return lookupField(index);
     }
 
     /**
      * Assigns a value to the current object
      */
-    ScriptAny assignProperty(in string name, ScriptAny value)
+    ScriptAny assignField(in string name, ScriptAny value)
     {
         if(name == "__proto__")
         {
@@ -90,16 +108,87 @@ public:
     }
 
     /**
-     * Shorthand for assignProperty
+     * Look up a property, not a field, with a getter if it exists
+     */
+    auto lookupProperty(Context context, in string propName)
+    {
+        import mildew.nodes: VisitResult;
+        VisitResult vr;
+        auto thisObj = this;
+        auto objectToSearch = thisObj;
+        while(objectToSearch !is null)
+        {
+            if(propName in objectToSearch._getters)
+            {
+                vr = objectToSearch._getters[propName].call(context, ScriptAny(thisObj), [], false);
+                return vr;
+            }
+            objectToSearch = objectToSearch._prototype;
+        }
+        return vr;
+    }
+
+    /**
+     * Set and return a property, not a field, with a setter
+     */
+    auto assignProperty(Context context, in string propName, ScriptAny arg)
+    {
+        import mildew.nodes: VisitResult;
+        VisitResult vr;
+        auto thisObj = this;
+        auto objectToSearch = thisObj;
+        while(objectToSearch !is null)
+        {
+            if(propName in objectToSearch._setters)
+            {
+                vr = objectToSearch._setters[propName].call(context, ScriptAny(thisObj), [arg], false);
+            }
+            objectToSearch = objectToSearch._prototype;
+        }
+        return vr;
+    }
+
+    /**
+     * Determines if there is a getter for a given property
+     */
+    bool hasGetter(in string propName)
+    {
+        auto objectToSearch = this;
+        while(objectToSearch !is null)
+        {
+            if(propName in objectToSearch._getters)
+                return true;
+            objectToSearch = objectToSearch._prototype;
+        }
+        return false;
+    }
+
+    /**
+     * Determines if there is a setter for a given property
+     */
+    bool hasSetter(in string propName)
+    {
+        auto objectToSearch = this;
+        while(objectToSearch !is null)
+        {
+            if(propName in objectToSearch._setters)
+                return true;
+            objectToSearch = objectToSearch._prototype;
+        }
+        return false;
+    }
+
+    /**
+     * Shorthand for assignField
      */
     ScriptAny opIndexAssign(T)(T value, in string index)
     {
         static if(is(T==ScriptAny))
-            return assignProperty(index, value);
+            return assignField(index, value);
         else
         {
             ScriptAny any = value;
-            return assignProperty(index, any);
+            return assignField(index, any);
         }
     }
 
@@ -139,6 +228,12 @@ protected:
 
     /// The dictionary of key-value pairs
     ScriptAny[string] _dictionary;
+
+    /// The lookup table for getters
+    ScriptFunction[string] _getters;
+
+    /// The lookup table for setters
+    ScriptFunction[string] _setters;
 
 private:
 

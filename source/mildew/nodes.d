@@ -116,7 +116,7 @@ class ObjectLiteralNode : Node
         auto obj = new ScriptObject("", null, null);
         for(size_t i = 0; i < keys.length; ++i)
         {
-            obj.assignProperty(keys[i], vals[i]);
+            obj.assignField(keys[i], vals[i]);
         }
         vr.result = obj;
         return vr;
@@ -398,7 +398,7 @@ class ArrayIndexNode : Node
             vr.accessType = VisitResult.AccessType.OBJECT_ACCESS;
             vr.memberOrVarToAccess = index.toString();
             vr.objectToAccess = objVR.result;
-            vr.result = vr.objectToAccess.lookupProperty(indexAsStr);
+            vr.result = vr.objectToAccess.lookupField(indexAsStr);
         }
         else if(index.isNumber)
         {
@@ -481,20 +481,17 @@ class MemberAccessNode : Node
         vr.accessType = VisitResult.AccessType.OBJECT_ACCESS;
         vr.objectToAccess = objVR.result;
         vr.memberOrVarToAccess = memberName;
-        vr.result = objVR.result.lookupProperty(memberName);
-        // if it is a get function we need to only return the result of the function
-        if(vr.result.type == ScriptAny.Type.FUNCTION)
+        // if this is a get property we need to use the getter otherwise we lookup field
+        auto obj = vr.objectToAccess.toValue!ScriptObject;
+        if(obj.hasGetter(memberName))
         {
-            auto fn = vr.result.toValue!ScriptFunction;
-            if(fn.propertyFlag == ScriptFunction.PropertyFlag.GETTER 
-                    || fn.propertyFlag == ScriptFunction.PropertyFlag.GETSET)
-            {
-                auto cfVR = callFunction(c, fn, objVR.result, [], false);
-                if(cfVR.exception !is null)
-                    return cfVR;
-                vr.result = cfVR.result;
-            }
+            auto gvr = obj.lookupProperty(c, memberName);
+            if(gvr.exception !is null)
+                return gvr;
+            vr.result = gvr.result;
         }
+        else
+            vr.result = objVR.result.lookupField(memberName);
         return vr;
     }
 
@@ -1616,43 +1613,44 @@ VisitResult handleObjectReassignment(Context c, Token opToken, ScriptAny objectT
     }
 
     auto obj = objectToAccess.toValue!ScriptObject;
-    auto pflag = ScriptFunction.PropertyFlag.NONE;
-    ScriptFunction func;
-    if(obj[index].type == ScriptAny.Type.FUNCTION)
+    immutable hasSetter = obj.hasSetter(index);
+    ScriptAny originalValue;
+    if(obj.hasGetter(index))
     {
-        func = cast(ScriptFunction)(obj[index]);
-        pflag = func.propertyFlag;
-        if(pflag == ScriptFunction.PropertyFlag.GETTER)
-        {
-            vr.exception = new ScriptRuntimeException("Property " ~ index ~ " is only a get");
+        vr = obj.lookupProperty(c, index);
+        if(vr.exception !is null)
             return vr;
-        }
+        originalValue = vr.result;
+    }
+    else
+    {
+        originalValue = obj.lookupField(index);
     }
 
     switch(opToken.type)
     {
         case Token.Type.ASSIGN:
-            if(pflag == ScriptFunction.PropertyFlag.GETSET)
-                vr = func.call(c, objectToAccess, [value], false);
+            if(hasSetter)
+                obj.assignProperty(c, index, value);
             else
-                obj.assignProperty(index, value);
+                obj.assignField(index, value);
             break;
         case Token.Type.PLUS_ASSIGN:
-            if(pflag == ScriptFunction.PropertyFlag.GETSET)
-                vr = func.call(c, objectToAccess, [obj[index] + value], false);
+            if(hasSetter)
+                obj.assignProperty(c, index, originalValue + value);
             else
-                obj.assignProperty(index, obj.lookupProperty(index) + value);
+                obj.assignField(index, originalValue + value);
             break;
         case Token.Type.DASH_ASSIGN:
-            if(pflag == ScriptFunction.PropertyFlag.GETSET)
-                vr = func.call(c, objectToAccess, [obj[index] - value], false);
+            if(hasSetter)
+                obj.assignProperty(c, index, originalValue - value);
             else
-                obj.assignProperty(index, obj.lookupProperty(index) - value);
+                obj.assignField(index, originalValue - value);
             break;
         default:
             throw new Exception("Something has gone terribly wrong");
     }
-    vr.result = obj.lookupProperty(index);
+    vr.result = obj.lookupField(index);
     return vr;
 }
 
