@@ -3,7 +3,7 @@ module mildew.types.string;
 import mildew.types.object;
 
 /**
- * Encapsulates a UTF-8 string.
+ * Encapsulates a UTF-16 string.
  */
 class ScriptString : ScriptObject
 {

@@ -482,6 +482,19 @@ class MemberAccessNode : Node
         vr.objectToAccess = objVR.result;
         vr.memberOrVarToAccess = memberName;
         vr.result = objVR.result.lookupProperty(memberName);
+        // if it is a get function we need to only return the result of the function
+        if(vr.result.type == ScriptAny.Type.FUNCTION)
+        {
+            auto fn = vr.result.toValue!ScriptFunction;
+            if(fn.propertyFlag == ScriptFunction.PropertyFlag.GETTER 
+                    || fn.propertyFlag == ScriptFunction.PropertyFlag.GETSET)
+            {
+                auto cfVR = callFunction(c, fn, objVR.result, [], false);
+                if(cfVR.exception !is null)
+                    return cfVR;
+                vr.result = cfVR.result;
+            }
+        }
         return vr;
     }
 
@@ -1603,17 +1616,38 @@ VisitResult handleObjectReassignment(Context c, Token opToken, ScriptAny objectT
     }
 
     auto obj = objectToAccess.toValue!ScriptObject;
+    auto pflag = ScriptFunction.PropertyFlag.NONE;
+    ScriptFunction func;
+    if(obj[index].type == ScriptAny.Type.FUNCTION)
+    {
+        func = cast(ScriptFunction)(obj[index]);
+        pflag = func.propertyFlag;
+        if(pflag == ScriptFunction.PropertyFlag.GETTER)
+        {
+            vr.exception = new ScriptRuntimeException("Property " ~ index ~ " is only a get");
+            return vr;
+        }
+    }
 
     switch(opToken.type)
     {
         case Token.Type.ASSIGN:
-            obj.assignProperty(index, value);
+            if(pflag == ScriptFunction.PropertyFlag.GETSET)
+                vr = func.call(c, objectToAccess, [value], false);
+            else
+                obj.assignProperty(index, value);
             break;
         case Token.Type.PLUS_ASSIGN:
-            obj.assignProperty(index, obj.lookupProperty(index) + value);
+            if(pflag == ScriptFunction.PropertyFlag.GETSET)
+                vr = func.call(c, objectToAccess, [obj[index] + value], false);
+            else
+                obj.assignProperty(index, obj.lookupProperty(index) + value);
             break;
         case Token.Type.DASH_ASSIGN:
-            obj.assignProperty(index, obj.lookupProperty(index) - value);
+            if(pflag == ScriptFunction.PropertyFlag.GETSET)
+                vr = func.call(c, objectToAccess, [obj[index] - value], false);
+            else
+                obj.assignProperty(index, obj.lookupProperty(index) - value);
             break;
         default:
             throw new Exception("Something has gone terribly wrong");
@@ -1643,6 +1677,7 @@ VisitResult callFunction(Context context, ScriptFunction fn, ScriptAny thisObj,
                          ScriptAny[] args, bool returnThis = false)
 {
     import mildew.types : NativeFunctionError;
+    import std.algorithm: min;
 
     VisitResult vr;
     if(returnThis)
@@ -1651,7 +1686,7 @@ VisitResult callFunction(Context context, ScriptFunction fn, ScriptAny thisObj,
     {
         context = new Context(context, fn.functionName);
         // push args by name as locals
-        for(size_t i=0; i < fn.argNames.length; ++i)
+        for(size_t i=0; i < min(args.length, fn.argNames.length); ++i)
             context.forceSetVarOrConst(fn.argNames[i], args[i], false);
         context.forceSetVarOrConst("this", thisObj, true);
         foreach(statement ; fn.statementNodes)

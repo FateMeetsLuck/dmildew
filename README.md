@@ -40,6 +40,7 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Implement the terniary operator (?:)
 * Refactor code to easily implement all math assignment operators (such as `*=`).
 * Allow selected bound functions to be used as properties similar to D's UFCS.
+* Implement getters and setters in classes
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
 * Bind classes with one line of code with mixins and template metaprogramming.
 * Write a more complete and robust standard library for the scripting language.
