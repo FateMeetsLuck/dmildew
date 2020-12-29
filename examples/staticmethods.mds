@@ -1,0 +1,14 @@
+class Foo {
+    static add(a, b) {
+        return a+b;
+    }
+}
+
+class Bar extends Foo {
+    static sub(a, b) {
+        return a - b;
+    }
+}
+
+console.log(Bar.add(1,20)); // 21
+console.log(Bar.sub(5,6.1)); // -1.1

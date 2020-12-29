@@ -15,3 +15,18 @@ try {
 } catch(e) {
     console.error("Could not assign to area: " + e);
 }
+
+class GetSet {
+    get prop() {
+        return this._prop;
+    }
+    set prop(value) {
+        this._prop = value;
+    }
+}
+
+var a = new GetSet();
+a.prop = -23.53;
+console.log(a.prop);
+
+// As of Dec 29 16:33 this program produces the correct output

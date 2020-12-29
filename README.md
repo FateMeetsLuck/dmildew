@@ -8,13 +8,13 @@ Note: this is still very much a work in progress and the API is subject to chang
 
 ## Usage
 
-The `examples/` folder contains example scripts. It should look familiar to anyone who knows JavaScript. However, Mildew is not a full feature JavaScript implementation.
+The `examples/` folder contains example scripts. It should look familiar to anyone who knows JavaScript. However, Mildew is not a full feature ES6 JavaScript implementation.
 
 This project is in its early stages so one should probably use the ~main version to get the latest bug fixes. The release tags are only so that it is usable in dub.
 
 ## Running the Examples
 
-In a terminal in the main project directory run `dub run :repl -- examples/nameofexample.mds`. To try out the interactive shell simply type `dub run :repl`. In the interactive shell it is only possible to continue a command on a new line by writing '\' at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after.
+In a terminal in the main project directory run `dub run :repl -- examples/nameofexample.mds`. To try out the interactive shell simply type `dub run :repl`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after.
 
 ## Binding
 
@@ -28,7 +28,7 @@ The function or delegate signature that can be wrapped inside a ScriptAny (and t
 
 ## Caveats
 
-This language is stricter than JavaScript. Global variables cannot be redeclared unless they are undefined by setting them to `undefined`. Local variables cannot be redeclared in the same scope likewise. Semicolons are required in a manner similar to C++ or Java.
+This language is stricter than JavaScript. Global variables cannot be redeclared unless they are undefined by setting them to `undefined`. Local variables cannot be redeclared in the same scope likewise. Semicolons are required in a manner similar to C# or Java.
 
 ## Help
 
@@ -36,12 +36,13 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 
 ## Current Goals
 
-* Implement postfix and prefix increment and decrement operators.
+* Implement postfix increment and decrement operators.
 * Implement the terniary operator (?:)
+* Implement instanceof operator.
 * Refactor code to easily implement all math assignment operators (such as `*=`).
-* Allow selected bound functions to be used as properties similar to D's UFCS.
-* Implement getters and setters in classes
+* Implement interpolated backtick strings.
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
+* Implement ES6 destructuring declaration and assignments of arrays and objects into variables.
 * Bind classes with one line of code with mixins and template metaprogramming.
 * Write a more complete and robust standard library for the scripting language.
 * Allow super keyword to be used to call base class methods other than the constructor

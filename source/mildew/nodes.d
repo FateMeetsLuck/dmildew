@@ -1487,6 +1487,9 @@ class ClassDeclarationStatementNode : StatementNode
             // if the base class constructor's "prototype" is null or non-object, it won't work anyway
             // NOTE that ["prototype"] and .prototype are completely unrelated
             constructorPrototype.prototype = baseClassConstructor["prototype"].toValue!ScriptObject;
+            // set the constructor's __proto__ to the base class so that static methods are inherited
+            // and the Function.call look up should still work
+            constructor.prototype = baseClassConstructor;
         }
         vr.result = ScriptAny.UNDEFINED;
         return vr;

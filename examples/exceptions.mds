@@ -3,3 +3,4 @@ try {
 } catch(e) {
     console.error("Caught exception: " + e);
 }
+// As of Dec 29 16:34 this program produces the correct output

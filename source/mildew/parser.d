@@ -808,7 +808,9 @@ private:
         ScriptFunction[] getMethods;
         string[] setMethodNames;
         ScriptFunction[] setMethods;
-        enum PropertyType { NONE, GET, SET }
+        string[] staticMethodNames;
+        ScriptFunction[] staticMethods;
+        enum PropertyType { NONE, GET, SET, STATIC }
         while(_currentToken.type != Token.Type.RBRACE && _currentToken.type != Token.Type.EOF)
         {
             PropertyType ptype = PropertyType.NONE;
@@ -822,6 +824,11 @@ private:
             else if(_currentToken.isKeyword("set"))
             {
                 ptype = PropertyType.SET;
+                nextToken();
+            }
+            else if(_currentToken.isKeyword("static"))
+            {
+                ptype = PropertyType.STATIC;
                 nextToken();
             }
             // then an identifier
@@ -894,6 +901,12 @@ private:
                             argNames, statements, false);
                     setMethodNames ~= currentMethodName;                    
                 }
+                else if(ptype == PropertyType.STATIC)
+                {
+                    staticMethods ~= new ScriptFunction(className ~ "." ~ currentMethodName, argNames, 
+                            statements, false);
+                    staticMethodNames ~= currentMethodName;
+                }
             }
         }
         nextToken(); // eat the class body }
@@ -911,6 +924,11 @@ private:
             _baseClassStack = _baseClassStack[0..$-1];
         if(constructor is null)
             constructor = ScriptFunction.emptyFunction(className, true);
+        // add all static methods to the constructor object
+        for(size_t i = 0; i < staticMethods.length; ++i)
+        {
+            constructor[staticMethodNames[i]] = staticMethods[i];
+        }
         return new ClassDeclarationStatementNode(lineNumber, className, constructor, methodNames, methods, 
                 getMethodNames, getMethods, setMethodNames, setMethods, baseClass);
     }
