@@ -1409,7 +1409,9 @@ class DeleteStatementNode : StatementNode
 
 class ClassDeclarationStatementNode : StatementNode
 {
-    this(size_t lineNo, string name, ScriptFunction con, string[] mnames, ScriptFunction[] ms, Node bc = null)
+    this(size_t lineNo, string name, ScriptFunction con, string[] mnames, ScriptFunction[] ms, 
+         string[] gnames, ScriptFunction[] getters, string[] snames, ScriptFunction[] setters, 
+         Node bc = null)
     {
         super(lineNo);
         className = name;
@@ -1417,6 +1419,12 @@ class ClassDeclarationStatementNode : StatementNode
         methodNames = mnames;
         methods = ms;
         assert(methodNames.length == methods.length);
+        getMethodNames = gnames;
+        getMethods = getters;
+        assert(getMethodNames.length == getMethods.length);
+        setMethodNames = snames;
+        setMethods = setters;
+        assert(setMethodNames.length == setMethods.length);
         baseClass = bc;
     }
 
@@ -1434,6 +1442,12 @@ class ClassDeclarationStatementNode : StatementNode
         // fill in the function.prototype with the methods
         for(size_t i = 0; i < methodNames.length; ++i)
             constructor["prototype"][methodNames[i]] = ScriptAny(methods[i]);
+        // fill in any get properties
+        for(size_t i = 0; i < getMethodNames.length; ++i)
+            constructor["prototype"].addGetterProperty(getMethodNames[i], getMethods[i]);
+        // fill in any set properties
+        for(size_t i = 0; i < setMethodNames.length; ++i)
+            constructor["prototype"].addSetterProperty(setMethodNames[i], setMethods[i]);
         // if there is a base class, we must set the class's prototype's __proto__ to the base class's prototype
         if(baseClass !is null)
         {
@@ -1459,6 +1473,10 @@ class ClassDeclarationStatementNode : StatementNode
     ScriptFunction constructor;
     string[] methodNames;
     ScriptFunction[] methods;
+    string[] getMethodNames;
+    ScriptFunction[] getMethods;
+    string[] setMethodNames;
+    ScriptFunction[] setMethods;
     Node baseClass; // should be an expression that returns a constructor function
 }
 
@@ -1617,6 +1635,12 @@ VisitResult handleObjectReassignment(Context c, Token opToken, ScriptAny objectT
     ScriptAny originalValue;
     if(obj.hasGetter(index))
     {
+        // it also has to have the same setter for this assignment to be valid
+        if(!obj.hasSetter(index))
+        {
+            vr.exception = new ScriptRuntimeException("Object has no setter " ~ index);
+            return vr;
+        }
         vr = obj.lookupProperty(c, index);
         if(vr.exception !is null)
             return vr;

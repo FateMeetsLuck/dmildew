@@ -1,0 +1,17 @@
+class Rectangle {
+    constructor(w, h) {
+        this.width = w;
+        this.height = h;
+    }
+    get area() {
+        return this.width * this.height;
+    }
+}
+
+var rect1 = new Rectangle(4, 5);
+console.log(rect1.area);
+try {
+    rect1.area = 29;
+} catch(e) {
+    console.error("Could not assign to area: " + e);
+}

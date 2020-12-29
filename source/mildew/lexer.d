@@ -291,7 +291,7 @@ public:
         "if", "else", "while", "do", "for", "of", "in",
         "switch", "case", "default",
         "break", "continue", "return", 
-        "function", "class", "super", "extends",
+        "function", "class", "super", "extends", "get", "set",
         "new", "delete", "typeof",
         "throw", "try", "catch"
     );

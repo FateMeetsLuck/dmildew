@@ -800,12 +800,29 @@ private:
             throw new ScriptCompileException("Expected '{' after class name", _currentToken);
         nextToken(); // eat the {
         ScriptFunction constructor = null;
-        string[] methodNames = [];
-        ScriptFunction[] methods = [];
+        string[] methodNames;
+        ScriptFunction[] methods;
+        string[] getMethodNames;
+        ScriptFunction[] getMethods;
+        string[] setMethodNames;
+        ScriptFunction[] setMethods;
+        enum PropertyType { NONE, GET, SET }
         while(_currentToken.type != Token.Type.RBRACE && _currentToken.type != Token.Type.EOF)
         {
+            PropertyType ptype = PropertyType.NONE;
             string currentMethodName = "";
-            // first an identifier
+            // could be a get or set
+            if(_currentToken.isKeyword("get"))
+            {
+                ptype = PropertyType.GET;
+                nextToken();
+            }
+            else if(_currentToken.isKeyword("set"))
+            {
+                ptype = PropertyType.SET;
+                nextToken();
+            }
+            // then an identifier
             if(_currentToken.type != Token.Type.IDENTIFIER)
                 throw new ScriptCompileException("Method names must be valid identifiers", _currentToken);
             currentMethodName = _currentToken.text;
@@ -836,6 +853,8 @@ private:
             // now we have a method but if this is the constructor
             if(currentMethodName == "constructor")
             {
+                if(ptype != PropertyType.NONE)
+                    throw new ScriptCompileException("Get and set not allowed for constructor", classToken);
                 if(constructor !is null)
                     throw new ScriptCompileException("Classes may only have one constructor", classToken);
                 // if this is extending a class it MUST have ONE super call
@@ -853,11 +872,26 @@ private:
                 }
                 constructor = new ScriptFunction(className, argNames, statements, true);
             }
-            else // it's just another method
+            else // it's a normal method or getter/setter
             {
-                methods ~= new ScriptFunction(className ~ ".prototype." ~ currentMethodName, 
-                        argNames, statements, false);
-                methodNames ~= currentMethodName;
+                if(ptype == PropertyType.NONE)
+                {
+                    methods ~= new ScriptFunction(className ~ ".prototype." ~ currentMethodName, 
+                            argNames, statements, false);
+                    methodNames ~= currentMethodName;
+                }
+                else if(ptype == PropertyType.GET)
+                {
+                    getMethods ~= new ScriptFunction(className ~ ".prototype." ~ currentMethodName, 
+                            argNames, statements, false);
+                    getMethodNames ~= currentMethodName;                    
+                }
+                else if(ptype == PropertyType.SET)
+                {
+                    setMethods ~= new ScriptFunction(className ~ ".prototype." ~ currentMethodName, 
+                            argNames, statements, false);
+                    setMethodNames ~= currentMethodName;                    
+                }
             }
         }
         nextToken(); // eat the class body }
@@ -875,7 +909,8 @@ private:
             _baseClassStack = _baseClassStack[0..$-1];
         if(constructor is null)
             constructor = ScriptFunction.emptyFunction(className, true);
-        return new ClassDeclarationStatementNode(lineNumber, className, constructor, methodNames, methods, baseClass);
+        return new ClassDeclarationStatementNode(lineNumber, className, constructor, methodNames, methods, 
+                getMethodNames, getMethods, setMethodNames, setMethods, baseClass);
     }
 
     SuperCallStatementNode parseSuperCallStatement()
