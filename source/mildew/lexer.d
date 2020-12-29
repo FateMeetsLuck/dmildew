@@ -278,7 +278,8 @@ public:
         "var", "let", "const", 
         "if", "else", "while", "do", "for", "of", "in",
         "switch", "case", "default",
-        "break", "continue", "return", "function",
+        "break", "continue", "return", 
+        "function", "class", "super", "extends",
         "new", "delete", "typeof",
         "throw", "try", "catch"
     );

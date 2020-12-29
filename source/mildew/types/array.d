@@ -15,8 +15,8 @@ public:
      */
     this(ScriptAny[] values)
     {
-        import mildew.types.prototypes: getStringPrototype;
-        super("String", getStringPrototype, null);
+        import mildew.types.prototypes: getArrayPrototype;
+        super("array", getArrayPrototype, null);
         _array = values;
     }
 

@@ -25,9 +25,8 @@ alias NativeDelegate = ScriptAny delegate(Context, ScriptAny* thisObj, ScriptAny
 /**
  * This class encapsulates all types of script functions including native D functions and delegates. A
  * native function must first be wrapped in this class before it can be given to a ScriptAny assignment.
- * When an object is created with "new FunctionName()" its prototype is assigned to the function's prototype.
- * This allows OOP in the scripting language and is somewhat analogous to JavaScript. A function's prototype
- * object is never null unless set to null, unlike ScriptObject.
+ * When an object is created with "new FunctionName()" its __proto__ is assigned to the function's "prototype"
+ * field. This allows OOP in the scripting language and is somewhat analogous to JavaScript.
  */
 class ScriptFunction : ScriptObject
 {
@@ -42,10 +41,11 @@ public:
      *  fname = The name of the function.
      *  nfunc = The address of the native function. See NativeFunction alias for correct signature
      */
-    this(string fname, NativeFunction nfunc)
+    this(string fname, NativeFunction nfunc, bool isClass = false)
     {
+        immutable tname = isClass? "class" : "function";
         import mildew.types.prototypes: getFunctionPrototype;
-        super("Function", getFunctionPrototype, null);
+        super(tname, getFunctionPrototype, null);
         _functionName = fname;
         initializePrototypeProperty();
         _type = Type.NATIVE_FUNCTION;
@@ -58,28 +58,15 @@ public:
      *  fname = The name of the function.
      *  nfunc = The address of the native delegate. See NativeDelegate alias for correct signature
      */
-    this(string fname, NativeDelegate ndele)
+    this(string fname, NativeDelegate ndele, bool isClass = false)
     {
+        immutable tname = isClass? "class" : "function";
         import mildew.types.prototypes: getFunctionPrototype;
-        super("Function", getFunctionPrototype, null);
+        super(tname, getFunctionPrototype, null);
         _functionName = fname;
         initializePrototypeProperty();
         _type = Type.NATIVE_DELEGATE;
         _nativeDelegate = ndele;
-    }
-
-    /**
-     * Constructor for creating script defined functions.
-     */
-    this(string fnname, string[] args, StatementNode[] statementNodes)
-    {
-        import mildew.types.prototypes: getFunctionPrototype;
-        super("Function", getFunctionPrototype, null);
-        _functionName = fnname;
-        _argNames = args;
-        _statementNodes = statementNodes;
-        initializePrototypeProperty();
-        _type = Type.SCRIPT_FUNCTION;
     }
 
     /// Returns a string representing the type and name.
@@ -92,12 +79,34 @@ public:
     auto type() const { return _type; }
     /// Returns the name of the function
     auto functionName() const { return _functionName; }
-    /// Sets the function name
-    auto functionName(in string fnName) { return _functionName = fnName; }
     /// Property argNames
     auto argNames() { return _argNames; }
-    /// Property statementNodes
-    auto statementNodes() { return _statementNodes; }
+
+package(mildew):
+
+    /**
+     * Constructor for creating script defined functions.
+     */
+    this(string fnname, string[] args, StatementNode[] statementNodes, bool isClass=false)
+    {
+        immutable tname = isClass? "class" : "function";
+        import mildew.types.prototypes: getFunctionPrototype;
+        super(tname, getFunctionPrototype, null);
+        _functionName = fnname;
+        _argNames = args;
+        _statementNodes = statementNodes;
+        initializePrototypeProperty();
+        _type = Type.SCRIPT_FUNCTION;
+    }
+
+    /**
+     * Calls a function with a specified "this" object. This can be used by the syntax tree system.
+     */
+    auto call(Context context, ScriptAny thisObj, ScriptAny[] args, bool returnThis = false)
+    {
+        import mildew.nodes: VisitResult, callFunction;
+        return callFunction(context, this, thisObj, args, returnThis);
+    }
 
     // must check type before using these properties or one gets an exception
 
@@ -119,6 +128,18 @@ public:
             throw new Exception("This is not a native delegate");
     }
 
+    /// Sets the function name
+    auto functionName(in string fnName) { return _functionName = fnName; }
+
+    /// Property statementNodes
+    auto statementNodes() { return _statementNodes; }
+
+    /// used by the parser for missing constructors in classes that don't extend
+    static ScriptFunction emptyFunction(in string name, bool isClass)
+    {
+        return new ScriptFunction(name, &native_EMPTY_FUNCTION, isClass);
+    }
+
 private:
     Type _type;
     string _functionName;
@@ -135,5 +156,10 @@ private:
         _dictionary["prototype"]["constructor"] = ScriptAny(this);
     }
 
+}
+
+private ScriptAny native_EMPTY_FUNCTION(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    return ScriptAny.UNDEFINED;
 }
 

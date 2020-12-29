@@ -6,13 +6,17 @@ This is still very much a work in progress.
 
 ## Usage
 
-The examples folder contains example scripts. It should look familiar to anyone who knows JavaScript. However, Mildew is not a full feature JavaScript implementation.
+The `examples/` folder contains example scripts. It should look familiar to anyone who knows JavaScript. However, Mildew is not a full feature JavaScript implementation.
 
 This project is in its early stages so you should probably use the ~main version to get the latest bug fixes. The release tags are only so that it is usable in dub.
 
+## Running the Examples
+
+In a terminal in the main project directory run `dub run :repl -- examples/nameOfExample.mds`. If you want to try out the interactive shell simply type `dub run :repl`. In the interactive shell it is only possible to enter multiple lines by writing '\' at the end of a line you want to continue.
+
 ## Binding
 
-See mildew/stdlib files for how to bind functions. Classes can be bound by wrapping the object inside a ScriptObject when constructing the new ScriptObject and retrieved from the ScriptObject. Methods can be written as free functions or delegates stored inside the bound constructor's prototype object. In the future, there might be a more trivial way to bind using D metaprogramming.
+See mildew/stdlib files for how to bind functions. Classes can be bound by wrapping the object inside a ScriptObject. Methods can be written as free functions or delegates stored inside the bound constructor's prototype object. In the future, there might be a more trivial way to bind using D metaprogramming.
 
 Binding structs can only be done by wrapping the struct inside a class and storing the class object in a ScriptObject.
 
@@ -26,9 +30,9 @@ This language is stricter than JavaScript. Global variables cannot be redeclared
 
 ## Current Goals
 
-* Implement the class and extends keywords as syntactic sugar for the existing prototype inheritance.
 * Implement postfix and prefix increment and decrement operators.
 * Refactor code to easily implement all math assignment operators (such as `*=`).
+* Allow selected bound functions to be used as properties similar to D's UFCS.
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
 * Bind classes with one line of code with mixins and template metaprogramming.
 * Write a more complete and robust standard library for the scripting language.

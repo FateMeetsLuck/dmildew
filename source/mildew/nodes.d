@@ -408,11 +408,12 @@ class ArrayIndexNode : Node
             vr.objectToAccess = objVR.result;
             if(auto asString = objVR.result.toValue!ScriptString)
             {
-                auto str = asString.toString();
-                if(indexAsNum >= str.length)
+                // TODO catch the UTFException and just return whatever
+                auto wstr = asString.getWString();
+                if(indexAsNum >= wstr.length)
                     vr.result = ScriptAny.UNDEFINED;
                 else
-                    vr.result = ScriptAny([ str[indexAsNum] ]);
+                    vr.result = ScriptAny([ wstr[indexAsNum] ]);
             }
             else if(auto asArray = objVR.result.toValue!ScriptArray)
             {
@@ -1396,6 +1397,106 @@ class DeleteStatementNode : StatementNode
     Node memberAccessOrArrayIndexNode;
 }
 
+class ClassDeclarationStatementNode : StatementNode
+{
+    this(size_t lineNo, string name, ScriptFunction con, string[] mnames, ScriptFunction[] ms, Node bc = null)
+    {
+        super(lineNo);
+        className = name;
+        constructor = con; // can't be null must at least be ScriptFunction.emptyFunction("NameOfClass")
+        methodNames = mnames;
+        methods = ms;
+        assert(methodNames.length == methods.length);
+        baseClass = bc;
+    }
+
+    override VisitResult visit(Context context)
+    {
+        VisitResult vr;
+        // first try to assign the constructor as a local function
+        immutable ok = context.declareVariableOrConst(className, ScriptAny(constructor), false);
+        if(!ok)
+        {
+            vr.exception = new ScriptRuntimeException("Class declaration " ~ className 
+                ~ " may not overwrite local variable or const");
+            return vr;
+        }
+        // fill in the function.prototype with the methods
+        for(size_t i = 0; i < methodNames.length; ++i)
+            constructor["prototype"][methodNames[i]] = ScriptAny(methods[i]);
+        // if there is a base class, we must set the class's prototype's __proto__ to the base class's prototype
+        if(baseClass !is null)
+        {
+            vr = baseClass.visit(context);
+            if(vr.exception !is null)
+                return vr;
+            if(vr.result.type != ScriptAny.Type.FUNCTION)
+            {
+                vr.exception = new ScriptRuntimeException("Only classes can be extended");
+                return vr;
+            }   
+            auto baseClassConstructor = vr.result.toValue!ScriptFunction;
+            auto constructorPrototype = constructor["prototype"].toValue!ScriptObject;
+            // if the base class constructor's "prototype" is null or non-object, it won't work anyway
+            // NOTE that ["prototype"] and .prototype are completely unrelated
+            constructorPrototype.prototype = baseClassConstructor["prototype"].toValue!ScriptObject;
+        }
+        vr.result = ScriptAny.UNDEFINED;
+        return vr;
+    }
+
+    string className;
+    ScriptFunction constructor;
+    string[] methodNames;
+    ScriptFunction[] methods;
+    Node baseClass; // should be an expression that returns a constructor function
+}
+
+class SuperCallStatementNode : StatementNode
+{
+    this(size_t lineNo, Node ctc, Node[] args)
+    {
+        super(lineNo);
+        classConstructorToCall = ctc; // Cannot be null or something wrong with parser
+        argExpressionNodes = args;
+    }
+
+    override VisitResult visit(Context c)
+    {
+        auto vr = classConstructorToCall.visit(c);
+        if(vr.exception !is null)
+            return vr;
+        if(vr.result.type != ScriptAny.Type.FUNCTION)
+        {
+            vr.exception = new ScriptRuntimeException("Invalid super call");
+            return vr;
+        }
+        auto fn = vr.result.toValue!ScriptFunction;
+        // get the args
+        ScriptAny[] args = [];
+        foreach(expression ; argExpressionNodes)
+        {
+            vr = expression.visit(c);
+            if(vr.exception !is null)
+                return vr;
+            args ~= vr.result;
+        }
+        // get the "this" out of the context
+        bool dontCare; // @suppress(dscanner.suspicious.unmodified)
+        auto thisObjPtr = c.lookupVariableOrConst("this", dontCare);
+        if(thisObjPtr == null)
+        {
+            vr.exception = new ScriptRuntimeException("Invalid `this` object in super call");
+            return vr;
+        }
+        vr = fn.call(c, *thisObjPtr, args, false);
+        return vr;
+    }
+
+    Node classConstructorToCall; // should always evaluate to a function
+    Node[] argExpressionNodes;
+}
+
 class ExpressionStatementNode : StatementNode
 {
     this(size_t lineNo, Node expression)
@@ -1462,7 +1563,7 @@ VisitResult handleArrayReassignment(Context c, Token opToken, ScriptAny arr,
     VisitResult vr;
     if(arr.type != ScriptAny.Type.ARRAY)
     {
-        vr.exception = new ScriptRuntimeException("Cannot index non-array");
+        vr.exception = new ScriptRuntimeException("Cannot assign to index of non-array");
         return vr;
     }
     auto scriptArray = arr.toValue!ScriptArray;

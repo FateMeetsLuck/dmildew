@@ -190,6 +190,7 @@ private:
         // check for {} block
         else if(_currentToken.type == Token.Type.LBRACE)
         {
+            // TODO: peek two tokens ahead for a ':' to indicate whether or not this is an object literal expression
             nextToken();
             auto statements = parseStatements(Token.Type.RBRACE);
             nextToken();
@@ -276,6 +277,14 @@ private:
             if(cast(MemberAccessNode)expression is null && cast(ArrayIndexNode)expression is null)
                 throw new ScriptCompileException("Invalid operand for delete operation", tok);
             statement = new DeleteStatementNode(lineNumber, expression);
+        }
+        else if(_currentToken.isKeyword("class"))
+        {
+            statement = parseClassDeclaration();
+        }
+        else if(_currentToken.isKeyword("super"))
+        {
+            statement = parseSuperCallStatement();
         }
         else // for now has to be one expression followed by semicolon or EOF
         {
@@ -771,6 +780,114 @@ private:
         return new ObjectLiteralNode(keys, valueExpressions);
     }
 
+    ClassDeclarationStatementNode parseClassDeclaration()
+    {
+        immutable lineNumber = _currentToken.position.line;
+        immutable classToken = _currentToken;
+        nextToken();
+        if(_currentToken.type != Token.Type.IDENTIFIER)
+            throw new ScriptCompileException("Class name must be valid identifier", _currentToken);
+        auto className = _currentToken.text;
+        nextToken();
+        Node baseClass = null;
+        if(_currentToken.isKeyword("extends"))
+        {
+            nextToken();
+            baseClass = parseExpression(); // let's hope this is an expression that results in a ScriptFunction value
+            _baseClassStack ~= baseClass;
+        }
+        if(_currentToken.type != Token.Type.LBRACE)
+            throw new ScriptCompileException("Expected '{' after class name", _currentToken);
+        nextToken(); // eat the {
+        ScriptFunction constructor = null;
+        string[] methodNames = [];
+        ScriptFunction[] methods = [];
+        while(_currentToken.type != Token.Type.RBRACE && _currentToken.type != Token.Type.EOF)
+        {
+            string currentMethodName = "";
+            // first an identifier
+            if(_currentToken.type != Token.Type.IDENTIFIER)
+                throw new ScriptCompileException("Method names must be valid identifiers", _currentToken);
+            currentMethodName = _currentToken.text;
+            nextToken();
+            // then a (
+            if(_currentToken.type != Token.Type.LPAREN)
+                throw new ScriptCompileException("Expected '(' after method name", _currentToken);
+            nextToken();
+            string[] argNames;
+            while(_currentToken.type != Token.Type.RPAREN)
+            {
+                if(_currentToken.type != Token.Type.IDENTIFIER)
+                    throw new ScriptCompileException("Method arguments must be valid identifiers", _currentToken);
+                argNames ~= _currentToken.text;
+                nextToken();
+                if(_currentToken.type == Token.Type.COMMA)
+                    nextToken();
+                else if(_currentToken.type != Token.Type.RPAREN)
+                    throw new ScriptCompileException("Method arguments must be separated by ','", _currentToken);
+            }
+            nextToken(); // eat the )
+            // then a {
+            if(_currentToken.type != Token.Type.LBRACE)
+                throw new ScriptCompileException("Method bodies must begin with '{'", _currentToken);
+            nextToken();
+            auto statements = parseStatements(Token.Type.RBRACE);
+            nextToken(); // eat }
+            // now we have a method but if this is the constructor
+            if(currentMethodName == "constructor")
+            {
+                if(constructor !is null)
+                    throw new ScriptCompileException("Classes may only have one constructor", classToken);
+                // if this is extending a class it MUST have ONE super call
+                if(baseClass !is null)
+                {
+                    ulong numSupers = 0;
+                    foreach(stmt ; statements)
+                    {
+                        if(cast(SuperCallStatementNode)stmt)
+                            numSupers++;
+                    }
+                    if(numSupers != 1)
+                        throw new ScriptCompileException("Derived class constructors must have one super call", 
+                                classToken);
+                }
+                constructor = new ScriptFunction(className, argNames, statements, true);
+            }
+            else // it's just another method
+            {
+                // TODO check for duplicate methods
+                methods ~= new ScriptFunction(className ~ ".prototype." ~ currentMethodName, 
+                        argNames, statements, false);
+                methodNames ~= currentMethodName;
+            }
+        }
+        nextToken(); // eat the class body }
+        if(baseClass !is null)
+            _baseClassStack = _baseClassStack[0..$-1];
+        if(constructor is null)
+            constructor = ScriptFunction.emptyFunction(className, true);
+        return new ClassDeclarationStatementNode(lineNumber, className, constructor, methodNames, methods, baseClass);
+    }
+
+    SuperCallStatementNode parseSuperCallStatement()
+    {
+        immutable lineNumber = _currentToken.position.line;
+        if(_baseClassStack.length == 0)
+            throw new ScriptCompileException("Super keyword may only be used in constructors of derived classes", 
+                    _currentToken);
+        nextToken();
+        if(_currentToken.type != Token.Type.LPAREN)
+            throw new ScriptCompileException("Super call parameters must begin with '('", _currentToken);
+        nextToken();
+        auto expressions = parseCommaSeparatedExpressions(Token.Type.RPAREN);
+        nextToken(); // eat the )
+        if(_currentToken.type != Token.Type.SEMICOLON)
+            throw new ScriptCompileException("Missing ';' at end of super statement", _currentToken);
+        nextToken();
+        size_t topClass = _baseClassStack.length - 1; // @suppress(dscanner.suspicious.length_subtraction)
+        return new SuperCallStatementNode(lineNumber, _baseClassStack[topClass], expressions);
+    }
+
     Node[] parseCommaSeparatedExpressions(in Token.Type stop)
     {
         Node[] expressions;
@@ -800,4 +917,5 @@ private:
     size_t _tokenIndex = 0;
     Token _currentToken;
     int _loopStack = 0;
+    Node[] _baseClassStack; // in case we have nested class declarations
 }

@@ -42,6 +42,8 @@ ScriptObject getStringPrototype()
     if(_stringPrototype is null)
     {
         _stringPrototype = new ScriptObject("string", null);
+        _stringPrototype["charAt"] = new ScriptFunction("String.charAt", &native_String_charAt);
+        _stringPrototype["charCodeAt"] = new ScriptFunction("String.charCodeAt", &native_String_charCodeAt);
     }
     return _stringPrototype;
 }
@@ -52,11 +54,20 @@ private ScriptObject _functionPrototype;
 private ScriptObject _stringPrototype;
 
 //
-// Function methods
+// Object methods /////////////////////////////////////////////////////////////
+//
+
+//
+// Array methods //////////////////////////////////////////////////////////////
+//
+
+
+//
+// Function methods ///////////////////////////////////////////////////////////
 //
 
 private ScriptAny native_Function_call(Context c, ScriptAny* thisIsFn, ScriptAny[] args, 
-                                        ref NativeFunctionError nfe)
+                                       ref NativeFunctionError nfe)
 {
     import mildew.nodes: callFunction, VisitResult;
 
@@ -85,4 +96,42 @@ private ScriptAny native_Function_call(Context c, ScriptAny* thisIsFn, ScriptAny
     }
 
     return vr.result;
+}
+
+//
+// String methods /////////////////////////////////////////////////////////////  
+//
+
+private ScriptAny native_String_charAt(Context c, ScriptAny* thisObj,
+                                       ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+
+    auto ss = thisObj.toValue!ScriptString;
+    auto index = args[0].toValue!size_t;
+
+    if(index >= ss.getWString.length)
+        return ScriptAny("");
+
+    return ScriptAny([ss.charAt(index)]);
+}
+
+private ScriptAny native_String_charCodeAt(Context c, ScriptAny* thisObj,
+                                       ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+
+    auto ss = thisObj.toValue!ScriptString;
+    auto index = args[0].toValue!size_t;
+
+    if(index >= ss.getWString.length)
+        return ScriptAny(0);
+
+    return ScriptAny(ss.charCodeAt(index));
 }

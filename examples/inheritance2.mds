@@ -1,10 +1,26 @@
-var topLevel = { top: 99 };
-var middleLevel = Object.create(topLevel);
-middleLevel.middle = 50;
-var bottomLevel = Object.create(middleLevel);
-bottomLevel.bottom = 4;
-console.log(bottomLevel.bottom);
-console.log(bottomLevel.middle);
-console.log(bottomLevel.top);
-delete bottomLevel.top;
-console.log(bottomLevel.top); // should still print 99
+class Person {
+    constructor(name, age) {
+        this.name = name;
+        this.age = age;
+    }
+    greet() {
+        console.log(this.name + " says hi");
+    }
+}
+
+class Employee extends Person {
+    constructor(name, age, workPlace) {
+        super(name, age);
+        this.workPlace = workPlace;
+    }
+    work() {
+        console.log(this.name + " (age " + this.age + ") works at " + this.workPlace);
+    }
+}
+
+var person = new Person("Tester", 69);
+person.greet();
+
+var e1 = new Employee("Vladimir Lenin", 53, "Soviet Russia");
+e1.greet();
+e1.work();
