@@ -30,6 +30,8 @@ private int unaryOpPrecedence(Token opToken)
         case Token.Type.NOT:
         case Token.Type.PLUS:
         case Token.Type.DASH:
+        case Token.Type.INC:
+        case Token.Type.DEC:
             return 17;
         default: 
             return 0;

@@ -249,6 +249,7 @@ class UnaryOpNode : Node
         if(vr.exception !is null)
             return vr;
         auto value = vr.result;
+        int incOrDec = 0;
         switch(opToken.type)
         {
             case Token.Type.BIT_NOT:
@@ -259,11 +260,33 @@ class UnaryOpNode : Node
                 return VisitResult(value);
             case Token.Type.DASH:
                 return VisitResult(-value);
+            case Token.Type.DEC:
+                incOrDec = -1;
+                break;
+            case Token.Type.INC:
+                incOrDec = 1;
+                break;
             default:
                 if(opToken.isKeyword("typeof"))
                     return VisitResult(value.typeToString());
                 return VisitResult(ScriptAny.UNDEFINED);
         }
+
+        if(incOrDec != 0)
+        {
+            if(vr.accessType == VisitResult.AccessType.VAR_ACCESS)
+                return handleVarReassignment(c, Token.createFakeToken(Token.Type.PLUS_ASSIGN,""), 
+                    vr.memberOrVarToAccess, ScriptAny(incOrDec));
+            else if(vr.accessType == VisitResult.AccessType.ARRAY_ACCESS)
+                return handleArrayReassignment(c, Token.createFakeToken(Token.Type.PLUS_ASSIGN,""), 
+                    vr.objectToAccess, vr.indexToAccess, ScriptAny(incOrDec));
+            else if(vr.accessType == VisitResult.AccessType.OBJECT_ACCESS)
+                return handleObjectReassignment(c, Token.createFakeToken(Token.Type.PLUS_ASSIGN,""), 
+                    vr.objectToAccess, vr.memberOrVarToAccess, ScriptAny(incOrDec));
+            else
+                vr.exception = new ScriptRuntimeException("Invalid operand for " ~ opToken.symbol);
+        }
+        return vr;
     }
 
     Token opToken;
