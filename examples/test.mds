@@ -1,0 +1,18 @@
+class Base {
+    m1() {
+        console.log("Calling base");
+    }
+}
+
+class Derived extends Base {
+    m1() {
+        Base.prototype.m1.call(this);
+        console.log("Calling derived");
+    }   
+}
+
+var d = new Derived();
+d.m1();
+// As of Dec 29 01:23 this produces the correct output
+
+
