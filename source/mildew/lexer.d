@@ -159,6 +159,14 @@ struct Token
     }
 
     /**
+     * Checks for a specific identifier
+     */
+    bool isIdentifier(in string id) const 
+    {
+        return (type == Type.IDENTIFIER && text == id);
+    }
+
+    /**
      * Returns true if the token is an assignment operator such as =, +=, or -=, etc.
      */
     bool isAssignmentOperator()
@@ -291,7 +299,7 @@ public:
         "if", "else", "while", "do", "for", "of", "in",
         "switch", "case", "default",
         "break", "continue", "return", 
-        "function", "class", "super", "extends", "get", "set", "static",
+        "function", "class", "super", "extends",
         "new", "delete", "typeof",
         "throw", "try", "catch"
     );

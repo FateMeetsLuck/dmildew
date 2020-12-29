@@ -816,17 +816,17 @@ private:
             PropertyType ptype = PropertyType.NONE;
             string currentMethodName = "";
             // could be a get or set
-            if(_currentToken.isKeyword("get"))
+            if(_currentToken.isIdentifier("get"))
             {
                 ptype = PropertyType.GET;
                 nextToken();
             }
-            else if(_currentToken.isKeyword("set"))
+            else if(_currentToken.isIdentifier("set"))
             {
                 ptype = PropertyType.SET;
                 nextToken();
             }
-            else if(_currentToken.isKeyword("static"))
+            else if(_currentToken.isIdentifier("static"))
             {
                 ptype = PropertyType.STATIC;
                 nextToken();
