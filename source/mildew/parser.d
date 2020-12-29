@@ -855,13 +855,22 @@ private:
             }
             else // it's just another method
             {
-                // TODO check for duplicate methods
                 methods ~= new ScriptFunction(className ~ ".prototype." ~ currentMethodName, 
                         argNames, statements, false);
                 methodNames ~= currentMethodName;
             }
         }
         nextToken(); // eat the class body }
+
+        // check for duplicate methods
+        bool[string] mnameMap;
+        foreach(mname ; methodNames)
+        {
+            if(mname in mnameMap)
+                throw new ScriptCompileException("Duplicate methods are not allowed", classToken);
+            mnameMap[mname] = true;
+        }
+
         if(baseClass !is null)
             _baseClassStack = _baseClassStack[0..$-1];
         if(constructor is null)

@@ -31,6 +31,7 @@ This language is stricter than JavaScript. Global variables cannot be redeclared
 ## Current Goals
 
 * Implement postfix and prefix increment and decrement operators.
+* Implement the terniary operator (?:)
 * Refactor code to easily implement all math assignment operators (such as `*=`).
 * Allow selected bound functions to be used as properties similar to D's UFCS.
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
