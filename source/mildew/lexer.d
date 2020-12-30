@@ -247,7 +247,7 @@ public:
                 tokens ~= makeIdKwOrLabel();
             else if(currentChar.isDigit)
                 tokens ~= makeIntOrDoubleToken();
-            else if(currentChar == '\'' || currentChar == '"')
+            else if(currentChar == '\'' || currentChar == '"' || currentChar == '`')
                 tokens ~= makeStringToken();
             else if(currentChar == '>')
                 tokens ~= makeRAngleBracketToken();
@@ -449,12 +449,15 @@ private:
         auto startpos = _position;
         advanceChar();
         string text = "";
+        Token.LiteralFlag lflag = Token.LiteralFlag.NONE;
+        if(closeQuote == '`')
+            lflag = Token.LiteralFlag.TEMPLATE_STRING;
         while(currentChar != closeQuote)
         {
             if(currentChar == '\0')
                 throw new ScriptCompileException("Missing close quote for string literal", 
                     Token.createInvalidToken(_position, text));
-            else if(currentChar == '\n')
+            else if(currentChar == '\n' && lflag != Token.LiteralFlag.TEMPLATE_STRING)
                 throw new ScriptCompileException("Line breaks inside string literal are not allowed", 
                     Token.createInvalidToken(_position, text));
             else if(currentChar == '\\')
@@ -470,7 +473,9 @@ private:
                 text ~= currentChar;
             advanceChar();
         }
-        return Token(Token.Type.STRING, startpos, text);
+        auto tok = Token(Token.Type.STRING, startpos, text);
+        tok.literalFlag = lflag;
+        return tok;
     }
 
     Token makeRAngleBracketToken()

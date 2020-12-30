@@ -42,7 +42,60 @@ class LiteralNode : Node
 
     override VisitResult visit(Context c)
     {
-        return VisitResult(value);
+        import mildew.parser: Parser;
+        import mildew.lexer: Lexer;
+
+        // we have to handle `` strings here
+        if(literalToken.literalFlag == Token.LiteralFlag.TEMPLATE_STRING)
+        {
+            size_t currentStart = 0;
+            size_t endLast;
+            bool addToParseString = false;
+            string result;
+            string stringToParse;
+            for(size_t index = 0; index < literalToken.text.length; ++index)
+            {
+                if(literalToken.text[index] == '$' 
+                    && index < literalToken.text.length - 1) // @suppress(dscanner.suspicious.length_subtraction)
+                {
+                    if(literalToken.text[index+1] == '{')
+                    {
+                        addToParseString = true;
+                        index += 1;
+                    }
+                }
+                else if(literalToken.text[index] == '}' && addToParseString)
+                {
+                    result ~= literalToken.text[currentStart .. endLast];
+                    auto lexer = Lexer(stringToParse);
+                    auto parser = Parser(lexer.tokenize());
+                    auto expressionNode = parser.parseExpression();
+                    auto vr = expressionNode.visit(c);
+                    if(vr.exception !is null)
+                        return vr;
+                    result ~= vr.result.toString();
+                    addToParseString = false;
+                    currentStart = index+1;
+                    stringToParse = "";
+                }
+                else
+                {
+                    if(addToParseString)
+                        stringToParse ~= literalToken.text[index];
+                    else
+                        endLast = index + 1;
+                }
+            }
+            if(currentStart < literalToken.text.length)
+                result ~= literalToken.text[currentStart .. endLast];
+            return VisitResult(result);
+
+        }
+        else 
+        {
+            // parser handles other Lflags
+            return VisitResult(value);
+        }
     }
 
     Token literalToken;

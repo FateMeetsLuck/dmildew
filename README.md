@@ -30,6 +30,8 @@ The function or delegate signature that can be wrapped inside a ScriptAny (and t
 
 This language is stricter than JavaScript. Global variables cannot be redeclared unless they are undefined by setting them to `undefined`. Local variables cannot be redeclared in the same scope likewise. Semicolons are required in a manner similar to C# or Java.
 
+Since all programs are run in a scope, the `var` keyword declares variables that are stored in the global scope, while `let` and `const` work the same as in ES6. This is more similar to Lua.
+
 ## Help
 
 There is now a ##dmildew channel on the Freenode IRC network. If no one is there, leave a question or comment on the github project page.
@@ -41,7 +43,6 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Implement class expression that can be assigned to variables or consts.
 * Refactor code to easily implement all math assignment operators (such as `*=`).
 * Support vararg with `...nameOfArgs` syntax.
-* Implement interpolated backtick strings.
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
 * Implement ES6 destructuring declaration and assignments of arrays and objects into variables.
 * Bind classes with one line of code with mixins and template metaprogramming.

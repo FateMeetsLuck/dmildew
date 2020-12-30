@@ -178,6 +178,84 @@ struct Parser
         return new BlockStatementNode(lineNo, statements);
     }
 
+package:
+
+    /// parse a single expression. See https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
+    /// for algorithm.
+    Node parseExpression(int minPrec = 1)
+    {      
+        Node primaryLeft = null;
+
+        immutable unOpPrec = _currentToken.unaryOpPrecedence;
+        if(unOpPrec > minPrec)
+        {
+            auto opToken = _currentToken;
+            nextToken();
+            primaryLeft = parsePrimaryExpression();
+            primaryLeft = new UnaryOpNode(opToken, primaryLeft);
+        }
+        else
+        {
+            primaryLeft = parsePrimaryExpression();
+        }
+
+        while(true)
+        {
+            auto opToken = _currentToken;
+            immutable prec = opToken.binaryOpPrecedence;
+            if(prec == 0)
+                break;
+            immutable isLeftAssoc = opToken.isBinaryOpLeftAssociative;
+            immutable nextMinPrec = isLeftAssoc? prec + 1 : prec;
+            nextToken();
+            if(opToken.type == Token.Type.DOT)
+            {
+                auto right = parsePrimaryExpression();
+                if(cast(VarAccessNode)right is null)
+                    throw new ScriptCompileException("Object members must be valid identifiers", _currentToken);
+                if(unOpPrec != 0 && prec > unOpPrec)
+                {
+                    auto uon = cast(UnaryOpNode)primaryLeft;
+                    primaryLeft = new UnaryOpNode(uon.opToken, new MemberAccessNode(uon.operandNode, right));
+                }
+                else
+                    primaryLeft = new MemberAccessNode(primaryLeft, right);
+            }
+            else if(opToken.type == Token.Type.LBRACKET)
+            {
+                auto index = parseExpression();
+                if(_currentToken.type != Token.Type.RBRACKET)
+                    throw new ScriptCompileException("Missing ']'", _currentToken);
+                nextToken();
+                if(unOpPrec != 0 && prec > unOpPrec)
+                {
+                    auto uon = cast(UnaryOpNode)primaryLeft;
+                    primaryLeft = new UnaryOpNode(uon.opToken, new ArrayIndexNode(uon.operandNode, index));
+                }
+                else
+                    primaryLeft = new ArrayIndexNode(primaryLeft, index);
+            }
+            else if(opToken.type == Token.Type.LPAREN)
+            {
+                auto params = parseCommaSeparatedExpressions(Token.Type.RPAREN);
+                nextToken();
+                if(unOpPrec != 0 && prec > unOpPrec)
+                {
+                    auto uon = cast(UnaryOpNode)primaryLeft;
+                    primaryLeft = new UnaryOpNode(uon.opToken, new FunctionCallNode(uon.operandNode, params));
+                }
+                else
+                    primaryLeft = new FunctionCallNode(primaryLeft, params);
+            }
+            else 
+            {
+                Node primaryRight = parseExpression(nextMinPrec);
+                primaryLeft = new BinaryOpNode(opToken, primaryLeft, primaryRight);
+            }
+        }
+        return primaryLeft;
+    }
+
 private:
 
     /// parses a single statement
@@ -308,82 +386,6 @@ private:
             }
         }
         return statement;
-    }
-
-    /// parse a single expression. See https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
-    /// for algorithm.
-    Node parseExpression(int minPrec = 1)
-    {      
-        Node primaryLeft = null;
-
-        immutable unOpPrec = _currentToken.unaryOpPrecedence;
-        if(unOpPrec > minPrec)
-        {
-            auto opToken = _currentToken;
-            nextToken();
-            primaryLeft = parsePrimaryExpression();
-            primaryLeft = new UnaryOpNode(opToken, primaryLeft);
-        }
-        else
-        {
-            primaryLeft = parsePrimaryExpression();
-        }
-
-        while(true)
-        {
-            auto opToken = _currentToken;
-            immutable prec = opToken.binaryOpPrecedence;
-            if(prec == 0)
-                break;
-            immutable isLeftAssoc = opToken.isBinaryOpLeftAssociative;
-            immutable nextMinPrec = isLeftAssoc? prec + 1 : prec;
-            nextToken();
-            if(opToken.type == Token.Type.DOT)
-            {
-                auto right = parsePrimaryExpression();
-                if(cast(VarAccessNode)right is null)
-                    throw new ScriptCompileException("Object members must be valid identifiers", _currentToken);
-                if(unOpPrec != 0 && prec > unOpPrec)
-                {
-                    auto uon = cast(UnaryOpNode)primaryLeft;
-                    primaryLeft = new UnaryOpNode(uon.opToken, new MemberAccessNode(uon.operandNode, right));
-                }
-                else
-                    primaryLeft = new MemberAccessNode(primaryLeft, right);
-            }
-            else if(opToken.type == Token.Type.LBRACKET)
-            {
-                auto index = parseExpression();
-                if(_currentToken.type != Token.Type.RBRACKET)
-                    throw new ScriptCompileException("Missing ']'", _currentToken);
-                nextToken();
-                if(unOpPrec != 0 && prec > unOpPrec)
-                {
-                    auto uon = cast(UnaryOpNode)primaryLeft;
-                    primaryLeft = new UnaryOpNode(uon.opToken, new ArrayIndexNode(uon.operandNode, index));
-                }
-                else
-                    primaryLeft = new ArrayIndexNode(primaryLeft, index);
-            }
-            else if(opToken.type == Token.Type.LPAREN)
-            {
-                auto params = parseCommaSeparatedExpressions(Token.Type.RPAREN);
-                nextToken();
-                if(unOpPrec != 0 && prec > unOpPrec)
-                {
-                    auto uon = cast(UnaryOpNode)primaryLeft;
-                    primaryLeft = new UnaryOpNode(uon.opToken, new FunctionCallNode(uon.operandNode, params));
-                }
-                else
-                    primaryLeft = new FunctionCallNode(primaryLeft, params);
-            }
-            else 
-            {
-                Node primaryRight = parseExpression(nextMinPrec);
-                primaryLeft = new BinaryOpNode(opToken, primaryLeft, primaryRight);
-            }
-        }
-        return primaryLeft;
     }
 
     Node parsePrimaryExpression()
