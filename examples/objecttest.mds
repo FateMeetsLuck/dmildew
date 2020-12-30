@@ -7,3 +7,5 @@ var manyKeys = {
 };
 
 console.log(Object.keys(manyKeys));
+console.log(Object.values(manyKeys));
+// As of Dec 30 00:53 2020 This program produces the correct output

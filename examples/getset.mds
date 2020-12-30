@@ -13,7 +13,7 @@ console.log(rect1.area);
 try {
     rect1.area = 29;
 } catch(e) {
-    console.error("Could not assign to area: " + e);
+    console.error(`Could not assign to area: ${e}`);
 }
 
 class GetSet {
@@ -29,4 +29,4 @@ var a = new GetSet();
 a.prop = -23.53;
 console.log(a.prop);
 
-// As of Dec 29 16:33 this program produces the correct output
+// As of Dec 30 00:47 2020 This program produces the correct output

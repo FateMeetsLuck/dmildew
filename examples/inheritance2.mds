@@ -4,7 +4,7 @@ class Person {
         this.age = age;
     }
     greet() {
-        console.log(this.name + " says hi");
+        console.log(`${this.name} says hi`);
     }
 }
 
@@ -14,7 +14,7 @@ class Employee extends Person {
         this.workPlace = workPlace;
     }
     work() {
-        console.log(this.name + " (age " + this.age + ") works at " + this.workPlace);
+        console.log(`${this.name} (age ${this.age}) works at ${this.workPlace}`);
     }
 }
 
@@ -25,3 +25,4 @@ var e1 = new Employee("Vladimir Lenin", 53, "CCCP");
 e1.greet();
 e1.work();
 console.log(e1.eat === undefined);
+// As of Dec 30 00:51 2020 This program produces the correct output.

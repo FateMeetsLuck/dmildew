@@ -55,13 +55,29 @@ class LiteralNode : Node
             string stringToParse;
             for(size_t index = 0; index < literalToken.text.length; ++index)
             {
-                if(literalToken.text[index] == '$' 
-                    && index < literalToken.text.length - 1) // @suppress(dscanner.suspicious.length_subtraction)
+                if(literalToken.text[index] == '$')
                 {
-                    if(literalToken.text[index+1] == '{')
+                    if(index < literalToken.text.length - 1) // @suppress(dscanner.suspicious.length_subtraction)
                     {
-                        addToParseString = true;
-                        index += 1;
+                        if(literalToken.text[index+1] == '{')
+                        {
+                            addToParseString = true;
+                            index += 1;
+                        }
+                        else
+                        {
+                            if(addToParseString)
+                                stringToParse ~= literalToken.text[index];
+                            else
+                                endLast = index + 1;
+                        }
+                    }
+                    else 
+                    {
+                        if(addToParseString)
+                            stringToParse ~= literalToken.text[index];
+                        else
+                            endLast = index + 1; 
                     }
                 }
                 else if(literalToken.text[index] == '}' && addToParseString)

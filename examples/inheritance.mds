@@ -1,10 +1,15 @@
+/**
+ * Defines a simple class representing a person with an age and name
+ * @param name The name of the person (string)
+ * @param age The age of the person (integer)
+ */
 function Person(name, age) {
     this.name = name;
     this.age = age;
 }
 
 Person.prototype.greet = function() {
-    console.log(this.name + " says hello.");
+    console.log(`${this.name} says hello.`);
 };
 
 function Employee(name, age, placeOfWork) {
@@ -14,7 +19,7 @@ function Employee(name, age, placeOfWork) {
 
 Employee.prototype = Object.create(Person.prototype);
 Employee.prototype.work = function() {
-    console.log(this.name + " is working.");
+    console.log(`${this.name} is working.`);
 };
 
 var e1 = new Employee("Courtney", 30, "Gas station");
@@ -29,3 +34,4 @@ console.log(e2.__proto__);
 var p1 = new Person("Joseph Stalin", 74);
 p1.greet();
 console.log(p1.__proto__);
+// As of Dec 30 00:48 2020 This program produces the correct output.

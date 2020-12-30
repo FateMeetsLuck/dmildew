@@ -5,5 +5,6 @@ function factorial(n) {
 }
 
 for(let i = 0; i <= 10; i += 1) {
-    console.log("The factorial of " + i + " is " + factorial(i));
+    console.log(`The factorial of ${i} is ${factorial(i)}`);
 }
+// As of Dec 30 00:46 2020 This program produces the correct output

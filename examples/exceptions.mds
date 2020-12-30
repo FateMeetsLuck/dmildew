@@ -1,6 +1,6 @@
 try {
     foo = 22;
 } catch(e) {
-    console.error("Caught exception: " + e);
+    console.error(`Caught exception: ${e}`);
 }
-// As of Dec 29 16:34 this program produces the correct output
+// As of Dec 30 00:45 2020 this program produces the correct output
