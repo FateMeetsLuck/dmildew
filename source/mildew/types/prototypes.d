@@ -1,3 +1,7 @@
+/**
+ * This module implements the __proto__ field given to each special object such as ScriptObject, ScriptFunction,
+ * ScriptArray, and ScriptString.
+ */
 module mildew.types.prototypes;
 
 import mildew.context;
@@ -8,6 +12,8 @@ import mildew.types.string;
 import mildew.types.object;
 
 package(mildew):
+
+// TODO initialize all the constructors for the Mildew builtin classes such as Object and Function here
 
 ScriptObject getObjectPrototype()
 {

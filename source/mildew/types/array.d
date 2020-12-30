@@ -26,7 +26,7 @@ public:
     size_t length() const { return _array.length; }
 
     /**
-     * This override allows for the length pseudoproperty
+     * This override allows for the length field
      */
     override ScriptAny lookupField(in string name)
     {

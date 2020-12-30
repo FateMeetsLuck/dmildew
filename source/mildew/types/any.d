@@ -1,3 +1,6 @@
+/**
+ * This module implements the ScriptAny struct, which can hold any value type usable in the scripting language.
+ */
 module mildew.types.any;
 
 import std.conv: to;
@@ -54,8 +57,8 @@ public:
     }
 
     /**
-     * Implements binary math operations between two ScriptAnys and returns a ScriptAny. If the
-     * operation makes no sense, the result is always ScriptAny.UNDEFINED
+     * Implements binary math operations between two ScriptAnys and returns a ScriptAny. For
+     * certain operations that make no sense the result will be NaN or UNDEFINED
      */
     auto opBinary(string op)(auto ref const ScriptAny rhs) const
     {
@@ -88,7 +91,7 @@ public:
         {
             // only makes sense for numbers
             if(!(this.isNumber && rhs.isNumber))
-                return UNDEFINED;
+                return ScriptAny(double.nan);
             // if either is floating point convert both to float
             if(_type == Type.DOUBLE || rhs._type == Type.DOUBLE)
                 mixin("return ScriptAny(toValue!double" ~ op ~ "rhs.toValue!double);");
@@ -99,14 +102,14 @@ public:
         {
             // both must be casted to double
             if(!(this.isNumber && rhs.isNumber))
-                return UNDEFINED;
+                return ScriptAny(double.nan);
             mixin("return ScriptAny(toValue!double" ~ op ~ "rhs.toValue!double);");
         }
         // for the bitwise operations the values MUST be cast to long
         else static if(op == "&" || op == "|" || op == "^" || op == "<<" || op == ">>" || op == ">>>")
         {
             if(!(this.isNumber && rhs.isNumber))
-                return UNDEFINED;
+                return ScriptAny(0);
             mixin("return ScriptAny(toValue!long" ~ op ~ "rhs.toValue!long);");
         }
         else
@@ -158,6 +161,8 @@ public:
             success = true;
             return _asObject.lookupField(index.to!string);
         }
+        else
+            static assert(false, "Invalid index type");
     }
 
     /**
@@ -170,7 +175,8 @@ public:
     }
 
     /**
-     * Attempt to assign a property of a complex object
+     * Attempt to assign a field of a complex object. This can be used to assign array indexes if
+     * the index is a number.
      */
     ScriptAny assignField(T)(T index, ScriptAny value, out bool success)
     {
@@ -202,9 +208,10 @@ public:
             if(!isObject)
                 return UNDEFINED;
             success = true;
-            return _asObject.assignProperty(index.to!string, value);
+            return _asObject.assignField(index.to!string, value);
         }
-        return UNDEFINED;
+        else
+            static assert(false, "Invalid index type");
     }
 
     /**
@@ -237,14 +244,10 @@ public:
     }
 
     /**
-     * Defines unary math operations for a ScriptAny. These have to be numbers otherwise the
-     * result is undefined.
+     * Defines unary math operations for a ScriptAny.
      */
     auto opUnary(string op)()
     {
-        // any unary operation on undefined is undefined. Any of these on non-numbers is also undefined
-        if(_type == Type.UNDEFINED || !this.isNumber)
-            return UNDEFINED;
         // plus and minus can work on doubles or longs
         static if(op == "+" || op == "-")
         {
@@ -430,7 +433,7 @@ public:
             case Type.ARRAY:
             case Type.FUNCTION: 
             case Type.OBJECT:
-                return _asObject is other._asObject;
+                return _asObject == other._asObject;
         }
     }
 
@@ -475,8 +478,8 @@ public:
     }
 
     /**
-     * This should always be used instead of checking type==OBJECT because ScriptFunction is a valid
-     * subclass of ScriptObject.
+     * This should always be used instead of checking type==OBJECT because ScriptFunction, ScriptArray,
+     * and ScriptString are valid subclasses of ScriptObject.
      */
     auto isObject() const nothrow @nogc
     {
@@ -493,7 +496,7 @@ public:
 
     /**
      * Similar to checkValue except if the type is invalid and doesn't match the template type, a sane
-     * default value such as 0 is returned instead of throwing an exception.
+     * default value such as 0 or null is returned instead of throwing an exception.
      */
     T toValue(T)() const
     {
@@ -518,7 +521,7 @@ public:
     }
 
     /**
-     * Shorthand to access properties of the complex object types
+     * Shorthand to access fields of the complex object types
      */
     ScriptAny opIndex(in string index)
     {
@@ -528,7 +531,7 @@ public:
     }
 
     /**
-     * Shorthand to assign properties of the complex object types
+     * Shorthand to assign fields of the complex object types
      */
     ScriptAny opIndexAssign(T)(T value, string index)
     {
@@ -622,7 +625,7 @@ private:
             if(_asObject is null)
                 _type = Type.NULL;
         }
-        else static if(is(T == ScriptObject))
+        else static if(is(T : ScriptObject))
         {
             _type = Type.OBJECT;
             _asObject = value;
@@ -780,7 +783,7 @@ private:
                 return cast(T)_asObject;
             }
         }
-        else static if(is(T == ScriptObject))
+        else static if(is(T : ScriptObject))
         {
             if(!isObject)
             {
@@ -808,6 +811,8 @@ private:
                 return _asObject.nativeObject!T;
             }
         }
+        else
+            static assert(false, "This type is not supported: " ~ T.stringof);
     }
 
     Type _type = Type.UNDEFINED;

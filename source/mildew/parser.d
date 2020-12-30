@@ -482,15 +482,17 @@ private:
                 }
                 else if(_currentToken.text == "new")
                 {
-                    auto newToken = _currentToken;
+                    immutable newToken = _currentToken;
                     nextToken();
                     auto expression = parseExpression();
-                    // TODO allow new ClassName with no parameters
                     auto fcn = cast(FunctionCallNode)expression;
                     if(fcn is null)
-                        throw new ScriptCompileException("Invalid new expression", newToken);
+                    {
+                        // if this isn't a function call, turn it into one
+                        fcn = new FunctionCallNode(expression, [], true);
+                    }
                     fcn.returnThis = true;
-                    left = new NewExpressionNode(expression);                    
+                    left = new NewExpressionNode(fcn);                    
                 }
                 else
                     throw new ScriptCompileException("Unexpected keyword in primary expression", _currentToken);

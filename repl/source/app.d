@@ -63,15 +63,14 @@ int main(string[] args)
             try 
             {
                 string input = strip(terminal.getline("mildew> "));
-                writeln();
                 if(input == "#exit" || input == "")
                     break;
                 while(input.length > 0 && input[$-1]=='\\')
                 {
                     input = input[0..$-1];
                     input ~= "\n" ~ strip(terminal.getline(">>> "));
-                    writeln();
                 }
+                writeln();
                 evaluateWithErrorChecking(interpreter, input);
             }
             catch(UserInterruptionException ex)

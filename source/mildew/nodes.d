@@ -42,10 +42,12 @@ class LiteralNode : Node
 
     override VisitResult visit(Context c)
     {
+        import mildew.exceptions: ScriptCompileException;
         import mildew.parser: Parser;
         import mildew.lexer: Lexer;
 
         // we have to handle `` strings here
+        // this probably needs to be re-written with easy string building
         if(literalToken.literalFlag == Token.LiteralFlag.TEMPLATE_STRING)
         {
             size_t currentStart = 0;
@@ -85,8 +87,18 @@ class LiteralNode : Node
                     result ~= literalToken.text[currentStart .. endLast];
                     auto lexer = Lexer(stringToParse);
                     auto parser = Parser(lexer.tokenize());
-                    auto expressionNode = parser.parseExpression();
-                    auto vr = expressionNode.visit(c);
+                    Node expressionNode;
+                    VisitResult vr;
+                    try 
+                    {
+                        expressionNode = parser.parseExpression();
+                    }
+                    catch(ScriptCompileException ex)
+                    {
+                        vr.exception = new ScriptRuntimeException(ex.msg);
+                        return vr;
+                    }
+                    vr = expressionNode.visit(c);
                     if(vr.exception !is null)
                         return vr;
                     result ~= vr.result.toString();

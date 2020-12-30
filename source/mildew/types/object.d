@@ -1,10 +1,12 @@
+/**
+ * This module implements ScriptObject, the base class for builtin Mildew objects.
+ */
 module mildew.types.object;
 
 /**
- * General Object class. Unlike JavaScript, the \_\_proto\_\_ property only shows up when asked for. This allows
- * allows objects to be used as dictionaries without extraneous values showing up in the for-of loop. Also,
- * objects' default \_\_proto\_\_ value is null unless native code creates an object with a specific prototype
- * object during construction.
+ * General Object class. Unlike JavaScript, the __proto__ property only shows up when asked for. This allows
+ * allows objects to be used as dictionaries without extraneous values showing up in the for-of loop. Native D objects
+ * can be stored in any ScriptObject or derived class by assigning it to its nativeObject field.
  */
 class ScriptObject
 {
@@ -17,8 +19,9 @@ public:
      * Params:
      *  typename = This does not have to be set to a meaningful value but constructors (calling script functions
      *             with the new keyword) set this value to the name of the function.
-     *  proto = The object's \_\_proto\_\_ property. If a value is not found inside the current object's table, a chain
-     *          of prototypes is searched until reaching a null prototype. This can be null.
+     *  proto = The object's __proto__ property. If a value is not found inside the current object's table, a chain
+     *          of prototypes is searched until reaching a null prototype. If this parameter is null, the value is
+     *          set to Object.prototype
      *  native = A ScriptObject can contain a native D object that can be accessed later. This is used for binding
      *           D classes.
      */
@@ -54,7 +57,7 @@ public:
     auto dictionary() { return _dictionary; }
 
     /**
-     * Add a getter
+     * Add a getter. Getters should be added to a constructor function's "prototype" field
      */
     void addGetterProperty(in string propName, ScriptFunction getter)
     {
@@ -62,7 +65,7 @@ public:
     }
 
     /**
-     * Add a setter
+     * Add a setter. Setters should be added to a constructor function's "prototype" field
      */
     void addSetterProperty(in string propName, ScriptFunction setter)
     {
@@ -70,7 +73,8 @@ public:
     }
 
     /**
-     * Looks up a property or pseudoproperty through the prototype chain
+     * Looks up a field through the prototype chain. Note that this does not call any getters because
+     * it is not possible to pass a Context to opIndex.
      */
     ScriptAny lookupField(in string name)
     {
@@ -84,7 +88,7 @@ public:
     }
 
     /**
-     * Shorthand for lookupProperty
+     * Shorthand for lookupField.
      */
     ScriptAny opIndex(in string index)
     {
@@ -92,7 +96,7 @@ public:
     }
 
     /**
-     * Assigns a value to the current object
+     * Assigns a field to the current object. This does not call any setters.
      */
     ScriptAny assignField(in string name, ScriptAny value)
     {
@@ -108,7 +112,8 @@ public:
     }
 
     /**
-     * Look up a property, not a field, with a getter if it exists
+     * Look up a property, not a field, with a getter if it exists. This is mainly used internally
+     * by the scripting language.
      */
     auto lookupProperty(Context context, in string propName)
     {
@@ -129,7 +134,8 @@ public:
     }
 
     /**
-     * Set and return a property, not a field, with a setter
+     * Set and return a property, not a field, with a setter. This is mainly used internally by the
+     * scripting language.
      */
     auto assignProperty(Context context, in string propName, ScriptAny arg)
     {
@@ -218,7 +224,8 @@ public:
 
     /**
      * Returns a string with JSON like formatting representing the object's key-value pairs as well as
-     * any nested objects.
+     * any nested objects. In the future this will be replaced and an explicit function call will be
+     * required to print this detailed information.
      */
     override string toString() const
     {

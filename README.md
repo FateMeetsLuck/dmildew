@@ -42,7 +42,7 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Implement the terniary operator (?:).
 * Implement class expression that can be assigned to variables or consts.
 * Refactor code to easily implement all math assignment operators (such as `*=`).
-* Support vararg with `...nameOfArgs` syntax.
+* Support vararg with arguments keyword.
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
 * Implement ES6 destructuring declaration and assignments of arrays and objects into variables.
 * Bind classes with one line of code with mixins and template metaprogramming.

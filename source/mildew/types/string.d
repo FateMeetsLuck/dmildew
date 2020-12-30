@@ -1,3 +1,7 @@
+/**
+ * This module implements ScriptString. However, host applications should work with D strings by converting
+ * the ScriptAny directly to string.
+ */
 module mildew.types.string;
 
 import mildew.types.object;
