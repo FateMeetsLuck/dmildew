@@ -27,7 +27,7 @@ public:
      */
     this(in string typename, ScriptObject proto, Object native = null)
     {
-        import mildew.types.prototypes: getObjectPrototype;
+        import mildew.types.bindings: getObjectPrototype;
         _name = typename;
         if(proto !is null)
             _prototype = proto;
@@ -195,6 +195,47 @@ public:
         {
             ScriptAny any = value;
             return assignField(index, any);
+        }
+    }
+
+    /**
+     * Get a field or property depending on what the object has. The return value must be checked
+     * for a non-null exception field.
+     */
+    auto lookupFieldOrProperty(Context context, in string index)
+    {
+        import mildew.nodes: VisitResult;
+        if(hasGetter(index))
+            return lookupProperty(context, index);
+        else
+        {
+            VisitResult vr;
+            vr.result = lookupField(index);
+            return vr;
+        }        
+    }
+
+    /**
+     * Set a field or property depending on what the object has. The return value must be checked
+     * for a non-null exception field.
+     */
+    auto assignFieldOrProperty(Context context, in string index, ScriptAny value)
+    {
+        import mildew.nodes: VisitResult;
+        import mildew.exceptions: ScriptRuntimeException;
+        if(hasGetter(index) && !hasSetter(index))
+        {
+            VisitResult vr;
+            vr.exception = new ScriptRuntimeException("Object has no setter for " ~ index);
+            return vr;
+        }
+        if(hasSetter(index))
+            return assignProperty(context, index, value);
+        else
+        {
+            VisitResult vr;
+            vr.result = assignField(index, value);
+            return vr;
         }
     }
 

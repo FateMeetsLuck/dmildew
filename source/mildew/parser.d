@@ -84,6 +84,8 @@ private int binaryOpPrecedence(Token opToken)
             return 7;
         case Token.Type.OR:
             return 6;
+        case Token.Type.QUESTION:
+            return 4;
         case Token.Type.ASSIGN:
         case Token.Type.PLUS_ASSIGN:
         case Token.Type.DASH_ASSIGN:
@@ -91,7 +93,7 @@ private int binaryOpPrecedence(Token opToken)
         default:
             return 0;
     }
-    // TODO null coalesce 5, terniary 4, yield 2, comma 1?
+    // TODO null coalesce 5,yield 2, comma 1?
 }
 
 private bool isBinaryOpLeftAssociative(in Token opToken)
@@ -135,6 +137,8 @@ private bool isBinaryOpLeftAssociative(in Token opToken)
             return true;
         case Token.Type.OR:
             return true;
+        case Token.Type.QUESTION:
+            return false;
         case Token.Type.ASSIGN:
         case Token.Type.PLUS_ASSIGN:
         case Token.Type.DASH_ASSIGN:
@@ -199,16 +203,26 @@ package:
             primaryLeft = parsePrimaryExpression();
         }
 
-        while(true)
+        while(_currentToken.binaryOpPrecedence >= minPrec)
         {
             auto opToken = _currentToken;
             immutable prec = opToken.binaryOpPrecedence;
-            if(prec == 0)
-                break;
             immutable isLeftAssoc = opToken.isBinaryOpLeftAssociative;
             immutable nextMinPrec = isLeftAssoc? prec + 1 : prec;
             nextToken();
-            if(opToken.type == Token.Type.DOT)
+            debug writefln("THe minPrec=%s, nextMinPrec=%s and the primaryLeft=%s", 
+                    minPrec, nextMinPrec, primaryLeft.toString);
+            if(opToken.type == Token.Type.QUESTION)
+            {
+                // primaryLeft is our condition node
+                auto onTrue = parseExpression();
+                if(_currentToken.type != Token.Type.COLON)
+                    throw new ScriptCompileException("Expected ':' in terniary operator expression", _currentToken);
+                nextToken();
+                auto onFalse = parseExpression();
+                primaryLeft = new TerniaryOpNode(primaryLeft, onTrue, onFalse);
+            }
+            else if(opToken.type == Token.Type.DOT)
             {
                 auto right = parsePrimaryExpression();
                 if(cast(VarAccessNode)right is null)
@@ -253,6 +267,7 @@ package:
                 primaryLeft = new BinaryOpNode(opToken, primaryLeft, primaryRight);
             }
         }
+
         return primaryLeft;
     }
 

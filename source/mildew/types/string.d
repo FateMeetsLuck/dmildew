@@ -18,7 +18,7 @@ public:
      */
     this(in string str)
     {
-        import mildew.types.prototypes: getStringPrototype;
+        import mildew.types.bindings: getStringPrototype;
         super("string", getStringPrototype, null);
         _wstring = str.to!wstring;
     }

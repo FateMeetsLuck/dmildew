@@ -322,7 +322,8 @@ class BinaryOpNode : Node
                     return VisitResult(false);
                 }
                 else
-                    throw new Exception("Forgot to implement missing binary operator " ~ opToken.type.to!string);
+                    throw new Exception("Forgot to implement missing binary operator " 
+                        ~ opToken.type.to!string ~ " for " ~ this.toString());
         }
     }
 
@@ -393,6 +394,42 @@ class UnaryOpNode : Node
 
     Token opToken;
     Node operandNode;
+}
+
+class TerniaryOpNode : Node 
+{
+    this(Node cond, Node onTrue, Node onFalse)
+    {
+        conditionNode = cond;
+        onTrueNode = onTrue;
+        onFalseNode = onFalse;
+    }
+
+    override string toString() const 
+    {
+        return conditionNode.toString() ~ "? " ~ onTrueNode.toString() ~ " : " ~ onFalseNode.toString();
+    }
+
+    override VisitResult visit(Context c)
+    {
+        // first evaluate the condition
+        auto vr = conditionNode.visit(c);
+        if(vr.exception !is null)
+            return vr;
+        if(vr.result)
+        {
+            vr = onTrueNode.visit(c);
+        }
+        else
+        {
+            vr = onFalseNode.visit(c);
+        }
+        return vr;
+    }
+
+    Node conditionNode;
+    Node onTrueNode;
+    Node onFalseNode;
 }
 
 class VarAccessNode : Node
@@ -1898,7 +1935,7 @@ VisitResult callFunction(Context context, ScriptFunction fn, ScriptAny thisObj,
     }
 }
 
-/// holds information from visiting nodes
+/// holds information from visiting nodes TODO redesign this as a union
 struct VisitResult
 {
     enum AccessType { NO_ACCESS=0, VAR_ACCESS, ARRAY_ACCESS, OBJECT_ACCESS }

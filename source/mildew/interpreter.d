@@ -35,12 +35,12 @@ public:
      */
     void initializeStdlib()
     {
+        import mildew.types.bindings: initializeTypesLibrary;
         import mildew.stdlib.global: initializeGlobalLibrary;
-        import mildew.stdlib.object: initializeObjectLibrary;
         import mildew.stdlib.console: initializeConsoleLibrary;
         import mildew.stdlib.math: initializeMathLibrary;
+        initializeTypesLibrary(this);
         initializeGlobalLibrary(this);
-        initializeObjectLibrary(this);
         initializeConsoleLibrary(this);
         initializeMathLibrary(this);
     }

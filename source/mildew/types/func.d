@@ -44,7 +44,7 @@ public:
     this(string fname, NativeFunction nfunc, bool isClass = false)
     {
         immutable tname = isClass? "class" : "function";
-        import mildew.types.prototypes: getFunctionPrototype;
+        import mildew.types.bindings: getFunctionPrototype;
         super(tname, getFunctionPrototype, null);
         _functionName = fname;
         initializePrototypeProperty();
@@ -61,7 +61,7 @@ public:
     this(string fname, NativeDelegate ndele, bool isClass = false)
     {
         immutable tname = isClass? "class" : "function";
-        import mildew.types.prototypes: getFunctionPrototype;
+        import mildew.types.bindings: getFunctionPrototype;
         super(tname, getFunctionPrototype, null);
         _functionName = fname;
         initializePrototypeProperty();
@@ -90,7 +90,7 @@ package(mildew):
     this(string fnname, string[] args, StatementNode[] statementNodes, bool isClass=false)
     {
         immutable tname = isClass? "class" : "function";
-        import mildew.types.prototypes: getFunctionPrototype;
+        import mildew.types.bindings: getFunctionPrototype;
         super(tname, getFunctionPrototype, null);
         _functionName = fnname;
         _argNames = args;

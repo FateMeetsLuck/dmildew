@@ -1,10 +1,11 @@
 /**
  * This module implements the __proto__ field given to each special object such as ScriptObject, ScriptFunction,
- * ScriptArray, and ScriptString.
+ * ScriptArray, and ScriptString, as well as the static methods for Object, Array, Function, and String
  */
-module mildew.types.prototypes;
+module mildew.types.bindings;
 
 import mildew.context;
+import mildew.interpreter;
 import mildew.types.any;
 import mildew.types.array;
 import mildew.types.func;
@@ -13,7 +14,21 @@ import mildew.types.object;
 
 package(mildew):
 
-// TODO initialize all the constructors for the Mildew builtin classes such as Object and Function here
+/**
+ * Initializes the bindings of builtin types such as Object, Function, String, and Array. This function is not
+ * required because these objects already have their __proto__ set correctly when constructed.
+ */
+void initializeTypesLibrary(Interpreter interpreter)
+{
+    ScriptAny Object_ctor = new ScriptFunction("Object", &native_Object_constructor, true);
+    Object_ctor["prototype"] = getObjectPrototype();
+    Object_ctor["prototype"]["constructor"] = Object_ctor;
+    // static Object methods
+    Object_ctor["create"] = new ScriptFunction("Object.create", &native_Object_s_create);
+    Object_ctor["keys"] = new ScriptFunction("Object.keys", &native_Object_s_keys);
+    Object_ctor["values"] = new ScriptFunction("Object.values", &native_Object_s_values);
+    interpreter.forceSetGlobal("Object", Object_ctor, false); // maybe should be const
+}
 
 ScriptObject getObjectPrototype()
 {
@@ -62,6 +77,77 @@ private ScriptObject _stringPrototype;
 //
 // Object methods /////////////////////////////////////////////////////////////
 //
+
+private ScriptAny native_Object_constructor(Context c, ScriptAny* thisObj, ScriptAny[] args, 
+        ref NativeFunctionError nfe)
+{
+    if(args.length >= 1)
+    {
+        if(args[0].isObject)
+            *thisObj = args[0];
+    }
+    return ScriptAny.UNDEFINED;
+}
+
+/**
+ * Object.create: This can be called by the script to create a new object whose prototype is the
+ * parameter.
+ */
+private ScriptAny native_Object_s_create(Context context,  // @suppress(dscanner.style.phobos_naming_convention)
+        ScriptAny* thisObj, 
+        ScriptAny[] args, 
+        ref NativeFunctionError nfe)
+{
+    if(args.length < 1)
+    {
+        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
+        return ScriptAny.UNDEFINED;
+    }
+
+    if(!args[0].isObject)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+
+    auto newObj = new ScriptObject("", args[0].toValue!ScriptObject);
+
+    return ScriptAny(newObj);
+}
+
+/// returns an array of keys of an object (or function)
+private ScriptAny native_Object_s_keys(Context context,
+        ScriptAny* thisObj,
+        ScriptAny[] args,
+        ref NativeFunctionError nfe)
+{
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+    
+    if(!args[0].isObject)
+        return ScriptAny.UNDEFINED;
+
+    auto sobj = args[0].toValue!ScriptObject;
+    auto keys = ScriptAny(sobj.dictionary.keys);
+    return keys;
+}
+
+/// returns an array of values of an object (or function)
+private ScriptAny native_Object_s_values(Context context,
+        ScriptAny* thisObj,
+        ScriptAny[] args,
+        ref NativeFunctionError nfe)
+{
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+    
+    if(!args[0].isObject)
+        return ScriptAny.UNDEFINED;
+
+    auto sobj = args[0].toValue!ScriptObject;
+    auto values = ScriptAny(sobj.dictionary.values);
+    return values;
+}
 
 //
 // Array methods //////////////////////////////////////////////////////////////
