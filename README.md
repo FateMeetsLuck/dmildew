@@ -37,9 +37,11 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 ## Current Goals
 
 * Implement postfix increment and decrement operators.
-* Implement the terniary operator (?:)
+* Implement the terniary operator (?:).
+* Implement hexadecimal, octal, and binary integer literals.
 * Implement class expression that can be assigned to variables or consts.
 * Refactor code to easily implement all math assignment operators (such as `*=`).
+* Support vararg with `...nameOfArgs` syntax.
 * Implement interpolated backtick strings.
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
 * Implement ES6 destructuring declaration and assignments of arrays and objects into variables.

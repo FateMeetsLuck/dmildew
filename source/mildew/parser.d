@@ -388,6 +388,8 @@ private:
 
     Node parsePrimaryExpression()
     {
+        import std.conv: to;
+
         Node left = null;
         switch(_currentToken.type)
         {
@@ -402,11 +404,21 @@ private:
                 left = parseObjectLiteral();
                 break;
             case Token.Type.DOUBLE:
-                left = new LiteralNode(_currentToken, ScriptAny(to!double(_currentToken.text)));
+                if(_currentToken.literalFlag == Token.LiteralFlag.NONE)
+                    left = new LiteralNode(_currentToken, ScriptAny(to!double(_currentToken.text)));
+                else
+                    throw new ScriptCompileException("Malformed floating point token detected", _currentToken);
                 nextToken();
                 break;
             case Token.Type.INTEGER:
-                left = new LiteralNode(_currentToken, ScriptAny(to!long(_currentToken.text)));
+                if(_currentToken.literalFlag == Token.LiteralFlag.NONE)
+                    left = new LiteralNode(_currentToken, ScriptAny(to!long(_currentToken.text)));
+                else if(_currentToken.literalFlag == Token.LiteralFlag.HEXADECIMAL)
+                    left = new LiteralNode(_currentToken, ScriptAny(_currentToken.text[2..$].to!long(16)));
+                else if(_currentToken.literalFlag == Token.LiteralFlag.OCTAL)
+                    left = new LiteralNode(_currentToken, ScriptAny(_currentToken.text[2..$].to!long(8)));
+                else if(_currentToken.literalFlag == Token.LiteralFlag.BINARY)
+                    left = new LiteralNode(_currentToken, ScriptAny(_currentToken.text[2..$].to!long(2)));
                 nextToken();
                 break;
             case Token.Type.STRING:

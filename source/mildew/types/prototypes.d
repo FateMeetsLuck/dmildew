@@ -1,13 +1,13 @@
 module mildew.types.prototypes;
 
-package:
-
 import mildew.context;
 import mildew.types.any;
 import mildew.types.array;
 import mildew.types.func;
 import mildew.types.string;
 import mildew.types.object;
+
+package(mildew):
 
 ScriptObject getObjectPrototype()
 {

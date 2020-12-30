@@ -69,9 +69,9 @@ struct Token
      * This enum is currently unused but will be needed when hexadecimal, octal, and binary integer literals
      * are supported.
      */
-    enum NumLiteralFlag
+    enum LiteralFlag
     {
-        NONE, BINARY, OCTAL, HEXADECIMAL
+        NONE, BINARY, OCTAL, HEXADECIMAL, TEMPLATE_STRING
     }
 
     /// Type of token
@@ -81,7 +81,7 @@ struct Token
     /// Optional text for keywords and identifiers
     string text;
     /// Optional flag for integer literals. (Currently unused)
-    NumLiteralFlag numLiteralFlag = NumLiteralFlag.NONE;
+    LiteralFlag literalFlag = LiteralFlag.NONE;
 
     /**
      * Returns a string representing the type of the token and the optional text if present.
@@ -207,6 +207,19 @@ private bool continuesKeywordOrIdentifier(in char ch)
 {
     // TODO support unicode by converting string to dchar
     return ch.isAlphaNum || ch == '_' || ch == '$';
+}
+
+private bool charIsValidDigit(in char ch, in Token.LiteralFlag lflag)
+{
+    if(lflag == Token.LiteralFlag.NONE)
+        return ch.isDigit || ch == '.' || ch == 'e';
+    else if(lflag == Token.LiteralFlag.HEXADECIMAL)
+        return ch.isDigit || (ch.toLower >= 'a' && ch.toLower <= 'f');
+    else if(lflag == Token.LiteralFlag.OCTAL)
+        return (ch >= '0' && ch <= '7');
+    else if(lflag == Token.LiteralFlag.BINARY)
+        return ch == '0' || ch == '1';
+    return false;
 }
 
 /// Lexes code and returns the individual tokens
@@ -371,35 +384,63 @@ private:
         immutable startpos = _position;
         auto dotCounter = 0;
         auto eCounter = 0;
-        // TODO: read first two numbers and possibly consider 0x or 0b or 0o
-        while(peekChar.isDigit || peekChar == '.' || peekChar.toLower == 'e')
+        Token.LiteralFlag lflag = Token.LiteralFlag.NONE;
+        if(peekChar.toLower == 'x')
+        {
+            lflag = Token.LiteralFlag.HEXADECIMAL;
+            advanceChar();
+        }
+        else if(peekChar.toLower == 'o')
+        {
+            lflag = Token.LiteralFlag.OCTAL;
+            advanceChar();
+        }
+        else if(peekChar.toLower == 'b')
+        {
+            lflag = Token.LiteralFlag.BINARY;
+            advanceChar();
+        }
+        // if the lflag was set, the first char has to be 0
+        if(lflag != Token.LiteralFlag.NONE && _text[start] != '0')
+            throw new ScriptCompileException("Malformed integer literal", Token.createInvalidToken(startpos));
+        
+        // while(peekChar.isDigit || peekChar == '.' || peekChar.toLower == 'e')
+        while(peekChar.charIsValidDigit(lflag))
         {
             advanceChar();
-            if(currentChar == '.')
+            if(lflag == Token.LiteralFlag.NONE)
             {
-                ++dotCounter;
-                if(dotCounter > 1)
-                    throw new ScriptCompileException("Too many decimals in number literal", 
-                        Token.createInvalidToken(_position));
-            }
-            else if(currentChar.toLower == 'e')
-            {
-                ++eCounter;
-                if(eCounter > 1)
-                    throw new ScriptCompileException("Numbers can only have one exponent specifier", 
-                        Token.createInvalidToken(_position));
-                if(peekChar == '+' || peekChar == '-')
-                    advanceChar();
-                if(!peekChar.isDigit)
-                    throw new ScriptCompileException("Exponent specifier must be followed by number", 
-                        Token.createInvalidToken(_position));
+                if(currentChar == '.')
+                {
+                    ++dotCounter;
+                    if(dotCounter > 1)
+                        throw new ScriptCompileException("Too many decimals in number literal", 
+                            Token.createInvalidToken(_position));
+                }
+                else if(currentChar.toLower == 'e')
+                {
+                    ++eCounter;
+                    if(eCounter > 1)
+                        throw new ScriptCompileException("Numbers can only have one exponent specifier", 
+                            Token.createInvalidToken(_position));
+                    if(peekChar == '+' || peekChar == '-')
+                        advanceChar();
+                    if(!peekChar.isDigit)
+                        throw new ScriptCompileException("Exponent specifier must be followed by number", 
+                            Token.createInvalidToken(_position));
+                }
             }
         }
         auto text = _text[start.._index+1];
+        if(lflag != Token.LiteralFlag.NONE && text.length <= 2)
+            throw new ScriptCompileException("Malformed hex/octal/binary integer", Token.createInvalidToken(startpos));
+        Token resultToken;
         if(dotCounter == 0 && eCounter == 0)
-            return Token(Token.Type.INTEGER, startpos, text);
+            resultToken = Token(Token.Type.INTEGER, startpos, text);
         else
-            return Token(Token.Type.DOUBLE, startpos, text);
+            resultToken = Token(Token.Type.DOUBLE, startpos, text);
+        resultToken.literalFlag = lflag;
+        return resultToken;
     }
 
     Token makeStringToken()
