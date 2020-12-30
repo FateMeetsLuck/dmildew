@@ -15,6 +15,7 @@ public void initializeConsoleLibrary(Interpreter interpreter)
 {
     auto consoleNamespace = new ScriptObject("Console", null);
     consoleNamespace["log"] = ScriptAny(new ScriptFunction("console.log", &native_console_log));
+    consoleNamespace["put"] = ScriptAny(new ScriptFunction("console.put", &native_console_put));
     consoleNamespace["error"] = ScriptAny(new ScriptFunction("console.error", &native_console_error));
     interpreter.forceSetGlobal("console", consoleNamespace, true);
 }
@@ -25,9 +26,26 @@ private ScriptAny native_console_log(Context context,
         ref NativeFunctionError nfe)
 {
     import std.stdio: write, writeln;
-    foreach(arg ; args)
-        write(arg.toString ~ " ");
+    if(args.length > 0)
+        write(args[0].toString());
+    if(args.length > 1)
+        foreach(arg ; args[1..$])
+            write(" " ~ arg.toString);
     writeln();
+    return ScriptAny.UNDEFINED;
+}
+
+private ScriptAny native_console_put(Context context,
+        ScriptAny* thisObj,
+        ScriptAny[] args,
+        ref NativeFunctionError nfe)
+{
+import std.stdio: write, writeln;
+    if(args.length > 0)
+        write(args[0].toString());
+    if(args.length > 1)
+        foreach(arg ; args[1..$])
+            write(" " ~ arg.toString);
     return ScriptAny.UNDEFINED;
 }
 

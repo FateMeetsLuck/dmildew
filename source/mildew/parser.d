@@ -210,8 +210,6 @@ package:
             immutable isLeftAssoc = opToken.isBinaryOpLeftAssociative;
             immutable nextMinPrec = isLeftAssoc? prec + 1 : prec;
             nextToken();
-            debug writefln("THe minPrec=%s, nextMinPrec=%s and the primaryLeft=%s", 
-                    minPrec, nextMinPrec, primaryLeft.toString);
             if(opToken.type == Token.Type.QUESTION)
             {
                 // primaryLeft is our condition node
