@@ -15,6 +15,7 @@ import mildew.types;
  */
 public void initializeObjectLibrary(Interpreter interpreter)
 {
+    // TODO: Object should be a constructor
     auto objNamespace = new ScriptObject("Object", null);
     objNamespace["create"] = ScriptAny(new ScriptFunction("Object.create", &native_Object_create));
     objNamespace["keys"] = ScriptAny(new ScriptFunction("Object.keys", &native_Object_keys));

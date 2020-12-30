@@ -38,7 +38,6 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 
 * Implement postfix increment and decrement operators.
 * Implement the terniary operator (?:).
-* Implement hexadecimal, octal, and binary integer literals.
 * Implement class expression that can be assigned to variables or consts.
 * Refactor code to easily implement all math assignment operators (such as `*=`).
 * Support vararg with `...nameOfArgs` syntax.

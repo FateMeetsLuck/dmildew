@@ -388,7 +388,7 @@ private:
 
     Node parsePrimaryExpression()
     {
-        import std.conv: to;
+        import std.conv: to, ConvException;
 
         Node left = null;
         switch(_currentToken.type)
@@ -411,14 +411,21 @@ private:
                 nextToken();
                 break;
             case Token.Type.INTEGER:
-                if(_currentToken.literalFlag == Token.LiteralFlag.NONE)
-                    left = new LiteralNode(_currentToken, ScriptAny(to!long(_currentToken.text)));
-                else if(_currentToken.literalFlag == Token.LiteralFlag.HEXADECIMAL)
-                    left = new LiteralNode(_currentToken, ScriptAny(_currentToken.text[2..$].to!long(16)));
-                else if(_currentToken.literalFlag == Token.LiteralFlag.OCTAL)
-                    left = new LiteralNode(_currentToken, ScriptAny(_currentToken.text[2..$].to!long(8)));
-                else if(_currentToken.literalFlag == Token.LiteralFlag.BINARY)
-                    left = new LiteralNode(_currentToken, ScriptAny(_currentToken.text[2..$].to!long(2)));
+                try 
+                {
+                    if(_currentToken.literalFlag == Token.LiteralFlag.NONE)
+                        left = new LiteralNode(_currentToken, ScriptAny(to!long(_currentToken.text)));
+                    else if(_currentToken.literalFlag == Token.LiteralFlag.HEXADECIMAL)
+                        left = new LiteralNode(_currentToken, ScriptAny(_currentToken.text[2..$].to!long(16)));
+                    else if(_currentToken.literalFlag == Token.LiteralFlag.OCTAL)
+                        left = new LiteralNode(_currentToken, ScriptAny(_currentToken.text[2..$].to!long(8)));
+                    else if(_currentToken.literalFlag == Token.LiteralFlag.BINARY)
+                        left = new LiteralNode(_currentToken, ScriptAny(_currentToken.text[2..$].to!long(2)));
+                }
+                catch(ConvException ex)
+                {
+                    throw new ScriptCompileException("Integer literal is too long", _currentToken);
+                }
                 nextToken();
                 break;
             case Token.Type.STRING:
