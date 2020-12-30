@@ -300,7 +300,7 @@ public:
         "switch", "case", "default",
         "break", "continue", "return", 
         "function", "class", "super", "extends",
-        "new", "delete", "typeof",
+        "new", "delete", "typeof", "instanceof",
         "throw", "try", "catch"
     );
 

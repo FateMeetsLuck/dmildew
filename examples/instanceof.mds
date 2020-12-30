@@ -1,0 +1,14 @@
+class Foo {
+
+}
+
+class Bar extends Foo {
+
+}
+
+class Unrelated {}
+
+var bar = new Bar();
+console.log(bar instanceof Unrelated); // false
+console.log(bar instanceof Bar); // true
+console.log(bar instanceof Foo); // true

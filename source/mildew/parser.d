@@ -40,7 +40,9 @@ private int unaryOpPrecedence(Token opToken)
 
 private int binaryOpPrecedence(Token opToken)
 {
-    // TODO handle keywords in and instanceof as 12 here
+    // TODO handle keywords in as 12 here
+    if(opToken.isKeyword("instanceof"))
+        return 12;
 
     // see grammar.txt for explanation of magic constants
     switch(opToken.type)

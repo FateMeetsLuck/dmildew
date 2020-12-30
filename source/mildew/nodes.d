@@ -217,10 +217,31 @@ class BinaryOpNode : Node
             case Token.Type.BIT_XOR:
                 return VisitResult(lhs ^ rhs);
             case Token.Type.BIT_OR:
-                return VisitResult(lhs | rhs); 
+                return VisitResult(lhs | rhs);
+            case Token.Type.AND:
+                return VisitResult(lhs && rhs);
+            case Token.Type.OR:
+                return VisitResult(lhs || rhs);
             default:
-                throw new Exception("Forgot to implement missing binary operator " ~ opToken.type.to!string);
-                // return VisitResult(ScriptValue.UNDEFINED);
+                if(opToken.isKeyword("instanceof"))
+                {
+                    if(!lhs.isObject)
+                        return VisitResult(false);
+                    if(rhs.type != ScriptAny.Type.FUNCTION)
+                        return VisitResult(false);
+                    auto lhsObj = lhs.toValue!ScriptObject; // @suppress(dscanner.suspicious.unmodified)
+                    auto rhsFunc = rhs.toValue!ScriptFunction; // @suppress(dscanner.suspicious.unmodified)
+                    auto proto = lhsObj.prototype;
+                    while(proto !is null)
+                    {
+                        if(proto["constructor"].toValue!ScriptFunction is rhsFunc)
+                            return VisitResult(true);
+                        proto = proto.prototype;
+                    }
+                    return VisitResult(false);
+                }
+                else
+                    throw new Exception("Forgot to implement missing binary operator " ~ opToken.type.to!string);
         }
     }
 

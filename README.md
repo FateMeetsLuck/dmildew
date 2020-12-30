@@ -38,7 +38,7 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 
 * Implement postfix increment and decrement operators.
 * Implement the terniary operator (?:)
-* Implement instanceof operator.
+* Implement class expression that can be assigned to variables or consts.
 * Refactor code to easily implement all math assignment operators (such as `*=`).
 * Implement interpolated backtick strings.
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
