@@ -16,6 +16,7 @@ void initializeDateLibrary(Interpreter interpreter)
 {
     auto Date_ctor = new ScriptFunction("Date", &native_Date_ctor, true);
     Date_ctor["prototype"] = getDatePrototype();
+    Date_ctor["prototype"]["getMonth"] = new ScriptFunction("Date.prototype.getMonth", &native_Date_getMonth);
     interpreter.forceSetGlobal("Date", Date_ctor, false);
 }
 
@@ -56,6 +57,11 @@ public:
         super("Date", getDatePrototype());
         auto dt = DateTime.fromSimpleString(str);
         _sysTime = SysTime(dt, UTC());
+    }
+
+    int getMonth() const
+    {
+        return cast(int)(_sysTime.month) - 1;
     }
 
     override string toString() const
@@ -116,4 +122,15 @@ ScriptAny native_Date_ctor(Context c, ScriptAny* thisObj, ScriptAny[] args, ref 
         return ScriptAny(tex.msg);
     }
     return ScriptAny.UNDEFINED;
+}
+
+ScriptAny native_Date_getMonth(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto dateObj = cast(ScriptDate)*thisObj;
+    if(dateObj is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    return ScriptAny(dateObj.getMonth);
 }

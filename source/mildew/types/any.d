@@ -39,12 +39,11 @@ public:
     }
 
     /**
-     * Note that opCast calls the checkValue method. This will throw an exception if the type is
-     * incorrect and the cast is invalid.
+     * opCast will now use toValue
      */
     T opCast(T)() const
     {
-        return checkValue!T();
+        return toValue!T();
     }
 
     /**
