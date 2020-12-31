@@ -1,6 +1,4 @@
 function sum() {
-    if(!isdefined('arguments'))
-        return 0;
     let sum = 0;
     for(let each of arguments) {
         sum += each;

@@ -1876,12 +1876,9 @@ VisitResult callFunction(Context context, ScriptFunction fn, ScriptAny thisObj,
         // push args by name as locals
         for(size_t i=0; i < min(args.length, fn.argNames.length); ++i)
             context.forceSetVarOrConst(fn.argNames[i], args[i], false);
-        // if arguments are more than argumentNames list, put the rest in an arguments array
-        if(args.length > fn.argNames.length)
-        {
-            auto restOfArgs = args[fn.argNames.length .. $];
-            context.forceSetVarOrConst("arguments", ScriptAny(restOfArgs), false);
-        }
+        // put all arguments in an array called arguments
+        context.forceSetVarOrConst("arguments", ScriptAny(args), false);
+        // set up "this"
         context.forceSetVarOrConst("this", thisObj, true);
         foreach(statement ; fn.statementNodes)
         {

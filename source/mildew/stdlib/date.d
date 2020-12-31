@@ -16,6 +16,7 @@ void initializeDateLibrary(Interpreter interpreter)
 {
     auto Date_ctor = new ScriptFunction("Date", &native_Date_ctor, true);
     Date_ctor["prototype"] = getDatePrototype();
+    Date_ctor["prototype"]["constructor"] = Date_ctor; // only way instanceof will work
     Date_ctor["prototype"]["getMonth"] = new ScriptFunction("Date.prototype.getMonth", &native_Date_getMonth);
     interpreter.forceSetGlobal("Date", Date_ctor, false);
 }
@@ -78,12 +79,13 @@ private:
 
 ScriptObject _datePrototype;
 
+/// This is necessary so that Date.prototype and Date instances' __proto__ are the same because the prototype
+///  gets written before the function call.
 ScriptObject getDatePrototype()
 {
     if(_datePrototype is null)
     {
         _datePrototype = new ScriptObject("Date", null);
-        // nothing to put here yet
     }
     return _datePrototype;
 }
