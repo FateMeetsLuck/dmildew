@@ -38,10 +38,12 @@ public:
         import mildew.types.bindings: initializeTypesLibrary;
         import mildew.stdlib.global: initializeGlobalLibrary;
         import mildew.stdlib.console: initializeConsoleLibrary;
+        import mildew.stdlib.date: initializeDateLibrary;
         import mildew.stdlib.math: initializeMathLibrary;
         initializeTypesLibrary(this);
         initializeGlobalLibrary(this);
         initializeConsoleLibrary(this);
+        initializeDateLibrary(this);
         initializeMathLibrary(this);
     }
 

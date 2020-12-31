@@ -1892,7 +1892,9 @@ VisitResult callFunction(Context context, ScriptFunction fn, ScriptAny thisObj,
         if(returnThis)
         {
             bool _; // @suppress(dscanner.suspicious.unmodified)
-            vr.result = *(context.lookupVariableOrConst("this", _));
+            immutable thisPtr = cast(immutable)context.lookupVariableOrConst("this", _);
+            if(thisPtr != null)
+                vr.result = *thisPtr;
         }
         context = context.parent;
         return vr;                           
@@ -1927,7 +1929,7 @@ VisitResult callFunction(Context context, ScriptFunction fn, ScriptAny thisObj,
                 vr.exception = new ScriptRuntimeException("Wrong argument type to native method");
                 break;
             case NativeFunctionError.RETURN_VALUE_IS_EXCEPTION:
-                vr.exception = new ScriptRuntimeException(vr.result.toString);
+                vr.exception = new ScriptRuntimeException(returnValue.toString());
                 break;
         }
         // finally return the result
