@@ -15,8 +15,6 @@ import mildew.types;
 void initializeDateLibrary(Interpreter interpreter)
 {
     auto Date_ctor = new ScriptFunction("Date", &native_Date_ctor, true);
-    Date_ctor["prototype"] = getDatePrototype();
-    Date_ctor["prototype"]["constructor"] = Date_ctor; // only way instanceof will work
     Date_ctor["prototype"]["getMonth"] = new ScriptFunction("Date.prototype.getMonth", &native_Date_getMonth);
     interpreter.forceSetGlobal("Date", Date_ctor, false);
 }
@@ -26,7 +24,7 @@ package:
 /**
  * The Date class
  */
-class ScriptDate : ScriptObject
+class ScriptDate
 {
 public:
     /**
@@ -34,13 +32,11 @@ public:
      */ 
     this()
     {
-        super("Date", getDatePrototype());
         _sysTime = Clock.currTime();
     }
 
     this(in long num)
     {
-        super("Date", getDatePrototype());
         _sysTime = SysTime.fromUnixTime(num);
     }
 
@@ -48,14 +44,12 @@ public:
          in int seconds=0, in int milliseconds=0)
     {
         import core.time: msecs;
-        super("Date", getDatePrototype());
         auto dt = DateTime(year, monthIndex+1, day, hours, minutes, seconds);
         _sysTime = SysTime(dt, msecs(milliseconds), UTC());
     }
 
     this(in string str)
     {
-        super("Date", getDatePrototype());
         auto dt = DateTime.fromSimpleString(str);
         _sysTime = SysTime(dt, UTC());
     }
@@ -79,30 +73,25 @@ private:
 
 ScriptObject _datePrototype;
 
-/// This is necessary so that Date.prototype and Date instances' __proto__ are the same because the prototype
-///  gets written before the function call.
-ScriptObject getDatePrototype()
-{
-    if(_datePrototype is null)
-    {
-        _datePrototype = new ScriptObject("Date", null);
-    }
-    return _datePrototype;
-}
-
 ScriptAny native_Date_ctor(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     import core.time: TimeException;
+    if(!thisObj.isObject)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    auto obj = thisObj.toValue!ScriptObject;
     try 
     {
         if(args.length == 0)
-            *thisObj = new ScriptDate();
+            obj.nativeObject = new ScriptDate();
         else if(args.length == 1)
         {
             if(args[0].isNumber)
-                *thisObj = new ScriptDate(args[0].toValue!long);
+                obj.nativeObject = new ScriptDate(args[0].toValue!long);
             else
-                *thisObj = new ScriptDate(args[0].toString());
+                obj.nativeObject = new ScriptDate(args[0].toString());
         }
         else if(args.length >= 2)
         {
@@ -113,7 +102,7 @@ ScriptAny native_Date_ctor(Context c, ScriptAny* thisObj, ScriptAny[] args, ref 
             immutable minutes = args.length > 4 ? args[4].toValue!int : 0; 
             immutable seconds = args.length > 5 ? args[5].toValue!int : 0;
             immutable mseconds = args.length > 6 ? args[6].toValue!int : 0;
-            *thisObj = new ScriptDate(year, month, day, hours, minutes, seconds, mseconds);
+            obj.nativeObject = new ScriptDate(year, month, day, hours, minutes, seconds, mseconds);
         }
         else
             nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
@@ -128,6 +117,11 @@ ScriptAny native_Date_ctor(Context c, ScriptAny* thisObj, ScriptAny[] args, ref 
 
 ScriptAny native_Date_getMonth(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
+    if(!thisObj.isObject)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
     auto dateObj = cast(ScriptDate)*thisObj;
     if(dateObj is null)
     {

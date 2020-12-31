@@ -34,6 +34,8 @@ Since all programs are run in a scope, the `var` keyword declares variables that
 
 For of loops cannot iterate over chars in a string so one has to write a regular for-loop that checks the length.
 
+Binding classes by inheriting from ScriptObject does not work and is not supported.
+
 ## Help
 
 There is now a ##dmildew channel on the Freenode IRC network. If no one is there, leave a question or comment on the github project page.
@@ -41,7 +43,6 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 ## Current Goals
 
 * Implement postfix increment and decrement operators.
-* Implement class expression that can be assigned to variables or consts.
 * Refactor code to easily implement all math assignment operators (such as `*=`).
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
 * Implement ES6 destructuring declaration and assignments of arrays and objects into variables.

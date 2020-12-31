@@ -624,7 +624,7 @@ private:
             if(_asObject is null)
                 _type = Type.NULL;
         }
-        else static if(is(T : ScriptObject))
+        else static if(is(T == ScriptObject))
         {
             _type = Type.OBJECT;
             _asObject = value;
@@ -782,7 +782,7 @@ private:
                 return cast(T)_asObject;
             }
         }
-        else static if(is(T : ScriptObject))
+        else static if(is(T == ScriptObject))
         {
             if(!isObject)
             {

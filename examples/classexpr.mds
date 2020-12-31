@@ -1,0 +1,19 @@
+var Foo = class {
+    constructor(a, b) {
+        this.a = a;
+        this.b = b;
+        console.log("Called Foo constructor");
+    }
+};
+
+var Bar = class extends Foo {
+    constructor(a, b, c) {
+        super(a, b);
+        this.c = c;
+        console.log("Called Bar constructor");
+    }
+};
+
+var bar = new Bar(5,6,"test");
+console.log(bar);
+// As of Dec 31 13:51 2020 This program produces the correct output.

@@ -212,6 +212,52 @@ class ObjectLiteralNode : Node
     Node[] valueNodes;
 }
 
+class ClassLiteralNode : Node 
+{
+    this(ScriptFunction cfn, Node baseClass)
+    {
+        constructorFn = cfn;
+        baseClassNode = baseClass;
+    }
+
+    override string toString() const 
+    {
+        auto str = "class";
+        if(baseClassNode !is null)
+            str ~= " extends " ~ baseClassNode.toString();
+        return str;
+    }
+
+    override VisitResult visit(Context c)
+    {
+        VisitResult vr;
+        if(baseClassNode !is null)
+        {
+            vr = baseClassNode.visit(c);
+            if(vr.exception !is null)
+                return vr;
+            if(vr.result.type != ScriptAny.Type.FUNCTION)
+            {
+                vr.exception = new ScriptRuntimeException("Only classes can be extended");
+                return vr;
+            }   
+            auto baseClassConstructor = vr.result.toValue!ScriptFunction;
+            auto constructorPrototype = constructorFn["prototype"].toValue!ScriptObject;
+            // if the base class constructor's "prototype" is null or non-object, it won't work anyway
+            // NOTE that ["prototype"] and .prototype are completely unrelated
+            constructorPrototype.prototype = baseClassConstructor["prototype"].toValue!ScriptObject;
+            // set the constructor's __proto__ to the base class so that static methods are inherited
+            // and the Function.call look up should still work
+            constructorFn.prototype = baseClassConstructor;
+        }
+        vr.result = constructorFn;
+        return vr;        
+    }
+
+    ScriptFunction constructorFn;
+    Node baseClassNode;
+}
+
 class BinaryOpNode : Node
 {
     this(Token op, Node left, Node right)
