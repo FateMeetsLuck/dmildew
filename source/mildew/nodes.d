@@ -866,7 +866,7 @@ class VarDeclarationStatementNode : StatementNode
                 if(valueToAssign.type == ScriptAny.Type.FUNCTION)
                 {
                     auto func = valueToAssign.toValue!ScriptFunction;
-                    if(func.functionName == "<anonymous function>")
+                    if(func.functionName == "<anonymous function>" || func.functionName == "Class")
                         func.functionName = van.varToken.text;
                 }
             }
