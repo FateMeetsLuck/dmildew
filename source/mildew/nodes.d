@@ -114,6 +114,12 @@ class LiteralNode : Node
                         endLast = index + 1;
                 }
             }
+            if(addToParseString)
+            {
+                VisitResult vr;
+                vr.exception = new ScriptRuntimeException("Unclosed template string expression");
+                return vr;
+            }
             if(currentStart < literalToken.text.length)
                 result ~= literalToken.text[currentStart .. endLast];
             return VisitResult(result);
@@ -193,7 +199,6 @@ class ObjectLiteralNode : Node
                 return vr;
             vals ~= vr.result;
         }
-        // TODO a universal prototype for objects?
         auto obj = new ScriptObject("", null, null);
         for(size_t i = 0; i < keys.length; ++i)
         {

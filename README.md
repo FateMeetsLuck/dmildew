@@ -32,6 +32,8 @@ This language is stricter than JavaScript. Global variables cannot be redeclared
 
 Since all programs are run in a scope, the `var` keyword declares variables that are stored in the global scope, while `let` and `const` work the same as in ES6. This is more similar to Lua.
 
+For of loops cannot iterate over chars in a string so one has to write a regular for-loop that checks the length.
+
 ## Help
 
 There is now a ##dmildew channel on the Freenode IRC network. If no one is there, leave a question or comment on the github project page.
