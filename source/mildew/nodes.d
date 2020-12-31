@@ -289,6 +289,13 @@ class BinaryOpNode : Node
 
         if(opToken.isAssignmentOperator)
         {
+            // if an anonymous class or function is being assigned we need to update its name
+            if(rhsResult.result.type == ScriptAny.Type.FUNCTION)
+            {
+                auto func = rhsResult.result.toValue!ScriptFunction;
+                if(func.functionName == "<anonymous function>" || func.functionName == "<anonymous class>")
+                    func.functionName = leftNode.toString;
+            }
             final switch(lhsResult.accessType)
             {
                 case VisitResult.AccessType.NO_ACCESS:
@@ -866,7 +873,7 @@ class VarDeclarationStatementNode : StatementNode
                 if(valueToAssign.type == ScriptAny.Type.FUNCTION)
                 {
                     auto func = valueToAssign.toValue!ScriptFunction;
-                    if(func.functionName == "<anonymous function>" || func.functionName == "Class")
+                    if(func.functionName == "<anonymous function>" || func.functionName == "<anonymous class>")
                         func.functionName = van.varToken.text;
                 }
             }

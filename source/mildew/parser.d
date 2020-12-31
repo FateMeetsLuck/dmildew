@@ -537,7 +537,7 @@ private:
     {
         immutable classToken = _currentToken;
         nextToken();
-        immutable className = "Class";
+        immutable className = "<anonymous class>";
         Node baseClass = null;
         if(_currentToken.isKeyword("extends"))
         {
