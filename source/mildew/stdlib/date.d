@@ -71,8 +71,6 @@ private:
 
 private:
 
-ScriptObject _datePrototype;
-
 ScriptAny native_Date_ctor(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     import core.time: TimeException;
@@ -122,7 +120,7 @@ ScriptAny native_Date_getMonth(Context c, ScriptAny* thisObj, ScriptAny[] args, 
         nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
         return ScriptAny.UNDEFINED;
     }
-    auto dateObj = cast(ScriptDate)*thisObj;
+    auto dateObj = (*thisObj).toValue!ScriptDate;
     if(dateObj is null)
     {
         nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;

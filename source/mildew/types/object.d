@@ -270,6 +270,8 @@ public:
      */
     override string toString() const
     {
+        if(nativeObject!Object !is null)
+            return nativeObject!Object.toString();
         return _name ~ " " ~ formattedString();
     }
 protected:

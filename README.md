@@ -34,7 +34,7 @@ Since all programs are run in a scope, the `var` keyword declares variables that
 
 For of loops cannot iterate over chars in a string so one has to write a regular for-loop that checks the length.
 
-Binding classes by inheriting from ScriptObject does not work and is not supported.
+Binding classes by extending ScriptObject will not work and is not supported.
 
 ## Help
 
