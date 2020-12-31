@@ -32,6 +32,8 @@ This language is stricter than JavaScript. Global variables cannot be redeclared
 
 Since all programs are run in a scope, the `var` keyword declares variables that are stored in the global scope, while `let` and `const` work the same as in ES6. This is more similar to Lua.
 
+If a script function receives more arguments than its parameter names, the remainder of the arguments are stored in a local array called `arguments`. The existence of these extra arguments can be checked by `isdefined('arguments')` otherwise attempting to access the arguments keyword when it isn't defined (such as when the correct number of arguments is given) will result in an error.
+
 ## Help
 
 There is now a ##dmildew channel on the Freenode IRC network. If no one is there, leave a question or comment on the github project page.
@@ -41,7 +43,6 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Implement postfix increment and decrement operators.
 * Implement class expression that can be assigned to variables or consts.
 * Refactor code to easily implement all math assignment operators (such as `*=`).
-* Support vararg with arguments keyword.
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
 * Implement ES6 destructuring declaration and assignments of arrays and objects into variables.
 * Bind classes with one line of code with mixins and template metaprogramming.
