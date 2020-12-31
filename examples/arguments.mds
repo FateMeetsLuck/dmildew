@@ -1,0 +1,14 @@
+function sum() {
+    if(!isdefined('arguments'))
+        return 0;
+    let sum = 0;
+    for(let each of arguments) {
+        sum += each;
+    }
+    return sum;
+}
+
+console.log(sum());
+console.log(sum(41));
+console.log(sum(1,2,3,4,5,6,7));
+console.log(sum(-1,-7.8));

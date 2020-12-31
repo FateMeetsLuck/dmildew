@@ -1198,64 +1198,7 @@ class ForOfStatementNode : StatementNode
         if(label != "")
             context.insertLabel(label);
 
-        if(vr.result.isObject)
-        {
-            auto obj = vr.result.toValue!ScriptObject;
-            // first value is key, second value is value if there
-            foreach(key, val; obj.dictionary)
-            {
-                // TODO optimize this to reassign variables instead of creating new ones each iteration
-                context = new Context(context, "<for_of_loop>");
-                context.declareVariableOrConst(varAccessNodes[0].varToken.text,
-                    ScriptAny(key), qualifierToken.text == "const" ? true: false);
-                if(varAccessNodes.length > 1)
-                    context.declareVariableOrConst(varAccessNodes[1].varToken.text,
-                        ScriptAny(val), qualifierToken.text == "const" ? true: false);
-                vr = bodyNode.visit(context);              
-                context = context.parent;
-                if(vr.breakFlag)
-                {
-                    if(vr.labelName == "")
-                        vr.breakFlag = false;
-                    else
-                    {
-                        if(context.labelExists(vr.labelName))
-                        {
-                            if(label == vr.labelName)
-                                vr.breakFlag = false;
-                        }
-                        else 
-                            vr.exception = new ScriptRuntimeException("Label " ~ vr.labelName ~ " doesn't exist");
-                    }
-                    break;
-                }
-                if(vr.continueFlag)
-                {
-                    if(vr.labelName == "")
-                        vr.continueFlag = false;
-                    else
-                    {
-                        if(context.labelExists(vr.labelName))
-                        {
-                            if(label == vr.labelName)
-                                vr.continueFlag = false;
-                            else
-                                break;
-                        }
-                        else
-                        {
-                            vr.exception = new ScriptRuntimeException("Label " ~ vr.labelName ~ " doesn't exist");
-                            break;
-                        }
-                    }
-                }
-                if(vr.exception !is null || vr.returnFlag)
-                    break; 
-                if(vr.exception !is null)
-                    break;
-            }
-        }
-        else if(vr.result.type == ScriptAny.Type.ARRAY)
+        if(vr.result.type == ScriptAny.Type.ARRAY)
         {
             auto arr = vr.result.toValue!(ScriptAny[]);
             for(size_t i = 0; i < arr.length; ++i)
@@ -1317,6 +1260,64 @@ class ForOfStatementNode : StatementNode
                     break;
             }
         }
+        else if(vr.result.isObject)
+        {
+            auto obj = vr.result.toValue!ScriptObject;
+            // first value is key, second value is value if there
+            foreach(key, val; obj.dictionary)
+            {
+                // TODO optimize this to reassign variables instead of creating new ones each iteration
+                context = new Context(context, "<for_of_loop>");
+                context.declareVariableOrConst(varAccessNodes[0].varToken.text,
+                    ScriptAny(key), qualifierToken.text == "const" ? true: false);
+                if(varAccessNodes.length > 1)
+                    context.declareVariableOrConst(varAccessNodes[1].varToken.text,
+                        ScriptAny(val), qualifierToken.text == "const" ? true: false);
+                vr = bodyNode.visit(context);              
+                context = context.parent;
+                if(vr.breakFlag)
+                {
+                    if(vr.labelName == "")
+                        vr.breakFlag = false;
+                    else
+                    {
+                        if(context.labelExists(vr.labelName))
+                        {
+                            if(label == vr.labelName)
+                                vr.breakFlag = false;
+                        }
+                        else 
+                            vr.exception = new ScriptRuntimeException("Label " ~ vr.labelName ~ " doesn't exist");
+                    }
+                    break;
+                }
+                if(vr.continueFlag)
+                {
+                    if(vr.labelName == "")
+                        vr.continueFlag = false;
+                    else
+                    {
+                        if(context.labelExists(vr.labelName))
+                        {
+                            if(label == vr.labelName)
+                                vr.continueFlag = false;
+                            else
+                                break;
+                        }
+                        else
+                        {
+                            vr.exception = new ScriptRuntimeException("Label " ~ vr.labelName ~ " doesn't exist");
+                            break;
+                        }
+                    }
+                }
+                if(vr.exception !is null || vr.returnFlag)
+                    break; 
+                if(vr.exception !is null)
+                    break;
+            }
+        }
+
         else 
         {
             vr.exception = new ScriptRuntimeException("Cannot iterate over " ~ objectToIterateNode.toString);
