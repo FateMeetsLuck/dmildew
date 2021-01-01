@@ -822,7 +822,7 @@ class VarDeclarationStatementNode : StatementNode
                 }
             }
             else 
-                throw new Exception("Destructuring not yet supported");
+                throw new Exception("Invalid declaration got past the parser");
         }
         return VisitResult(ScriptAny.UNDEFINED);
     }
@@ -1914,8 +1914,13 @@ VisitResult callFunction(Context context, ScriptFunction fn, ScriptAny thisObj,
     {
         context = new Context(context, fn.functionName);
         // push args by name as locals
-        for(size_t i=0; i < min(args.length, fn.argNames.length); ++i)
-            context.forceSetVarOrConst(fn.argNames[i], args[i], false);
+        for(size_t i=0; i < fn.argNames.length; ++i)
+        {
+            if(i < args.length)
+                context.forceSetVarOrConst(fn.argNames[i], args[i], false);
+            else // if an argument wasn't sent ensure it is defined as undefined at least
+                context.forceSetVarOrConst(fn.argNames[i], ScriptAny.UNDEFINED, false);
+        }
         // put all arguments in an array called arguments
         context.forceSetVarOrConst("arguments", ScriptAny(args), false);
         // set up "this"

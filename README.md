@@ -52,6 +52,8 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Implement ES6 destructuring declaration and assignments of arrays and objects into variables.
 * Bind classes with one line of code with mixins and template metaprogramming.
 * Write a more complete and robust standard library for the scripting language.
-* Allow super keyword to be used to call base class methods other than the constructor
-* Allow unicode support for source code text
+* Allow super keyword to be used to call base class methods other than the constructor.
+* Allow unicode support for source code text.
+* Reduce parse tree to bytecode.
+* Allow for yield keyword through fibers.
 
