@@ -787,96 +787,42 @@ class VarDeclarationStatementNode : StatementNode
         {
             if(auto v = cast(VarAccessNode)varNode)
             {
-                if(qualifier.text == "var")
+                auto varName = v.varToken.text;
+                visitResult = handleVarDeclaration(context, qualifier.text, varName, ScriptAny.UNDEFINED);
+                if(visitResult.exception !is null)
                 {
-                    if(!context.getGlobalContext.declareVariableOrConst(v.varToken.text, 
-                            ScriptAny.UNDEFINED, false))
-                    {
-                        // throw new Exception("Attempt to redeclare global " ~ v.varToken.text);
-                        visitResult.exception = new ScriptRuntimeException("Attempt to redeclare global "
-                            ~ v.varToken.text);
-                        visitResult.exception.scriptTraceback ~= this;
-                        return visitResult;
-                    }
+                    visitResult.exception.scriptTraceback ~= this;
+                    return visitResult;
                 }
-                else if(qualifier.text == "let")
-                {
-                    if(!context.declareVariableOrConst(v.varToken.text, ScriptAny.UNDEFINED, false))
-                    {
-                        // throw new Exception("Attempt to redeclare local " ~ v.varToken.text);
-                        visitResult.exception = new ScriptRuntimeException("Attempt to redeclare local "
-                            ~ v.varToken.text);
-                        visitResult.exception.scriptTraceback ~= this;
-                        return visitResult;
-                    }
-                }
-                else if(qualifier.text == "const")
-                {
-                    if(!context.declareVariableOrConst(v.varToken.text, ScriptAny.UNDEFINED, true))
-                    {
-                        // throw new Exception("Attempt to redeclare const " ~ v.varToken.text);
-                        visitResult.exception = new ScriptRuntimeException("Attempt to redeclare const "
-                            ~ v.varToken.text);
-                        visitResult.exception.scriptTraceback ~= this;
-                        return visitResult;
-                    }
-                }
-                else 
-                    throw new Exception("Something has gone very wrong in " ~ __FUNCTION__);
             }
-            else
+            else if(auto binNode = cast(BinaryOpNode)varNode)
             {
-                auto binNode = cast(BinaryOpNode)varNode;
+                // auto binNode = cast(BinaryOpNode)varNode;
                 visitResult = binNode.rightNode.visit(context);
                 if(visitResult.exception !is null)
                     return visitResult;
                 auto valueToAssign = visitResult.result;
                 // we checked this before so should be safe
-                auto van = cast(VarAccessNode)(binNode.leftNode);
-                auto name = van.varToken.text;
-                if(qualifier.text == "var")
+                if(auto van = cast(VarAccessNode)(binNode.leftNode))
                 {
-                    // global variable
-                    if(!context.getGlobalContext.declareVariableOrConst(name, valueToAssign, false))
+                    auto varName = van.varToken.text;
+                    visitResult = handleVarDeclaration(context, qualifier.text, varName, valueToAssign);
+                    if(visitResult.exception !is null)
                     {
-                        // throw new Exception("Attempt to redeclare global variable " ~ v.leftNode.varToken.text);
-                        visitResult.exception = new ScriptRuntimeException("Attempt to redeclare global variable "
-                            ~ name);
                         visitResult.exception.scriptTraceback ~= this;
                         return visitResult;
                     }
-                }
-                else if(qualifier.text == "let")
-                {
-                    // local variable
-                    if(!context.declareVariableOrConst(name, valueToAssign, false))
+                    // success so make sure anon function name matches
+                    if(valueToAssign.type == ScriptAny.Type.FUNCTION)
                     {
-                        // throw new Exception("Attempt to redeclare local variable " ~ v.leftNode.varToken.text);
-                        visitResult.exception = new ScriptRuntimeException("Attempt to redeclare local variable "
-                            ~ name);
-                        visitResult.exception.scriptTraceback ~= this;
-                        return visitResult;
+                        auto func = valueToAssign.toValue!ScriptFunction;
+                        if(func.functionName == "<anonymous function>" || func.functionName == "<anonymous class>")
+                            func.functionName = varName;
                     }
-                }
-                else if(qualifier.text == "const")
-                {
-                    if(!context.declareVariableOrConst(name, valueToAssign, true))
-                    {
-                        // throw new Exception("Attempt to redeclare local const " ~ v.leftNode.varToken.text);
-                        visitResult.exception = new ScriptRuntimeException("Attempt to redeclare local const "
-                            ~ name);
-                        visitResult.exception.scriptTraceback ~= this;
-                        return visitResult;
-                    }           
-                }
-                // success so make sure anon function name matches
-                if(valueToAssign.type == ScriptAny.Type.FUNCTION)
-                {
-                    auto func = valueToAssign.toValue!ScriptFunction;
-                    if(func.functionName == "<anonymous function>" || func.functionName == "<anonymous class>")
-                        func.functionName = van.varToken.text;
                 }
             }
+            else 
+                throw new Exception("Destructuring not yet supported");
         }
         return VisitResult(ScriptAny.UNDEFINED);
     }
@@ -1545,6 +1491,7 @@ class ThrowStatementNode : StatementNode
         }
         vr.exception = new ScriptRuntimeException("Uncaught script exception");
         vr.exception.thrownValue = vr.result;
+        vr.exception.scriptTraceback ~= this;
         vr.result = ScriptAny.UNDEFINED;
         return vr;
     }
@@ -1658,6 +1605,7 @@ class ClassDeclarationStatementNode : StatementNode
         {
             vr.exception = new ScriptRuntimeException("Class declaration " ~ className 
                 ~ " may not overwrite local variable or const");
+            vr.exception.scriptTraceback ~= this;
             return vr;
         }
         // fill in the function.prototype with the methods
@@ -1678,6 +1626,7 @@ class ClassDeclarationStatementNode : StatementNode
             if(vr.result.type != ScriptAny.Type.FUNCTION)
             {
                 vr.exception = new ScriptRuntimeException("Only classes can be extended");
+                vr.exception.scriptTraceback ~= this;
                 return vr;
             }   
             auto baseClassConstructor = vr.result.toValue!ScriptFunction;
@@ -1721,6 +1670,7 @@ class SuperCallStatementNode : StatementNode
         if(vr.result.type != ScriptAny.Type.FUNCTION)
         {
             vr.exception = new ScriptRuntimeException("Invalid super call");
+            vr.exception.scriptTraceback ~= this;
             return vr;
         }
         auto fn = vr.result.toValue!ScriptFunction;
@@ -1739,6 +1689,7 @@ class SuperCallStatementNode : StatementNode
         if(thisObjPtr == null)
         {
             vr.exception = new ScriptRuntimeException("Invalid `this` object in super call");
+            vr.exception.scriptTraceback ~= this;
             return vr;
         }
         vr = fn.call(c, *thisObjPtr, args, false);
@@ -1899,6 +1850,34 @@ VisitResult handleObjectReassignment(Context c, Token opToken, ScriptAny objectT
             throw new Exception("Something has gone terribly wrong");
     }
     vr.result = obj.lookupField(index);
+    return vr;
+}
+
+VisitResult handleVarDeclaration(Context c, in string qual, in string varName, ScriptAny value)
+{
+    VisitResult vr;
+    bool ok = false;
+    string msg = "";
+    if(qual == "var")
+    {
+        ok = c.getGlobalContext.declareVariableOrConst(varName, value, false);
+        if(!ok)
+            msg = "Unable to redeclare global " ~ varName;
+    }
+    else if(qual == "let")
+    {
+        ok = c.declareVariableOrConst(varName, value, false);
+        if(!ok)
+            msg = "Unable to redeclare local variable " ~ varName;
+    }
+    else if(qual == "const")
+    {
+        ok = c.declareVariableOrConst(varName, value, true);
+        if(!ok)
+            msg = "Unable to redeclare local const " ~ varName;
+    }
+    if(!ok)
+        vr.exception = new ScriptRuntimeException(msg);
     return vr;
 }
 
