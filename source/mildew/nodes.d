@@ -360,7 +360,7 @@ class BinaryOpNode : Node
             case Token.Type.AND:
                 return VisitResult(lhs && rhs);
             case Token.Type.OR:
-                return VisitResult(lhs || rhs);
+                return VisitResult(lhs.orOp(rhs));
             default:
                 if(opToken.isKeyword("instanceof"))
                 {

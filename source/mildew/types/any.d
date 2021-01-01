@@ -116,6 +116,17 @@ public:
     }
 
     /**
+     * A method so that undefined || 22 results in 22.
+     */
+    ScriptAny orOp(ScriptAny other)
+    {
+        if(!cast(bool)this)
+            return other;
+        else
+            return this;
+    }
+
+    /**
      * Depending on the type of index, if it is a string it accesses a field of the object, otherwise
      * if it is numerical, attempts to access an index of an array object.
      */
