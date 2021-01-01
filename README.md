@@ -14,7 +14,7 @@ This project is in its early stages so one should probably use the ~main version
 
 ## Running the Examples
 
-In a terminal in the main project directory run `dub run :repl -- examples/nameofexample.mds`. To try out the interactive shell simply type `dub run :repl`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after.
+In a terminal in the main project directory run `dub run :run -- examples/nameofexample.mds`. To try out the interactive shell simply type `dub run :run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after.
 
 ## Binding
 
@@ -34,7 +34,7 @@ Since all programs are run in a scope, the `var` keyword declares variables that
 
 For of loops cannot iterate over chars in a string so one has to write a regular for-loop that checks the length.
 
-Binding classes by extending ScriptObject will not work and is not supported.
+Binding classes by extending ScriptObject will not work and is not supported. Script classes that extend native D classes must call `super` in a constructor for it to work even if there are no parameters.
 
 ## Help
 
@@ -49,4 +49,5 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Bind classes with one line of code with mixins and template metaprogramming.
 * Write a more complete and robust standard library for the scripting language.
 * Allow super keyword to be used to call base class methods other than the constructor
+* Allow unicode support for source code text
 

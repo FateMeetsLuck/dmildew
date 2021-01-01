@@ -1,5 +1,5 @@
 /**
- * Bindings for the script Date class
+ * Bindings for the script Date class. This module contains both the D class definition and the script bindings.
  */
 module mildew.stdlib.date;
 
@@ -7,15 +7,29 @@ import std.datetime.systime;
 import std.datetime.date;
 import std.datetime.timezone;
 
+import mildew.binder;
 import mildew.context;
 import mildew.interpreter;
 import mildew.types;
+
+// %1$s for first parameter
 
 /// Initializes the Date library
 void initializeDateLibrary(Interpreter interpreter)
 {
     auto Date_ctor = new ScriptFunction("Date", &native_Date_ctor, true);
+    Date_ctor["prototype"]["getDate"] = new ScriptFunction("Date.prototype.getDate", &native_Date_getDate);
+    Date_ctor["prototype"]["getDay"] = new ScriptFunction("Date.prototype.getDay", &native_Date_getDay);
+    Date_ctor["prototype"]["getFullYear"] = new ScriptFunction("Date.prototype.getFullYear", &native_Date_getFullYear);
+    Date_ctor["prototype"]["getHours"] = new ScriptFunction("Date.prototype.getHours", &native_Date_getHours);
+    Date_ctor["prototype"]["getMilliseconds"] = new ScriptFunction("Date.prototype.getMilliseconds", 
+        &native_Date_getMilliseconds);
+    Date_ctor["prototype"]["getMinutes"] = new ScriptFunction("Date.prototype.getMinutes", &native_Date_getMinutes);
     Date_ctor["prototype"]["getMonth"] = new ScriptFunction("Date.prototype.getMonth", &native_Date_getMonth);
+    Date_ctor["prototype"]["getSeconds"] = new ScriptFunction("Date.prototype.getSeconds", &native_Date_getSeconds);
+    Date_ctor["prototype"]["getTime"] = new ScriptFunction("Date.prototype.getTime", &native_Date_getTime);
+    Date_ctor["prototype"]["getTimezone"] = new ScriptFunction("Date.prototype.getTimezone", &native_Date_getTimezone);
+    Date_ctor["prototype"]["setDate"] = new ScriptFunction("Date.prototype.setDate", &native_Date_setDate);
     interpreter.forceSetGlobal("Date", Date_ctor, false);
 }
 
@@ -40,6 +54,7 @@ public:
         _sysTime = SysTime.fromUnixTime(num);
     }
 
+    /// takes month 0-11 like JavaScript
     this(in int year, in int monthIndex, in int day=1, in int hours=0, in int minutes=0, 
          in int seconds=0, in int milliseconds=0)
     {
@@ -48,15 +63,76 @@ public:
         _sysTime = SysTime(dt, msecs(milliseconds), UTC());
     }
 
+    /// This string has to be formatted as "2020-Jan-01 00:00:00" for example. Anything different throws an exception
     this(in string str)
     {
         auto dt = DateTime.fromSimpleString(str);
         _sysTime = SysTime(dt, UTC());
     }
 
+    /// returns day of month
+    int getDate() const
+    {
+        auto dt = cast(DateTime)_sysTime;
+        return dt.day;
+    }
+
+    /// returns day of week
+    int getDay() const
+    {
+        auto dt = cast(DateTime)_sysTime;
+        return dt.dayOfWeek;
+    }
+
+    int getFullYear() const
+    {
+        auto dt = cast(DateTime)_sysTime;
+        return dt.year;
+    }
+
+    /// get the hour of the date
+    int getHours() const
+    {
+        return _sysTime.hour;
+    }
+
+    long getMilliseconds() const
+    {
+        return _sysTime.fracSecs.total!"msecs";
+    }
+
+    int getMinutes() const
+    {
+        return _sysTime.minute;
+    }
+
+    /// returns month from 0-11
     int getMonth() const
     {
         return cast(int)(_sysTime.month) - 1;
+    }
+
+    int getSeconds() const
+    {
+        return _sysTime.second;
+    }
+
+    long getTime() const
+    {
+        return _sysTime.toUnixTime;
+    }
+
+    long getTimezone() const
+    {
+        return _sysTime.timezone.utcOffsetAt(_sysTime.stdTime).total!"minutes";
+    }
+
+    // TODO UTC stuff
+
+    /// returns day of month
+    void setDate(in int d)
+    {
+        _sysTime.day = d;
     }
 
     override string toString() const
@@ -113,6 +189,72 @@ ScriptAny native_Date_ctor(Context c, ScriptAny* thisObj, ScriptAny[] args, ref 
     return ScriptAny.UNDEFINED;
 }
 
+ScriptAny native_Date_getDate(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto date = thisObj.toNativeObject!ScriptDate;
+    if(date is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    return ScriptAny(date.getDate());
+}
+
+ScriptAny native_Date_getDay(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto date = thisObj.toNativeObject!ScriptDate;
+    if(date is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    return ScriptAny(date.getDay());
+}
+
+ScriptAny native_Date_getFullYear(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto date = thisObj.toNativeObject!ScriptDate;
+    if(date is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    return ScriptAny(date.getFullYear());
+}
+
+ScriptAny native_Date_getHours(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto date = thisObj.toNativeObject!ScriptDate;
+    if(date is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    return ScriptAny(date.getHours());
+}
+
+ScriptAny native_Date_getMilliseconds(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto date = thisObj.toNativeObject!ScriptDate;
+    if(date is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    return ScriptAny(date.getMilliseconds());
+}
+
+ScriptAny native_Date_getMinutes(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto date = thisObj.toNativeObject!ScriptDate;
+    if(date is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    return ScriptAny(date.getMinutes());
+}
+
 ScriptAny native_Date_getMonth(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(!thisObj.isObject)
@@ -128,3 +270,45 @@ ScriptAny native_Date_getMonth(Context c, ScriptAny* thisObj, ScriptAny[] args, 
     }
     return ScriptAny(dateObj.getMonth);
 }
+
+ScriptAny native_Date_getSeconds(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto date = thisObj.toNativeObject!ScriptDate;
+    if(date is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    return ScriptAny(date.getSeconds());
+}
+
+ScriptAny native_Date_getTime(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto date = thisObj.toNativeObject!ScriptDate;
+    if(date is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    return ScriptAny(date.getTime());
+}
+
+ScriptAny native_Date_getTimezone(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto date = thisObj.toNativeObject!ScriptDate;
+    if(date is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    return ScriptAny(date.getTimezone());
+}
+
+ScriptAny native_Date_setDate(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
+    mixin(TO_ARG_CHECK_INDEX!("d", 0, int));
+    date.setDate(d);
+    return ScriptAny.UNDEFINED;
+}
+

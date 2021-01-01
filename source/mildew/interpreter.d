@@ -51,6 +51,9 @@ public:
      * This is the main entry point for evaluating a script program.
      * Params:
      *  code = This is the code of a script to be executed.
+     * Returns:
+     *  If the script has a return statement with an expression, this value will be the result of that expression
+     *  otherwise it will be ScriptAny.UNDEFINED
      */
     ScriptAny evaluate(in string code)
     {
@@ -85,6 +88,16 @@ public:
     {
         _globalContext.forceSetVarOrConst(name, ScriptAny(value), isConst);
     }
+
+    /**
+     * Unsets a variable or constant in the global context. Used by host applications to remove
+     * items that were loaded by the standard library load functions.
+     */
+    void forceUnsetGlobal(in string name)
+    {
+        _globalContext.forceRemoveVarOrConst(name);
+    }
+    
 
 private:
 

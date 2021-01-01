@@ -502,6 +502,16 @@ public:
         return convertValue!T(false);    
     }
 
+    /**
+     * Shorthand for returning nativeObject from casting this to ScriptObject
+     */
+    T toNativeObject(T)() const
+    {
+        if(!isObject)
+            return cast(T)null;
+        return _asObject.nativeObject!T;
+    }
+
     /// For use with the scripting language's typeof operator
     string typeToString() const
     {
@@ -661,7 +671,7 @@ private:
             _type = Type.NULL;
             _asObject = null;
         }
-        else
+        else // can't directly set D objects because ScriptAny must be verified as a ScriptObject first!
             static assert(false, "This type is not supported: " ~ T.stringof);
     }
 

@@ -183,6 +183,17 @@ public:
         }
     }
 
+    /**
+     * Forces the removal of a const or variable in the current context.
+     */
+    void forceRemoveVarOrConst(in string name)
+    {
+        if(name in _constTable)
+            _constTable.remove(name);
+        if(name in _varTable)
+            _varTable.remove(name);
+    }
+
     /// climb context stack until finding one without a parent
     Context getGlobalContext()
     {

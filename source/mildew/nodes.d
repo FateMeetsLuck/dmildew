@@ -1927,7 +1927,10 @@ VisitResult callFunction(Context context, ScriptFunction fn, ScriptAny thisObj,
 
     VisitResult vr;
     if(returnThis)
-        thisObj = new ScriptObject(fn.functionName, fn["prototype"].toValue!ScriptObject, null);
+    {
+        if(!thisObj.isObject)
+            thisObj = new ScriptObject(fn.functionName, fn["prototype"].toValue!ScriptObject, null);
+    }
     if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
     {
         context = new Context(context, fn.functionName);

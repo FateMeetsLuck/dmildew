@@ -1,0 +1,17 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/dmildew_run
+/run
+dmildew_run.so
+dmildew_run.dylib
+dmildew_run.dll
+dmildew_run.a
+dmildew_run.lib
+dmildew_run-test-*
+*.exe
+*.o
+*.obj
+*.lst
+*.a

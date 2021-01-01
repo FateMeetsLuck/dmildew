@@ -5,7 +5,7 @@
 	"copyright": "Copyright © 2020, Johnny Postblock",
 	"description": "REPL and interpreter for the mildew scriping language library",
 	"license": "GPL-3.0",
-    "name": "repl",
+    "name": "run",
     "dependencies": { 
         "dmildew": "~main", 
         "arsd-official:terminal": "~>9.0.4" 

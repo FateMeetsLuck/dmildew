@@ -7,5 +7,5 @@
     "license": "GPL-3.0",
     "name": "dmildew",
     "targetType": "library",
-    "subPackages": ["repl"]
+    "subPackages": ["run"]
 }
