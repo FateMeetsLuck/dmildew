@@ -11,16 +11,17 @@ import mildew.parser;
 import mildew.types.any: ScriptAny;
 
 /**
- * This is the main interface for the host application to interface with scripts.
+ * This is the main interface for the host application to interact with scripts.
  */
 class Interpreter
 {
 public:
 
     /**
-     * Constructs a new Interpreter with a global context. Also sets up the hidden "call" method
-     * of all created functions so that any function object can be called with an arbitrary "this"
-     * object.
+     * Constructs a new Interpreter with a global context. Note that all calls to evaluate
+     * run in a new context below the global context. This allows keywords such as let and const
+     * to not pollute the global namespace. However, scripts can use var to declare variables that
+     * are global.
      */
     this()
     {

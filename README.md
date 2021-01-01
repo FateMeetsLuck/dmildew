@@ -12,9 +12,13 @@ The `examples/` folder contains example scripts. It should look familiar to anyo
 
 This project is in its early stages so one should probably use the ~main version to get the latest bug fixes. The release tags are only so that it is usable in dub.
 
+## Building
+
+Building the library is as simple as writing `dub build` in a terminal in the main project directory. To build the REPL and script runner one can write `dub build :run` in the same directory as the main project.
+
 ## Running the Examples
 
-In a terminal in the main project directory run `dub run :run -- examples/nameofexample.mds`. To try out the interactive shell simply type `dub run :run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after.
+In a terminal in the main project directory run `dub run :run -- examples/nameofexample.mds`. To try out the interactive shell simply type `dub run :run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after. One can also store anonymous class expressions in a global variable such as `var Foo = class {};`.
 
 ## Binding
 
@@ -32,7 +36,7 @@ This language is stricter than JavaScript. Global variables cannot be redeclared
 
 Since all programs are run in a scope, the `var` keyword declares variables that are stored in the global scope, while `let` and `const` work the same as in ES6. This is more similar to Lua.
 
-For of loops cannot iterate over chars in a string so one has to write a regular for-loop that checks the length.
+For-of loops cannot iterate over chars in a string so one has to write a regular for-loop that checks the length.
 
 Binding classes by extending ScriptObject will not work and is not supported. Script classes that extend native D classes must call `super` in a constructor for it to work even if there are no parameters.
 

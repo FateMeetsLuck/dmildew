@@ -1,3 +1,7 @@
+/**
+ * This module implements the ScriptFunction class, which holds script defined functions as well as native D
+ * functions or delegates with the correct signature.
+ */
 module mildew.types.func;
 
 import mildew.context: Context;
@@ -26,7 +30,7 @@ alias NativeDelegate = ScriptAny delegate(Context, ScriptAny* thisObj, ScriptAny
  * This class encapsulates all types of script functions including native D functions and delegates. A
  * native function must first be wrapped in this class before it can be given to a ScriptAny assignment.
  * When an object is created with "new FunctionName()" its __proto__ is assigned to the function's "prototype"
- * field. This allows OOP in the scripting language and is somewhat analogous to JavaScript.
+ * field. This allows OOP in the scripting language and is analogous to JavaScript.
  */
 class ScriptFunction : ScriptObject
 {
@@ -40,6 +44,7 @@ public:
      * Params:
      *  fname = The name of the function.
      *  nfunc = The address of the native function. See NativeFunction alias for correct signature
+     *  isClass = Whether or not this function is a constructor. This information is used when printing
      */
     this(string fname, NativeFunction nfunc, bool isClass = false)
     {
@@ -57,6 +62,7 @@ public:
      * Params:
      *  fname = The name of the function.
      *  nfunc = The address of the native delegate. See NativeDelegate alias for correct signature
+     *  isClass = Whether or not this function is a constructor. This information is used when printing
      */
     this(string fname, NativeDelegate ndele, bool isClass = false)
     {

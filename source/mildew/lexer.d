@@ -66,8 +66,7 @@ struct Token
     }
 
     /**
-     * This enum is currently unused but will be needed when hexadecimal, octal, and binary integer literals
-     * are supported.
+     * This enum is for literal value tokens that require special handling by the parser
      */
     enum LiteralFlag
     {
@@ -80,7 +79,7 @@ struct Token
     Position position;
     /// Optional text for keywords and identifiers
     string text;
-    /// Optional flag for integer literals. (Currently unused)
+    /// Optional flag for integer literals.
     LiteralFlag literalFlag = LiteralFlag.NONE;
 
     /**
@@ -463,7 +462,7 @@ private:
             else if(currentChar == '\n' && lflag != Token.LiteralFlag.TEMPLATE_STRING)
                 throw new ScriptCompileException("Line breaks inside string literal are not allowed", 
                     Token.createInvalidToken(_position, text));
-            else if(currentChar == '\\')
+            else if(currentChar == '\\') // TODO handle \u0000 and \u00 sequences
             {
                 advanceChar();
                 if(currentChar in ESCAPE_CHARS)

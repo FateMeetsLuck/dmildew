@@ -1,5 +1,5 @@
 /**
- * This module implements the Node subclasses, which are used internally as a syntax tree by the Interpreter
+ * This module implements the Node subclasses, which are used internally as a syntax tree.
  */
 module mildew.nodes;
 

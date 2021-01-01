@@ -1,3 +1,7 @@
+/**
+ * This module implements how arrays are internally handled. There is no reason to use this instead of constructing a
+ * ScriptAny with a D array.
+ */
 module mildew.types.array;
 
 import mildew.types.object: ScriptObject;

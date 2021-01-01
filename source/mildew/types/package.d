@@ -1,5 +1,5 @@
 /**
- * This module is for convenient use by the scripting lanuage internals. Host applications should
+ * This module is for convenient use by the scripting language internals. Host applications should
  * only import func, object, and any most of the time.
  */
 module mildew.types;

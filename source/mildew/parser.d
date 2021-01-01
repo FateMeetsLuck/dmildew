@@ -1,5 +1,5 @@
 /**
- * This module implements the Parser struct, which generates Nodes that are used internally by the Interpreter
+ * This module implements the Parser struct, which generates Nodes from tokens that are used internally.
  */
 module mildew.parser;
 

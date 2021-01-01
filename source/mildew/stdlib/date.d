@@ -3,6 +3,7 @@
  */
 module mildew.stdlib.date;
 
+import core.time: TimeException;
 import std.datetime.systime;
 import std.datetime.date;
 import std.datetime.timezone;
@@ -11,8 +12,6 @@ import mildew.binder;
 import mildew.context;
 import mildew.interpreter;
 import mildew.types;
-
-// %1$s for first parameter
 
 /// Initializes the Date library
 void initializeDateLibrary(Interpreter interpreter)
@@ -30,6 +29,19 @@ void initializeDateLibrary(Interpreter interpreter)
     Date_ctor["prototype"]["getTime"] = new ScriptFunction("Date.prototype.getTime", &native_Date_getTime);
     Date_ctor["prototype"]["getTimezone"] = new ScriptFunction("Date.prototype.getTimezone", &native_Date_getTimezone);
     Date_ctor["prototype"]["setDate"] = new ScriptFunction("Date.prototype.setDate", &native_Date_setDate);
+    Date_ctor["prototype"]["setFullYear"] = new ScriptFunction("Date.prototype.setFullYear", &native_Date_setFullYear);
+    Date_ctor["prototype"]["setHours"] = new ScriptFunction("Date.prototype.setHours", &native_Date_setHours);
+    Date_ctor["prototype"]["setMilliseconds"] = new ScriptFunction("Date.prototype.setMillseconds", 
+        &native_Date_setMilliseconds);
+    Date_ctor["prototype"]["setMinutes"] = new ScriptFunction("Date.prototype.setMinutes", &native_Date_setMinutes);
+    Date_ctor["prototype"]["setMonth"] = new ScriptFunction("Date.prototype.setMonth", &native_Date_setMonth);
+    Date_ctor["prototype"]["setSeconds"] = new ScriptFunction("Date.prototype.setSeconds", &native_Date_setSeconds);
+    Date_ctor["prototype"]["setTime"] = new ScriptFunction("Date.prototype.setTime", &native_Date_setTime);
+    Date_ctor["prototype"]["toDateString"] = new ScriptFunction("Date.prototype.toDateString", 
+        &native_Date_toDateString);
+    Date_ctor["prototype"]["toISOString"] = new ScriptFunction("Date.prototype.toISOString", 
+        &native_Date_toISOString);
+    Date_ctor["prototype"]["toUTC"] = new ScriptFunction("Date.prototype.toUTC", &native_Date_toUTC);
     interpreter.forceSetGlobal("Date", Date_ctor, false);
 }
 
@@ -119,7 +131,7 @@ public:
 
     long getTime() const
     {
-        return _sysTime.toUnixTime;
+        return _sysTime.toUnixTime * 1000; // TODO fix
     }
 
     long getTimezone() const
@@ -129,10 +141,60 @@ public:
 
     // TODO UTC stuff
 
-    /// returns day of month
     void setDate(in int d)
     {
         _sysTime.day = d;
+    }
+
+    void setFullYear(in int year)
+    {
+        _sysTime.year = year;
+    }
+
+    void setHours(in int hours, in int minutes=0, in int seconds=0)
+    {
+        _sysTime.hour = hours;
+        _sysTime.minute = minutes;
+        _sysTime.second = seconds;
+    }
+
+    void setMilliseconds(in uint ms)
+    {
+        import core.time: msecs, Duration;
+        _sysTime.fracSecs = msecs(ms);
+    }
+
+    void setMinutes(in uint minutes)
+    {
+        _sysTime.minute = minutes;
+    }
+
+    void setMonth(in uint month)
+    {
+        _sysTime.month = cast(Month)(month % 12 + 1);
+    }
+
+    void setSeconds(in uint s)
+    {
+        _sysTime.second = cast(ubyte)(s%60);
+    }
+
+    void setTime(in long unixTimeMs)
+    {
+        _sysTime = _sysTime.fromUnixTime(unixTimeMs / 1000); // TODO fix
+    }
+
+    string toISOString() const
+    {
+        auto dt = cast(DateTime)_sysTime;
+        return dt.toISOString();
+    }
+
+    ScriptDate toUTC() const
+    {
+        auto newSD = new ScriptDate(0);
+        newSD._sysTime = _sysTime.toUTC();
+        return newSD;
     }
 
     override string toString() const
@@ -149,7 +211,6 @@ private:
 
 ScriptAny native_Date_ctor(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
-    import core.time: TimeException;
     if(!thisObj.isObject)
     {
         nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
@@ -308,7 +369,108 @@ ScriptAny native_Date_setDate(Context c, ScriptAny* thisObj, ScriptAny[] args, r
 {
     mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
     mixin(TO_ARG_CHECK_INDEX!("d", 0, int));
-    date.setDate(d);
+    try 
+    {
+        date.setDate(d);
+    }
+    catch(TimeException ex)
+    {
+        nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+        return ScriptAny(ex.msg);
+    }
     return ScriptAny.UNDEFINED;
 }
 
+ScriptAny native_Date_setFullYear(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
+    mixin(TO_ARG_CHECK_INDEX!("year", 0, int));
+    try // this might not be needed here
+    {
+        date.setFullYear(year);
+    }
+    catch(TimeException ex)
+    {
+        nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+        return ScriptAny(ex.msg);
+    }
+    return ScriptAny.UNDEFINED;
+}
+
+ScriptAny native_Date_setHours(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
+    mixin(TO_ARG_CHECK_INDEX!("hour", 0, int));
+    mixin(TO_ARG_OPT!("minute", 1, 0, int));
+    mixin(TO_ARG_OPT!("second", 2, 0, int));
+    date.setHours(hour%24, minute%60, second%60);
+    return ScriptAny.UNDEFINED;
+}
+
+ScriptAny native_Date_setMilliseconds(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
+    mixin(TO_ARG_CHECK_INDEX!("ms", 0, uint));
+    date.setMilliseconds(ms % 1000);
+    return ScriptAny.UNDEFINED;
+}
+
+ScriptAny native_Date_setMinutes(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
+    mixin(TO_ARG_CHECK_INDEX!("minutes", 0, uint));
+    date.setMinutes(minutes % 60);
+    return ScriptAny.UNDEFINED;
+}
+
+ScriptAny native_Date_setMonth(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
+    mixin(TO_ARG_CHECK_INDEX!("m", 0, uint));
+    try 
+    {
+        date.setMonth(m);
+    }
+    catch(TimeException ex)
+    {
+        nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+        return ScriptAny(ex.msg);
+    }
+    return ScriptAny.UNDEFINED;
+}
+
+ScriptAny native_Date_setSeconds(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
+    mixin(TO_ARG_CHECK_INDEX!("s", 0, uint));
+    date.setSeconds(s);
+    return ScriptAny.UNDEFINED;
+}
+
+ScriptAny native_Date_setTime(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
+    mixin(TO_ARG_CHECK_INDEX!("t", 0, long));
+    date.setTime(t);
+    return ScriptAny.UNDEFINED;
+}
+
+ScriptAny native_Date_toDateString(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
+    return ScriptAny(date.toString());
+}
+
+ScriptAny native_Date_toISOString(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
+    return ScriptAny(date.toISOString());
+}
+
+ScriptAny native_Date_toUTC(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
+    auto newDate = date.toUTC();
+    auto newSD = new ScriptObject("Date", thisObj.toValue!ScriptObject.prototype, newDate);
+    return ScriptAny(newSD);
+}

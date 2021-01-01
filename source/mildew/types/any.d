@@ -31,7 +31,7 @@ public:
      * Constructs a new ScriptAny based on the value given.
      * Params:
      *  value = This can be any valid type such as null, bool, signed or unsigned ints or longs, floats,
-     *          or doubles, strings, even primitive arrays, as well as ScriptObject or ScriptFunction
+     *          or doubles, strings, even primitive D arrays, as well as ScriptObject or ScriptFunction
      */
     this(T)(T value)
     {
