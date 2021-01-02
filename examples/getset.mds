@@ -18,15 +18,25 @@ try {
 
 class GetSet {
     get prop() {
+        console.log("GetSet get prop");
         return this._prop;
     }
     set prop(value) {
+        console.log("GetSet set prop");
         this._prop = value;
     }
 }
 
-var a = new GetSet();
+class DerivedGS extends GetSet {
+    get prop() {
+        console.log("DerivedGS get prop");
+    }
+    set prop(value) {
+        console.log("DerivedGS set prop");
+    }
+}
+
+var a = new DerivedGS();
 a.prop = -23.53;
 console.log(a.prop);
-
-// As of Dec 30 00:47 2020 This program produces the correct output
+// This does not work

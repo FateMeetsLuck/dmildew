@@ -693,7 +693,8 @@ class MemberAccessNode : Node
         // validate that objVR.result is of type object so that it can even be accessed
         if(!objVR.result.isObject)
         {
-            vr.exception = new ScriptRuntimeException("Cannot access non-object " ~ objVR.result.toString());
+            vr.exception = new ScriptRuntimeException("Cannot access non-object " 
+                ~ objVR.result.toString() ~ ": " ~ this.toString());
             return vr;
         }
 
@@ -1934,6 +1935,8 @@ VisitResult callFunction(Context context, ScriptFunction fn, ScriptAny thisObj,
                 vr.continueFlag = false;
             if(vr.returnFlag || vr.exception !is null)
             {
+                if(vr.exception !is null)
+                    vr.exception.scriptTraceback ~= statement;
                 vr.returnFlag = false;
                 break;
             }

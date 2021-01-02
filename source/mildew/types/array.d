@@ -70,6 +70,8 @@ public:
 
     /// The actual array
     ref ScriptAny[] array() { return _array; }
+    /// ditto
+    ref ScriptAny[] array(ScriptAny[] ar) { return _array = ar; } 
 
 private:
 

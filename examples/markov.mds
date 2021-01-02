@@ -1,0 +1,91 @@
+function randomFromZero(max) {
+    return Math.floor(Math.random() * max);
+}
+
+class MarkovText {
+
+    constructor(wordDepth, text) {
+        this.wordDepth = wordDepth || 2;
+        this.words = {};
+        if(text) {
+            this.learn(text);
+        }
+    }
+
+    findByIndex(index, object) {
+        for(let prop of object || this.words) {
+            if(typeof object[prop] == "object")
+                if(object[prop].__i <= index && 
+                    object[prop].__i + object[prop].__o > index && 
+                    prop !== "__m") {
+                    // Return the word
+                    return prop;
+                }
+        }
+    }
+
+    learn(text) {
+        // split by spaces
+        let newWords = text.split(" ");
+
+        for(let i = 0; i < newWords.length - this.wordDepth; ++i) {
+            let key = "";
+            for(let k = 0; k < this.wordDepth - 1; ++k) {
+                key += newWords[i+k] + " ";
+            }
+            // make sure it exists
+            if(this.words[key] == undefined) {
+                this.words[key] = {
+                    __m: 0
+                };
+            }
+            // object with this key followed by next word?
+            if(this.words[key][newWords[i+this.wordDepth-1]] == undefined) {
+                this.words[key][newWords[i+this.wordDepth-1]] = {
+                    __i: this.words[key].__m,
+                    __o: 1 // max index is index + occurrences
+                };
+            } else {
+                this.words[key][newWords[i+this.wordDepth-1]].__o += 1;
+            }
+            // shift all __m values above this up by one (unless it is this)
+            for(let prop of this.words[key]) {
+                if(typeof this.words[key][prop] != "integer") {
+                    if(prop != newWords[i+this.wordDepth-1] && 
+                      this.words[key][prop].__i >= this.words[key][newWords[i+this.wordDepth-1]].__i ) {
+                        this.words[key][prop].__i += 1;
+                    }
+                }
+            }
+            this.words[key].__m += 1;
+            // console.log(`key=${key}`);
+        }
+    }
+
+    output(sentenceLength) {
+        let key = this.randomRootWord();
+        let generatedWords = key.split(" ");
+        let outputString = generatedWords.join(" ");
+        for(let i = 0; i < sentenceLength; ++i) {
+            let newWord = this.findByIndex(randomFromZero(this.words[key].__m), this.words[key]);
+            key = generatedWords.splice(1, this.wordDepth-1);
+            key.pop(); // Last element is always blank, pop it for easiness
+            key.push(newWord);
+            key = key.join(" ") + " ";
+    
+            generatedWords = key.split(" ");
+    
+            outputString += newWord + " ";
+        }
+        return outputString;
+    }
+
+    randomRootWord() {
+        return Object.keys(this.words)[randomFromZero(Object.keys(this.words).length)];
+    }
+}
+
+var text = `INSERT TEXT HERE`;
+
+var mk = new MarkovText(2, text);
+console.log(mk.output(155));

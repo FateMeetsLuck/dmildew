@@ -36,7 +36,9 @@ This language is stricter than JavaScript. Global variables cannot be redeclared
 
 Since all programs are run in a scope, the `var` keyword declares variables that are stored in the global scope, while `let` and `const` work the same as in ES6. This is more similar to Lua.
 
-For-of loops cannot iterate over chars in a string so one has to write a regular for-loop that checks the length.
+For-of loops cannot iterate over chars in a string so one has to write a regular for-loop that checks the length. There are no for-in loops, only for-of loops that work for either arrays or objects.
+
+To declare a function to be stored in an object, one must write `objectName.fieldName = function()...` as `function objectName.fieldName()...` declarations do not work.
 
 Binding classes by extending ScriptObject will not work and is not supported. Script classes that extend native D classes must call `super` in a constructor for it to work even if there are no parameters.
 
@@ -54,6 +56,5 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Write a more complete and robust standard library for the scripting language.
 * Allow super keyword to be used to call base class methods other than the constructor.
 * Allow unicode support for source code text.
-* Reduce parse tree to bytecode.
+* Reduce parse tree to low level bytecode.
 * Allow for yield keyword through fibers.
-
