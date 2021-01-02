@@ -52,9 +52,9 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Refactor code to easily implement all math assignment operators (such as `*=`).
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
 * Implement ES6 destructuring declaration and assignments of arrays and objects into variables.
-* Bind classes with one line of code with mixins and template metaprogramming.
+* Bind native classes and functions with one line of code with mixins and template metaprogramming.
 * Write a more complete and robust standard library for the scripting language.
-* Allow super keyword to be used to call base class methods other than the constructor.
+* Allow super keyword to be used to call base class methods and properties other than the constructor.
 * Allow unicode support for source code text.
 * Reduce parse tree to low level bytecode.
-* Allow for yield keyword through fibers.
+* Implement yield keyword.
