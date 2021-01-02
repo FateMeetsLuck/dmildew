@@ -239,6 +239,22 @@ public:
         }
     }
 
+    ScriptObject getPropertyDescriptor(in string propName)
+    {
+        ScriptObject property = new ScriptObject("property", null);
+        // find the getter
+        auto objectToSearch = this;
+        while(objectToSearch !is null)
+        {
+            if(propName in objectToSearch._getters)
+                property["get"] = objectToSearch._getters[propName];
+            if(propName in objectToSearch._setters)
+                property["set"] = objectToSearch._setters[propName];
+            objectToSearch = objectToSearch._prototype;
+        }
+        return property;
+    }
+
     /**
      * If a native object was stored inside this ScriptObject, it can be retrieved with this function.
      * Note that one must always check that the return value isn't null because all functions can be

@@ -29,14 +29,18 @@ class GetSet {
 
 class DerivedGS extends GetSet {
     get prop() {
+        let getter = Object.getOwnPropertyDescriptor(GetSet.prototype, "prop").get;
         console.log("DerivedGS get prop");
+        return getter.call(this);
     }
     set prop(value) {
+        let setter = Object.getOwnPropertyDescriptor(GetSet.prototype, "prop").set;
         console.log("DerivedGS set prop");
+        setter.call(this, value);
     }
 }
 
 var a = new DerivedGS();
 a.prop = -23.53;
 console.log(a.prop);
-// This does not work
+// This now works thanks to Object.getOwnPropertyDescriptor as of Jan 2 08:00 2021

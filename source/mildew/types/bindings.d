@@ -25,6 +25,9 @@ void initializeTypesLibrary(Interpreter interpreter)
     Object_ctor["prototype"]["constructor"] = Object_ctor;
     // static Object methods
     Object_ctor["create"] = new ScriptFunction("Object.create", &native_Object_s_create);
+    Object_ctor["entries"] = new ScriptFunction("Object.entries", &native_Object_s_entries);
+    Object_ctor["getOwnPropertyDescriptor"] = new ScriptFunction("Object.getOwnPropertyDescriptor", 
+        &native_Object_s_getOwnPropertyDescriptor);
     Object_ctor["keys"] = new ScriptFunction("Object.keys", &native_Object_s_keys);
     Object_ctor["values"] = new ScriptFunction("Object.values", &native_Object_s_values);
     interpreter.forceSetGlobal("Object", Object_ctor, false); // maybe should be const
@@ -99,9 +102,9 @@ private ScriptAny native_Object_constructor(Context c, ScriptAny* thisObj, Scrip
  * parameter.
  */
 private ScriptAny native_Object_s_create(Context context,  // @suppress(dscanner.style.phobos_naming_convention)
-        ScriptAny* thisObj, 
-        ScriptAny[] args, 
-        ref NativeFunctionError nfe)
+                                        ScriptAny* thisObj, 
+                                        ScriptAny[] args, 
+                                        ref NativeFunctionError nfe)
 {
     if(args.length < 1)
     {
@@ -120,11 +123,45 @@ private ScriptAny native_Object_s_create(Context context,  // @suppress(dscanner
     return ScriptAny(newObj);
 }
 
+/// Returns an array of 2-element arrays representing the key and value of each dictionary entry
+private ScriptAny native_Object_s_entries(Context context,
+                                        ScriptAny* thisObj,
+                                        ScriptAny[] args,
+                                        ref NativeFunctionError nfe)
+{
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+    
+    if(!args[0].isObject)
+        return ScriptAny.UNDEFINED;
+    
+    ScriptAny[][] entries;
+    foreach(key, value ; args[0].toValue!ScriptObject.dictionary)
+    {
+        entries ~= [ScriptAny(key), value];
+    }
+    return ScriptAny(entries);
+}
+
+/// Returns a possible getter or setter for an object
+private ScriptAny native_Object_s_getOwnPropertyDescriptor(Context context,
+                                                        ScriptAny* thisObj,
+                                                        ScriptAny[] args,
+                                                        ref NativeFunctionError nfe)
+{
+    if(args.length < 2)
+        return ScriptAny.UNDEFINED;
+    if(!args[0].isObject)
+        return ScriptAny.UNDEFINED;
+    auto propName = args[1].toString();
+    return ScriptAny(args[0].toValue!ScriptObject.getPropertyDescriptor(propName));
+}
+
 /// returns an array of keys of an object (or function)
 private ScriptAny native_Object_s_keys(Context context,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                    ScriptAny* thisObj,
+                                    ScriptAny[] args,
+                                    ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny.UNDEFINED;
@@ -139,9 +176,9 @@ private ScriptAny native_Object_s_keys(Context context,
 
 /// returns an array of values of an object (or function)
 private ScriptAny native_Object_s_values(Context context,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                        ScriptAny* thisObj,
+                                        ScriptAny[] args,
+                                        ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny.UNDEFINED;

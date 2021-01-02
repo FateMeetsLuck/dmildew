@@ -317,9 +317,9 @@ No law, varying the compensation for the services of the Senators and Representa
 `;
 
 var mk = new MarkovText(3, text);
-for(let i=0; i < 20; ++i) console.put('=====');
+for(let i=0; i < 16; ++i) console.put('=====');
 console.log();
 console.log(mk.output(155));
-for(let i=0; i < 20; ++i) console.put('=====');
+for(let i=0; i < 16; ++i) console.put('=====');
 console.log();
-// This program does not work because text was removed due to copyright.
+// This program appears to work as intended.
