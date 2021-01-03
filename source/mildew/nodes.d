@@ -913,6 +913,55 @@ class IfStatementNode : StatementNode
     StatementNode onTrueStatement, onFalseStatement;
 }
 
+class SwitchStatementNode : StatementNode
+{
+    this(size_t lineNo, Node expr, SwitchBody sbody)
+    {
+        super(lineNo);
+        expressionNode = expr;
+        switchBody = sbody;
+    }
+
+    override VisitResult visit(Context c)
+    {
+        auto vr = expressionNode.visit(c);
+        if(vr.exception !is null)
+            return vr;
+        size_t jumpStatement = switchBody.defaultStatementID;
+        if(vr.result in switchBody.jumpTable)
+        {
+            jumpStatement = switchBody.jumpTable[vr.result];
+        }
+        if(jumpStatement < switchBody.statementNodes.length)
+        {
+            for(size_t i = jumpStatement; i < switchBody.statementNodes.length; ++i)
+            {
+                vr = switchBody.statementNodes[i].visit(c);
+                if(vr.returnFlag || vr.continueFlag || vr.breakFlag || vr.exception !is null)
+                    return vr;
+            }
+        }
+        return vr;
+    }
+
+    Node expressionNode; // expression to test
+    SwitchBody switchBody;
+}
+
+class SwitchBody
+{
+    this(StatementNode[] statements, size_t defaultID, size_t[ScriptAny] jumpTableID)
+    {
+        statementNodes = statements;
+        defaultStatementID = defaultID;
+        jumpTable = jumpTableID;
+    }
+
+    StatementNode[] statementNodes;
+    size_t defaultStatementID; // index into statementNodes
+    size_t[ScriptAny] jumpTable; // indexes into statementNodes
+}
+
 class WhileStatementNode : StatementNode
 {
     this(size_t lineNo, Node condition, StatementNode bnode, string lbl = "")

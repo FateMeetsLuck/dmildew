@@ -47,6 +47,7 @@ ScriptObject getArrayPrototype()
     if(_arrayPrototype is null)
     {
         _arrayPrototype = new ScriptObject("array", null);
+        _arrayPrototype["concat"] = new ScriptFunction("Array.prototype.concat", &native_Array_concat);
         _arrayPrototype["join"] = new ScriptFunction("Array.prototype.join", &native_Array_join);
         _arrayPrototype["pop"] = new ScriptFunction("Array.prototype.pop", &native_Array_pop);
         _arrayPrototype["push"] = new ScriptFunction("Array.prototype.push", &native_Array_push);
@@ -195,6 +196,24 @@ private ScriptAny native_Object_s_values(Context context,
 // Array methods //////////////////////////////////////////////////////////////
 //
 
+private ScriptAny native_Array_concat(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    if(args.length < 1)
+        return *thisObj;
+    ScriptAny[] result = thisObj.toValue!ScriptArray.array;
+    if(args[0].type != ScriptAny.Type.ARRAY)
+    {
+        result ~= args[0];
+    }
+    else
+    {
+        result ~= args[0].toValue!ScriptArray.array;
+    }
+    return ScriptAny(result);
+}
+
 private ScriptAny native_Array_join(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(thisObj.type != ScriptAny.Type.ARRAY)
@@ -221,7 +240,7 @@ private ScriptAny native_Array_push(Context c, ScriptAny* thisObj, ScriptAny[] a
         return ScriptAny.UNDEFINED;
     auto arr = thisObj.toValue!ScriptArray;
     arr.array ~= args[0];
-    return args[0];
+    return ScriptAny(arr.array.length);
 }
 
 private ScriptAny native_Array_pop(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)

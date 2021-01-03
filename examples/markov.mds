@@ -16,7 +16,7 @@ class MarkovText {
         for(let prop of object || this.words) {
             if(typeof object[prop] == "object")
                 if(object[prop].__i <= index && 
-                    object[prop].__i + object[prop].__o > index && 
+                  object[prop].__i + object[prop].__o > index && 
                     prop !== "__m") {
                     // Return the word
                     return prop;
@@ -319,7 +319,7 @@ No law, varying the compensation for the services of the Senators and Representa
 var mk = new MarkovText(3, text);
 for(let i=0; i < 16; ++i) console.put('=====');
 console.log();
-console.log(mk.output(155));
+console.log(mk.output(200));
 for(let i=0; i < 16; ++i) console.put('=====');
 console.log();
 // This program appears to work as intended.

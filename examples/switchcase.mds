@@ -1,0 +1,37 @@
+function test(value) {
+    switch(value) {
+        case 0:
+            console.log("Value was 0");
+            break;
+        case 5:
+            console.log("Value was 5");
+            break;
+        case "foo": case 69:
+            console.log("Value was `foo` or 69");
+            break;
+        default:
+            console.log("Value was something else");
+    }
+}
+
+function test2(value)
+{
+    switch(value)
+    {
+        case 21:
+            console.log("Got 21");
+    }
+    console.log("End of test2");
+}
+
+test(0);
+test(1);
+test(5);
+test(6);
+test("foo");
+test("bar");
+test(69);
+test2("foo");
+test2([1,2,3]);
+test2(21);
+// As of Jan 3 17:05 2021 This program produces the correct output

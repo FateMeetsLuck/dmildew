@@ -296,6 +296,11 @@ private:
         {
             statement = parseIfStatement();
         }
+        // check for switch
+        else if(_currentToken.isKeyword("switch"))
+        {
+            statement = parseSwitchStatement();
+        }
         // check for loops
         else if(_currentToken.tokenBeginsLoops())
         {
@@ -304,8 +309,9 @@ private:
         // break statement?
         else if(_currentToken.isKeyword("break"))
         {
-            if(_loopStack == 0)
-                throw new ScriptCompileException("Break statements only allowed in loops", _currentToken);
+            if(_loopStack == 0 && _switchStack == 0)
+                throw new ScriptCompileException("Break statements only allowed in loops or switch-case bodies", 
+                    _currentToken);
             nextToken();
             string label = "";
             if(_currentToken.type == Token.Type.IDENTIFIER)
@@ -822,7 +828,7 @@ private:
         VarDeclarationStatementNode decl = null;
         if(_currentToken.type != Token.Type.SEMICOLON)
             decl = parseVarDeclarationStatement(false);
-        if(_currentToken.isKeyword("of"))
+        if(_currentToken.isKeyword("of") || _currentToken.isKeyword("in"))
         {
             // first we need to validate the VarDeclarationStatementNode to make sure it only consists
             // of let or const and VarAccessNodes
@@ -1149,17 +1155,84 @@ private:
         return new SuperCallStatementNode(lineNumber, _baseClassStack[topClass], expressions);
     }
 
+    SwitchStatementNode parseSwitchStatement() 
+        in { assert(_switchStack >= 0); } do
+    {
+        import mildew.nodes: VisitResult;
+        import mildew.context: Context;
+        ++_switchStack;
+        immutable lineNumber = _currentToken.position.line;
+        immutable switchToken = _currentToken;
+        nextToken();
+        if(_currentToken.type != Token.Type.LPAREN)
+            throw new ScriptCompileException("Expected '(' after switch keyword", _currentToken);
+        nextToken();
+        auto expression = parseExpression();
+        if(_currentToken.type != Token.Type.RPAREN)
+            throw new ScriptCompileException("Expected ')' after switch expression", _currentToken);
+        nextToken();
+        if(_currentToken.type != Token.Type.LBRACE)
+            throw new ScriptCompileException("Expected '{' to begin switch body", _currentToken);
+        nextToken();
+        bool caseStarted = false;
+        size_t statementCounter = 0;
+        StatementNode[] statementNodes;
+        size_t defaultStatementID = size_t.max;
+        size_t[ScriptAny] jumpTable;
+        while(_currentToken.type != Token.Type.RBRACE)
+        {
+            if(_currentToken.isKeyword("case"))
+            {
+                nextToken();
+                caseStarted = true;
+                auto caseExpression = parseExpression();
+                // it has to be evaluatable at compile time
+                auto vr = caseExpression.visit(new Context(null, "<ctfe>"));
+                if(vr.exception !is null || vr.result == ScriptAny.UNDEFINED)
+                    throw new ScriptCompileException("Case expression must be determined at compile time", switchToken);
+                if(_currentToken.type != Token.Type.COLON)
+                    throw new ScriptCompileException("Expected ':' after case expression", _currentToken);
+                nextToken();
+                if(vr.result in jumpTable)
+                    throw new ScriptCompileException("Duplicate case entries not allowed", switchToken);
+                jumpTable[vr.result] = statementCounter;
+            }
+            else if(_currentToken.isKeyword("default"))
+            {
+                caseStarted = true;
+                nextToken();
+                if(_currentToken.type != Token.Type.COLON)
+                    throw new ScriptCompileException("':' expected after default keyword", _currentToken);
+                nextToken();
+                defaultStatementID = statementCounter;
+            }
+            else
+            {
+                if(!caseStarted)
+                    throw new ScriptCompileException("Case condition required before any statements", _currentToken);
+                statementNodes ~= parseStatement();
+                ++statementCounter;
+            }
+        }
+        nextToken(); // consume }
+        --_switchStack;
+        return new SwitchStatementNode(lineNumber, expression, new SwitchBody(statementNodes, defaultStatementID, 
+            jumpTable));
+    }
+
     Node[] parseCommaSeparatedExpressions(in Token.Type stop)
     {
         Node[] expressions;
 
-        while(_currentToken.type != stop && _currentToken.type != Token.Type.EOF && !_currentToken.isKeyword("of"))
+        while(_currentToken.type != stop && _currentToken.type != Token.Type.EOF && !_currentToken.isKeyword("of")
+          && !_currentToken.isKeyword("in"))
         {
             auto expression = parseExpression();
             expressions ~= expression;
             if(_currentToken.type == Token.Type.COMMA)
                 nextToken();
-            else if(_currentToken.type != stop && !_currentToken.isKeyword("of"))
+            else if(_currentToken.type != stop && !_currentToken.isKeyword("of")
+              && !_currentToken.isKeyword("in"))
                 throw new ScriptCompileException("Comma separated list items must be separated by ','", _currentToken);
         }
 
@@ -1178,5 +1251,6 @@ private:
     size_t _tokenIndex = 0;
     Token _currentToken;
     int _loopStack = 0;
+    int _switchStack = 0;
     Node[] _baseClassStack; // in case we have nested class declarations
 }

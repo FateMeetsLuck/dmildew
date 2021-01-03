@@ -38,7 +38,7 @@ Since all programs are run in a scope, the `var` keyword declares variables that
 
 For-of loops cannot iterate over chars in a string so one has to write a regular for-loop that checks the length. There are no for-in loops, only for-of loops that work for either arrays or objects.
 
-To declare a function to be stored in an object, one must write `objectName.fieldName = function()...` as `function objectName.fieldName()...` declarations do not work.
+To declare a function to be stored in an object, one must write `objectName.fieldName = function(...)...` as `function objectName.fieldName(...)...` declarations do not work.
 
 Binding classes by extending ScriptObject will not work and is not supported. Script classes that extend native D classes must call `super` in a constructor for it to work even if there are no parameters.
 
@@ -52,6 +52,8 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Refactor code to easily implement all math assignment operators (such as `*=`).
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
 * Implement ES6 destructuring declaration and assignments of arrays and objects into variables.
+* Implement lambda functions.
+* Implement a regular expression library. Regex literals will probably never be supported.
 * Bind native classes and functions with one line of code with mixins and template metaprogramming.
 * Write a more complete and robust standard library for the scripting language.
 * Allow super keyword to be used to call base class methods and properties other than the constructor.

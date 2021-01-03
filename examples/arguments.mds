@@ -10,3 +10,4 @@ console.log(sum());
 console.log(sum(41));
 console.log(sum(1,2,3,4,5,6,7));
 console.log(sum(-1,-7.8));
+// As of Jan 2 08:25 2021 This program produces the correct output

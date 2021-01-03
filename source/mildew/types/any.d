@@ -400,6 +400,7 @@ public:
      */
     size_t toHash() const nothrow
     {
+        import mildew.types.array: ScriptArray;
         final switch(_type)
         {
             case Type.UNDEFINED:
@@ -412,7 +413,29 @@ public:
             case Type.DOUBLE:
                 return typeid(_asDouble).getHash(&_asDouble);
             case Type.STRING:
+            {
+                try
+                {
+                    auto str = _asObject.toString();
+                    return typeid(str).getHash(&str);
+                }
+                catch(Exception ex)
+                {
+                    return 0; // IDK
+                }
+            }
             case Type.ARRAY:
+            {
+                try 
+                {
+                    auto arr = (cast(ScriptArray)_asObject).array;
+                    return typeid(arr).getHash(&arr);
+                }
+                catch(Exception ex)
+                {
+                    return 0; // IDK
+                }
+            }
             case Type.FUNCTION: 
             case Type.OBJECT:
                 return typeid(_asObject).getHash(&_asObject);
