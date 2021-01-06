@@ -435,6 +435,7 @@ class UnaryOpNode : Node
 
         if(incOrDec != 0)
         {
+            // TODO: fix this to allow constructs such as ++foo++
             if(vr.accessType == VisitResult.AccessType.VAR_ACCESS)
                 return handleVarReassignment(c, Token.createFakeToken(Token.Type.PLUS_ASSIGN,""), 
                     vr.memberOrVarToAccess, ScriptAny(incOrDec));
@@ -448,6 +449,54 @@ class UnaryOpNode : Node
                 vr.exception = new ScriptRuntimeException("Invalid operand for " ~ opToken.symbol);
         }
         return vr;
+    }
+
+    Token opToken;
+    Node operandNode;
+}
+
+class PostfixOpNode : Node 
+{
+    this(Token op, Node node)
+    {
+        opToken = op;
+        operandNode = node;
+    }
+
+    override VisitResult visit(Context c)
+    {
+        // first get the operand's original value that will be returned
+        VisitResult vr = operandNode.visit(c);
+        if(vr.exception !is null)
+            return vr;
+        auto incOrDec = 0;
+        if(opToken.type == Token.Type.INC)
+            incOrDec = 1;
+        else if(opToken.type == Token.Type.DEC)
+            incOrDec = -1;
+        else
+            throw new Exception("Invalid postfix operator got past the parser");
+        // now perform an increment or decrement assignment based on object access type
+        VisitResult errVR;
+        if(vr.accessType == VisitResult.AccessType.VAR_ACCESS)
+            errVR = handleVarReassignment(c, Token.createFakeToken(Token.Type.PLUS_ASSIGN,""), 
+                vr.memberOrVarToAccess, ScriptAny(incOrDec));
+        else if(vr.accessType == VisitResult.AccessType.ARRAY_ACCESS)
+            errVR = handleArrayReassignment(c, Token.createFakeToken(Token.Type.PLUS_ASSIGN,""), 
+                vr.objectToAccess, vr.indexToAccess, ScriptAny(incOrDec));
+        else if(vr.accessType == VisitResult.AccessType.OBJECT_ACCESS)
+            errVR = handleObjectReassignment(c, Token.createFakeToken(Token.Type.PLUS_ASSIGN,""), 
+                vr.objectToAccess, vr.memberOrVarToAccess, ScriptAny(incOrDec));
+        else
+            vr.exception = new ScriptRuntimeException("Invalid post operand for " ~ opToken.symbol);
+        if(errVR.exception !is null)
+            return errVR;
+        return vr;
+    }
+
+    override string toString() const 
+    {
+        return operandNode.toString() ~ opToken.symbol;
     }
 
     Token opToken;

@@ -15,7 +15,7 @@ import mildew.nodes;
 import mildew.types.any: ScriptAny;
 import mildew.types.func: ScriptFunction;
 
-private int unaryOpPrecedence(Token opToken)
+private int unaryOpPrecedence(Token opToken, bool isPost = false)
 {
     if(opToken.isKeyword("typeof"))
     {
@@ -30,9 +30,16 @@ private int unaryOpPrecedence(Token opToken)
         case Token.Type.NOT:
         case Token.Type.PLUS:
         case Token.Type.DASH:
+            if(!isPost)
+                return 17;
+            else
+                return 0;
         case Token.Type.INC:
         case Token.Type.DEC:
-            return 17;
+            if(isPost)
+                return 18;
+            else
+                return 17;
         default: 
             return 0;
     }
@@ -203,66 +210,75 @@ package:
             primaryLeft = parsePrimaryExpression();
         }
 
-        while(_currentToken.binaryOpPrecedence >= minPrec)
+        while(_currentToken.binaryOpPrecedence >= minPrec || _currentToken.unaryOpPrecedence(true) >= minPrec)
         {
-            auto opToken = _currentToken;
-            immutable prec = opToken.binaryOpPrecedence;
-            immutable isLeftAssoc = opToken.isBinaryOpLeftAssociative;
-            immutable nextMinPrec = isLeftAssoc? prec + 1 : prec;
-            nextToken();
-            if(opToken.type == Token.Type.QUESTION)
+            if(_currentToken.unaryOpPrecedence(true) >= minPrec)
             {
-                // primaryLeft is our condition node
-                auto onTrue = parseExpression();
-                if(_currentToken.type != Token.Type.COLON)
-                    throw new ScriptCompileException("Expected ':' in terniary operator expression", _currentToken);
+                // writeln("We must handle postfix " ~ _currentToken.symbol ~ " for " ~ primaryLeft.toString);
+                primaryLeft = new PostfixOpNode(_currentToken, primaryLeft);
                 nextToken();
-                auto onFalse = parseExpression();
-                primaryLeft = new TerniaryOpNode(primaryLeft, onTrue, onFalse);
-            }
-            else if(opToken.type == Token.Type.DOT)
-            {
-                auto right = parsePrimaryExpression();
-                if(cast(VarAccessNode)right is null)
-                    throw new ScriptCompileException("Object members must be valid identifiers", _currentToken);
-                if(unOpPrec != 0 && prec > unOpPrec)
-                {
-                    auto uon = cast(UnaryOpNode)primaryLeft;
-                    primaryLeft = new UnaryOpNode(uon.opToken, new MemberAccessNode(uon.operandNode, right));
-                }
-                else
-                    primaryLeft = new MemberAccessNode(primaryLeft, right);
-            }
-            else if(opToken.type == Token.Type.LBRACKET)
-            {
-                auto index = parseExpression();
-                if(_currentToken.type != Token.Type.RBRACKET)
-                    throw new ScriptCompileException("Missing ']'", _currentToken);
-                nextToken();
-                if(unOpPrec != 0 && prec > unOpPrec)
-                {
-                    auto uon = cast(UnaryOpNode)primaryLeft;
-                    primaryLeft = new UnaryOpNode(uon.opToken, new ArrayIndexNode(uon.operandNode, index));
-                }
-                else
-                    primaryLeft = new ArrayIndexNode(primaryLeft, index);
-            }
-            else if(opToken.type == Token.Type.LPAREN)
-            {
-                auto params = parseCommaSeparatedExpressions(Token.Type.RPAREN);
-                nextToken();
-                if(unOpPrec != 0 && prec > unOpPrec)
-                {
-                    auto uon = cast(UnaryOpNode)primaryLeft;
-                    primaryLeft = new UnaryOpNode(uon.opToken, new FunctionCallNode(uon.operandNode, params));
-                }
-                else
-                    primaryLeft = new FunctionCallNode(primaryLeft, params);
             }
             else 
             {
-                Node primaryRight = parseExpression(nextMinPrec);
-                primaryLeft = new BinaryOpNode(opToken, primaryLeft, primaryRight);
+                auto opToken = _currentToken;
+                immutable prec = opToken.binaryOpPrecedence;
+                immutable isLeftAssoc = opToken.isBinaryOpLeftAssociative;
+                immutable nextMinPrec = isLeftAssoc? prec + 1 : prec;
+                nextToken();
+                if(opToken.type == Token.Type.QUESTION)
+                {
+                    // primaryLeft is our condition node
+                    auto onTrue = parseExpression();
+                    if(_currentToken.type != Token.Type.COLON)
+                        throw new ScriptCompileException("Expected ':' in terniary operator expression", _currentToken);
+                    nextToken();
+                    auto onFalse = parseExpression();
+                    primaryLeft = new TerniaryOpNode(primaryLeft, onTrue, onFalse);
+                }
+                else if(opToken.type == Token.Type.DOT)
+                {
+                    auto right = parsePrimaryExpression();
+                    if(cast(VarAccessNode)right is null)
+                        throw new ScriptCompileException("Object members must be valid identifiers", _currentToken);
+                    if(unOpPrec != 0 && prec > unOpPrec)
+                    {
+                        auto uon = cast(UnaryOpNode)primaryLeft;
+                        primaryLeft = new UnaryOpNode(uon.opToken, new MemberAccessNode(uon.operandNode, right));
+                    }
+                    else
+                        primaryLeft = new MemberAccessNode(primaryLeft, right);
+                }
+                else if(opToken.type == Token.Type.LBRACKET)
+                {
+                    auto index = parseExpression();
+                    if(_currentToken.type != Token.Type.RBRACKET)
+                        throw new ScriptCompileException("Missing ']'", _currentToken);
+                    nextToken();
+                    if(unOpPrec != 0 && prec > unOpPrec)
+                    {
+                        auto uon = cast(UnaryOpNode)primaryLeft;
+                        primaryLeft = new UnaryOpNode(uon.opToken, new ArrayIndexNode(uon.operandNode, index));
+                    }
+                    else
+                        primaryLeft = new ArrayIndexNode(primaryLeft, index);
+                }
+                else if(opToken.type == Token.Type.LPAREN)
+                {
+                    auto params = parseCommaSeparatedExpressions(Token.Type.RPAREN);
+                    nextToken();
+                    if(unOpPrec != 0 && prec > unOpPrec)
+                    {
+                        auto uon = cast(UnaryOpNode)primaryLeft;
+                        primaryLeft = new UnaryOpNode(uon.opToken, new FunctionCallNode(uon.operandNode, params));
+                    }
+                    else
+                        primaryLeft = new FunctionCallNode(primaryLeft, params);
+                }
+                else 
+                {
+                    Node primaryRight = parseExpression(nextMinPrec);
+                    primaryLeft = new BinaryOpNode(opToken, primaryLeft, primaryRight);
+                }
             }
         }
 

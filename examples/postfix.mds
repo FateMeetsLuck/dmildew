@@ -1,0 +1,9 @@
+let foo = 0;
+console.log(++foo); // 1
+console.log(foo++); // 1 but foo is now 2
+console.log(foo++); // 2 but foo is now 3
+console.log(foo--); // 3 but foo is now 2
+console.log(foo); // 2
+let obj = {a: 25};
+console.log(obj.a--); // 25 but obj.a is now 24
+console.log(obj.a); // 24

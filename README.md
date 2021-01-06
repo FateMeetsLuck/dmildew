@@ -48,7 +48,6 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 
 ## Current Goals
 
-* Implement postfix increment and decrement operators.
 * Refactor code to easily implement all math assignment operators (such as `*=`).
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
 * Implement ES6 destructuring declaration and assignments of arrays and objects into variables.

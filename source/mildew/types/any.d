@@ -404,6 +404,7 @@ public:
         final switch(_type)
         {
             case Type.UNDEFINED:
+                return -1; // not sure what else to do
             case Type.NULL:
                 return 0; // i don't know what to do for those
             case Type.BOOLEAN:
