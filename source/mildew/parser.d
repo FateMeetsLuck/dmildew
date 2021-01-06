@@ -19,7 +19,8 @@ private int unaryOpPrecedence(Token opToken, bool isPost = false)
 {
     if(opToken.isKeyword("typeof"))
     {
-        return 17;
+        if(!isPost)
+            return 17;
     }
 
     // see grammar.txt for explanation of magic constants
