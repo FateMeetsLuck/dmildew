@@ -239,19 +239,16 @@ public:
         }
     }
 
-    ScriptObject getPropertyDescriptor(in string propName)
+    ScriptObject getOwnPropertyDescriptor(in string propName)
     {
         ScriptObject property = new ScriptObject("property", null);
         // find the getter
         auto objectToSearch = this;
-        while(objectToSearch !is null)
-        {
-            if(propName in objectToSearch._getters)
-                property["get"] = objectToSearch._getters[propName];
-            if(propName in objectToSearch._setters)
-                property["set"] = objectToSearch._setters[propName];
-            objectToSearch = objectToSearch._prototype;
-        }
+        if(propName in objectToSearch._getters)
+            property["get"] = objectToSearch._getters[propName];
+        if(propName in objectToSearch._setters)
+            property["set"] = objectToSearch._setters[propName];
+        objectToSearch = objectToSearch._prototype;
         return property;
     }
 

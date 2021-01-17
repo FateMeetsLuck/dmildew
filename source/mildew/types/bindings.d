@@ -155,7 +155,7 @@ private ScriptAny native_Object_s_getOwnPropertyDescriptor(Context context,
     if(!args[0].isObject)
         return ScriptAny.UNDEFINED;
     auto propName = args[1].toString();
-    return ScriptAny(args[0].toValue!ScriptObject.getPropertyDescriptor(propName));
+    return ScriptAny(args[0].toValue!ScriptObject.getOwnPropertyDescriptor(propName));
 }
 
 /// returns an array of keys of an object (or function)
