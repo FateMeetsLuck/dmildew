@@ -127,6 +127,12 @@ class LiteralNode : Node
         }
         else 
         {
+			// if it is a function literal we have to set the context here
+			if(value.type == ScriptAny.Type.FUNCTION)
+			{
+				auto fn = value.toValue!ScriptFunction;
+				fn.closure = c;
+			}
             // parser handles other Lflags
             return VisitResult(value);
         }
@@ -214,9 +220,22 @@ class ObjectLiteralNode : Node
 
 class ClassLiteralNode : Node 
 {
-    this(ScriptFunction cfn, Node baseClass)
+    this(ScriptFunction cfn, string[] mnames, ScriptFunction[] ms, string[] gnames, ScriptFunction[] gs, 
+			string[] snames, ScriptFunction[] ss, string[] statNames, ScriptFunction[] statics, Node baseClass)
     {
         constructorFn = cfn;
+		methodNames = mnames;
+		methods = ms;
+		assert(methodNames.length == methods.length);
+		getterNames = gnames;
+		getters = gs;
+		assert(getterNames.length == getters.length);
+		setterNames = snames;
+		setters = ss;
+		assert(setterNames.length == setters.length);
+		staticMethodNames = statNames;
+		staticMethods = statics;
+		assert(staticMethodNames.length == staticMethods.length);
         baseClassNode = baseClass;
     }
 
@@ -228,12 +247,40 @@ class ClassLiteralNode : Node
         return str;
     }
 
-    override VisitResult visit(Context c)
+    override VisitResult visit(Context context)
     {
         VisitResult vr;
+
+		// set constructor closure because parser couldn't set it
+		constructorFn.closure = context;
+        // fill in the function.prototype with the methods and set the closure context because the parser couldn't
+        for(size_t i = 0; i < methodNames.length; ++i) 
+		{
+            constructorFn["prototype"][methodNames[i]] = ScriptAny(methods[i]);
+			methods[i].closure = context;
+		}
+        // fill in any get properties and set closures
+        for(size_t i = 0; i < getterNames.length; ++i)
+		{
+            constructorFn["prototype"].addGetterProperty(getterNames[i], getters[i]);
+			getters[i].closure = context;
+		}
+        // fill in any set properties and set closures
+        for(size_t i = 0; i < setterNames.length; ++i)
+		{
+            constructorFn["prototype"].addSetterProperty(setterNames[i], setters[i]);
+			setters[i].closure = context;
+		}
+		// static methods are assigned directly to the constructor itself
+		for(size_t i=0; i < staticMethodNames.length; ++i)
+		{
+			constructorFn[staticMethodNames[i]] = ScriptAny(staticMethods[i]);
+			staticMethods[i].closure = context;
+		}
+
         if(baseClassNode !is null)
         {
-            vr = baseClassNode.visit(c);
+            vr = baseClassNode.visit(context);
             if(vr.exception !is null)
                 return vr;
             if(vr.result.type != ScriptAny.Type.FUNCTION)
@@ -255,7 +302,15 @@ class ClassLiteralNode : Node
     }
 
     ScriptFunction constructorFn;
-    Node baseClassNode;
+	string[] methodNames;
+	ScriptFunction[] methods;
+	string[] getterNames;
+	ScriptFunction[] getters;
+	string[] setterNames;
+	ScriptFunction[] setters;
+	string[] staticMethodNames;
+	ScriptFunction[] staticMethods;
+	Node baseClassNode;
 }
 
 class BinaryOpNode : Node
@@ -1550,7 +1605,7 @@ class FunctionDeclarationStatementNode : StatementNode
 
     override VisitResult visit(Context c)
     {
-        auto func = new ScriptFunction(name, argNames, statementNodes);
+        auto func = new ScriptFunction(name, argNames, statementNodes, c);
         immutable okToDeclare = c.declareVariableOrConst(name, ScriptAny(func), false);
         VisitResult vr = VisitResult(ScriptAny.UNDEFINED);
         if(!okToDeclare)
@@ -1677,7 +1732,8 @@ class DeleteStatementNode : StatementNode
 class ClassDeclarationStatementNode : StatementNode
 {
     this(size_t lineNo, string name, ScriptFunction con, string[] mnames, ScriptFunction[] ms, 
-         string[] gnames, ScriptFunction[] getters, string[] snames, ScriptFunction[] setters, 
+         string[] gnames, ScriptFunction[] getters, string[] snames, ScriptFunction[] setters,
+		 string[] sfnNames, ScriptFunction[] staticMs, 
          Node bc = null)
     {
         super(lineNo);
@@ -1692,6 +1748,9 @@ class ClassDeclarationStatementNode : StatementNode
         setMethodNames = snames;
         setMethods = setters;
         assert(setMethodNames.length == setMethods.length);
+		staticMethodNames = sfnNames;
+		staticMethods = staticMs;
+		assert(staticMethodNames.length == staticMethods.length);
         baseClass = bc;
     }
 
@@ -1707,15 +1766,32 @@ class ClassDeclarationStatementNode : StatementNode
             vr.exception.scriptTraceback ~= this;
             return vr;
         }
-        // fill in the function.prototype with the methods
-        for(size_t i = 0; i < methodNames.length; ++i)
+		// set constructor closure because parser couldn't set it
+		constructor.closure = context;
+        // fill in the function.prototype with the methods and set the closure context because the parser couldn't
+        for(size_t i = 0; i < methodNames.length; ++i) 
+		{
             constructor["prototype"][methodNames[i]] = ScriptAny(methods[i]);
-        // fill in any get properties
+			methods[i].closure = context;
+		}
+        // fill in any get properties and set closures
         for(size_t i = 0; i < getMethodNames.length; ++i)
+		{
             constructor["prototype"].addGetterProperty(getMethodNames[i], getMethods[i]);
-        // fill in any set properties
+			getMethods[i].closure = context;
+		}
+        // fill in any set properties and set closures
         for(size_t i = 0; i < setMethodNames.length; ++i)
+		{
             constructor["prototype"].addSetterProperty(setMethodNames[i], setMethods[i]);
+			setMethods[i].closure = context;
+		}
+		// static methods are assigned directly to the constructor itself
+		for(size_t i=0; i < staticMethodNames.length; ++i)
+		{
+			constructor[staticMethodNames[i]] = ScriptAny(staticMethods[i]);
+			staticMethods[i].closure = context;
+		}
         // if there is a base class, we must set the class's prototype's __proto__ to the base class's prototype
         if(baseClass !is null)
         {
@@ -1749,6 +1825,8 @@ class ClassDeclarationStatementNode : StatementNode
     ScriptFunction[] getMethods;
     string[] setMethodNames;
     ScriptFunction[] setMethods;
+	string[] staticMethodNames;
+	ScriptFunction[] staticMethods;
     Node baseClass; // should be an expression that returns a constructor function
 }
 
@@ -2011,7 +2089,8 @@ VisitResult callFunction(Context context, ScriptFunction fn, ScriptAny thisObj,
     }
     if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
     {
-        context = new Context(context, fn.functionName);
+		context = new Context(fn.closure, fn.functionName);
+        // context = new Context(context, fn.functionName);
         // push args by name as locals
         for(size_t i=0; i < fn.argNames.length; ++i)
         {

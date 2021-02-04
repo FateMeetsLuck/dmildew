@@ -513,7 +513,7 @@ private:
                     nextToken(); // eat the {
                     auto statements = parseStatements(Token.Type.RBRACE);
                     nextToken();
-                    auto func = new ScriptFunction(name, argNames, statements);
+                    auto func = new ScriptFunction(name, argNames, statements, null);
                     left = new LiteralNode(funcToken, ScriptAny(func));
                 }
                 else if(_currentToken.text == "class")
@@ -649,32 +649,32 @@ private:
                         throw new ScriptCompileException("Derived class constructors must have one super call", 
                                 classToken);
                 }
-                constructor = new ScriptFunction(className, argNames, statements, true);
+                constructor = new ScriptFunction(className, argNames, statements, null, true);
             }
             else // it's a normal method or getter/setter
             {
                 if(ptype == PropertyType.NONE)
                 {
                     methods ~= new ScriptFunction(currentMethodName, 
-                            argNames, statements, false);
+                            argNames, statements, null, false);
                     methodNames ~= currentMethodName;
                 }
                 else if(ptype == PropertyType.GET)
                 {
                     getMethods ~= new ScriptFunction(currentMethodName, 
-                            argNames, statements, false);
+                            argNames, statements, null, false);
                     getMethodNames ~= currentMethodName;                    
                 }
                 else if(ptype == PropertyType.SET)
                 {
                     setMethods ~= new ScriptFunction(currentMethodName, 
-                            argNames, statements, false);
+                            argNames, statements, null, false);
                     setMethodNames ~= currentMethodName;                    
                 }
                 else if(ptype == PropertyType.STATIC)
                 {
                     staticMethods ~= new ScriptFunction(currentMethodName, argNames, 
-                            statements, false);
+                            statements, null, false);
                     staticMethodNames ~= currentMethodName;
                 }
             }
@@ -694,21 +694,9 @@ private:
             _baseClassStack = _baseClassStack[0..$-1];
         if(constructor is null)
             constructor = ScriptFunction.emptyFunction(className, true);
-        // add all static methods to the constructor object
-        for(size_t i = 0; i < staticMethods.length; ++i)
-        {
-            constructor[staticMethodNames[i]] = staticMethods[i];
-        }
-        // fill in the function.prototype with the methods
-        for(size_t i = 0; i < methodNames.length; ++i)
-            constructor["prototype"][methodNames[i]] = ScriptAny(methods[i]);
-        // fill in any get properties
-        for(size_t i = 0; i < getMethodNames.length; ++i)
-            constructor["prototype"].addGetterProperty(getMethodNames[i], getMethods[i]);
-        // fill in any set properties
-        for(size_t i = 0; i < setMethodNames.length; ++i)
-            constructor["prototype"].addSetterProperty(setMethodNames[i], setMethods[i]);
-       return new ClassLiteralNode(constructor, baseClass);
+       	return new ClassLiteralNode(constructor, methodNames, methods, getMethodNames, getMethods, 
+	   		setMethodNames, setMethods, staticMethodNames, staticMethods,
+	   		baseClass);
     }
 
     /// parses multiple statements until reaching stop
@@ -1099,32 +1087,32 @@ private:
                         throw new ScriptCompileException("Derived class constructors must have one super call", 
                                 classToken);
                 }
-                constructor = new ScriptFunction(className, argNames, statements, true);
+                constructor = new ScriptFunction(className, argNames, statements, null, true);
             }
             else // it's a normal method or getter/setter
             {
                 if(ptype == PropertyType.NONE)
                 {
                     methods ~= new ScriptFunction(className ~ ".prototype." ~ currentMethodName, 
-                            argNames, statements, false);
+                            argNames, statements, null, false);
                     methodNames ~= currentMethodName;
                 }
                 else if(ptype == PropertyType.GET)
                 {
                     getMethods ~= new ScriptFunction(className ~ ".prototype." ~ currentMethodName, 
-                            argNames, statements, false);
+                            argNames, statements, null, false);
                     getMethodNames ~= currentMethodName;                    
                 }
                 else if(ptype == PropertyType.SET)
                 {
                     setMethods ~= new ScriptFunction(className ~ ".prototype." ~ currentMethodName, 
-                            argNames, statements, false);
+                            argNames, statements, null, false);
                     setMethodNames ~= currentMethodName;                    
                 }
                 else if(ptype == PropertyType.STATIC)
                 {
                     staticMethods ~= new ScriptFunction(className ~ "." ~ currentMethodName, argNames, 
-                            statements, false);
+                            statements, null, false);
                     staticMethodNames ~= currentMethodName;
                 }
             }
@@ -1144,13 +1132,8 @@ private:
             _baseClassStack = _baseClassStack[0..$-1];
         if(constructor is null)
             constructor = ScriptFunction.emptyFunction(className, true);
-        // add all static methods to the constructor object
-        for(size_t i = 0; i < staticMethods.length; ++i)
-        {
-            constructor[staticMethodNames[i]] = staticMethods[i];
-        }
         return new ClassDeclarationStatementNode(lineNumber, className, constructor, methodNames, methods, 
-                getMethodNames, getMethods, setMethodNames, setMethods, baseClass);
+                getMethodNames, getMethods, setMethodNames, setMethods, staticMethodNames, staticMethods, baseClass);
     }
 
     SuperCallStatementNode parseSuperCallStatement()

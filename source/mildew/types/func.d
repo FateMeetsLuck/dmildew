@@ -52,6 +52,7 @@ public:
         import mildew.types.bindings: getFunctionPrototype;
         super(tname, getFunctionPrototype, null);
         _functionName = fname;
+		_isClass = isClass;
         initializePrototypeProperty();
         _type = Type.NATIVE_FUNCTION;
         _nativeFunction = nfunc;
@@ -70,6 +71,7 @@ public:
         import mildew.types.bindings: getFunctionPrototype;
         super(tname, getFunctionPrototype, null);
         _functionName = fname;
+		_isClass = isClass;
         initializePrototypeProperty();
         _type = Type.NATIVE_DELEGATE;
         _nativeDelegate = ndele;
@@ -93,7 +95,7 @@ package(mildew):
     /**
      * Constructor for creating script defined functions.
      */
-    this(string fnname, string[] args, StatementNode[] statementNodes, bool isClass=false)
+    this(string fnname, string[] args, StatementNode[] statementNodes, Context clos, bool isClass=false)
     {
         immutable tname = isClass? "class" : "function";
         import mildew.types.bindings: getFunctionPrototype;
@@ -101,6 +103,8 @@ package(mildew):
         _functionName = fnname;
         _argNames = args;
         _statementNodes = statementNodes;
+		_closure = clos;
+		_isClass = isClass;
         initializePrototypeProperty();
         _type = Type.SCRIPT_FUNCTION;
     }
@@ -140,6 +144,10 @@ package(mildew):
     /// Property statementNodes
     auto statementNodes() { return _statementNodes; }
 
+	/// Property closure
+	auto closure() { return _closure; }
+	auto closure(Context clos) { return _closure = clos; }
+
     /// used by the parser for missing constructors in classes that don't extend
     static ScriptFunction emptyFunction(in string name, bool isClass)
     {
@@ -151,6 +159,8 @@ private:
     string _functionName;
     string[] _argNames;
     StatementNode[] _statementNodes;
+	Context _closure = null;
+	bool _isClass = false;
     union {
         NativeFunction _nativeFunction;
         NativeDelegate _nativeDelegate;
