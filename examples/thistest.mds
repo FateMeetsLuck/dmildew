@@ -1,0 +1,11 @@
+function foo() {
+	console.log(`foo: this=${this}`);
+}
+
+class Bar {
+	constructor() {
+		foo();
+	}
+}
+
+new Bar;

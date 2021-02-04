@@ -1,12 +1,14 @@
 function makeCounter() {
 	let i = 0;
-	function count() {
+	let count = function() {
 		i = i + 1;
 		console.log(i);
-	}
+	};
 	return count;
 }
   
 var counter = makeCounter();
 counter(); // 1
 counter(); // 2
+var counter2 = makeCounter();
+counter2();

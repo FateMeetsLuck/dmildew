@@ -653,11 +653,18 @@ class FunctionCallNode : Node
         if(vr.exception !is null)
             return vr;
 
+		// the "this" is the left hand of dot operation
         if(vr.accessType == VisitResult.AccessType.OBJECT_ACCESS 
             || vr.accessType == VisitResult.AccessType.ARRAY_ACCESS)
         {
             thisObj = vr.objectToAccess;
         }
+		// or it is local "this" if exists
+		else if(c.variableOrConstExists("this"))
+		{
+			bool _;
+			thisObj = *(c.lookupVariableOrConst("this", _));
+		}
 
         auto fnToCall = vr.result;
         if(fnToCall.type == ScriptAny.Type.FUNCTION)
