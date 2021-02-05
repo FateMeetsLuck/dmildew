@@ -47,6 +47,11 @@ public:
     /// name property
     string name() const { return _name; }
 
+	/// getters property
+	auto getters() { return _getters; }
+	/// setters property
+	auto setters() { return _setters; }
+
     /// prototype property
     auto prototype() { return _prototype; }
 
@@ -112,49 +117,6 @@ public:
     }
 
     /**
-     * Look up a property, not a field, with a getter if it exists. This is mainly used internally
-     * by the scripting language.
-     */
-    auto lookupProperty(Context context, in string propName)
-    {
-        import mildew.nodes: VisitResult;
-        VisitResult vr;
-        auto thisObj = this;
-        auto objectToSearch = thisObj;
-        while(objectToSearch !is null)
-        {
-            if(propName in objectToSearch._getters)
-            {
-                vr = objectToSearch._getters[propName].call(context, ScriptAny(thisObj), [], false);
-                return vr;
-            }
-            objectToSearch = objectToSearch._prototype;
-        }
-        return vr;
-    }
-
-    /**
-     * Set and return a property, not a field, with a setter. This is mainly used internally by the
-     * scripting language.
-     */
-    auto assignProperty(Context context, in string propName, ScriptAny arg)
-    {
-        import mildew.nodes: VisitResult;
-        VisitResult vr;
-        auto thisObj = this;
-        auto objectToSearch = thisObj;
-        while(objectToSearch !is null)
-        {
-            if(propName in objectToSearch._setters)
-            {
-                vr = objectToSearch._setters[propName].call(context, ScriptAny(thisObj), [arg], false);
-            }
-            objectToSearch = objectToSearch._prototype;
-        }
-        return vr;
-    }
-
-    /**
      * Determines if there is a getter for a given property
      */
     bool hasGetter(in string propName)
@@ -195,47 +157,6 @@ public:
         {
             ScriptAny any = value;
             return assignField(index, any);
-        }
-    }
-
-    /**
-     * Get a field or property depending on what the object has. The return value must be checked
-     * for a non-null exception field.
-     */
-    auto lookupFieldOrProperty(Context context, in string index)
-    {
-        import mildew.nodes: VisitResult;
-        if(hasGetter(index))
-            return lookupProperty(context, index);
-        else
-        {
-            VisitResult vr;
-            vr.result = lookupField(index);
-            return vr;
-        }        
-    }
-
-    /**
-     * Set a field or property depending on what the object has. The return value must be checked
-     * for a non-null exception field.
-     */
-    auto assignFieldOrProperty(Context context, in string index, ScriptAny value)
-    {
-        import mildew.nodes: VisitResult;
-        import mildew.exceptions: ScriptRuntimeException;
-        if(hasGetter(index) && !hasSetter(index))
-        {
-            VisitResult vr;
-            vr.exception = new ScriptRuntimeException("Object has no setter for " ~ index);
-            return vr;
-        }
-        if(hasSetter(index))
-            return assignProperty(context, index, value);
-        else
-        {
-            VisitResult vr;
-            vr.result = assignField(index, value);
-            return vr;
         }
     }
 

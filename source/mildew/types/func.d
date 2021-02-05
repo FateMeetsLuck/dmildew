@@ -35,6 +35,7 @@ alias NativeDelegate = ScriptAny delegate(Context, ScriptAny* thisObj, ScriptAny
 class ScriptFunction : ScriptObject
 {
     import mildew.nodes: StatementNode;
+    import mildew.interpreter: Interpreter;
 public:
     /// The type of function held by the object
     enum Type { SCRIPT_FUNCTION, NATIVE_FUNCTION, NATIVE_DELEGATE }
@@ -95,11 +96,12 @@ package(mildew):
     /**
      * Constructor for creating script defined functions.
      */
-    this(string fnname, string[] args, StatementNode[] statementNodes, Context clos, bool isClass=false)
+    this(string fnname, string[] args, StatementNode[] statementNodes, Context clos, 
+            bool isClass=false)
     {
         immutable tname = isClass? "class" : "function";
         import mildew.types.bindings: getFunctionPrototype;
-        super(tname, getFunctionPrototype, null);
+        super(tname, getFunctionPrototype(), null);
         _functionName = fnname;
         _argNames = args;
         _statementNodes = statementNodes;
@@ -107,15 +109,6 @@ package(mildew):
 		_isClass = isClass;
         initializePrototypeProperty();
         _type = Type.SCRIPT_FUNCTION;
-    }
-
-    /**
-     * Calls a function with a specified "this" object. This can be used by the syntax tree system.
-     */
-    auto call(Context context, ScriptAny thisObj, ScriptAny[] args, bool returnThis = false)
-    {
-        import mildew.nodes: VisitResult, callFunction;
-        return callFunction(context, this, thisObj, args, returnThis);
     }
 
     // must check type before using these properties or one gets an exception

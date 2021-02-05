@@ -45,7 +45,7 @@ class ScriptCompileException : Exception
  */
 class ScriptRuntimeException : Exception
 {
-    import mildew.nodes: Node, StatementNode;
+    import mildew.nodes: StatementNode;
     import mildew.types.any: ScriptAny;
     
     /// Constructor

@@ -19,29 +19,44 @@ void initializeDateLibrary(Interpreter interpreter)
     auto Date_ctor = new ScriptFunction("Date", &native_Date_ctor, true);
     Date_ctor["prototype"]["getDate"] = new ScriptFunction("Date.prototype.getDate", &native_Date_getDate);
     Date_ctor["prototype"]["getDay"] = new ScriptFunction("Date.prototype.getDay", &native_Date_getDay);
-    Date_ctor["prototype"]["getFullYear"] = new ScriptFunction("Date.prototype.getFullYear", &native_Date_getFullYear);
-    Date_ctor["prototype"]["getHours"] = new ScriptFunction("Date.prototype.getHours", &native_Date_getHours);
+    Date_ctor["prototype"]["getFullYear"] = new ScriptFunction("Date.prototype.getFullYear", 
+            &native_Date_getFullYear);
+    Date_ctor["prototype"]["getHours"] = new ScriptFunction("Date.prototype.getHours", 
+            &native_Date_getHours);
     Date_ctor["prototype"]["getMilliseconds"] = new ScriptFunction("Date.prototype.getMilliseconds", 
-        &native_Date_getMilliseconds);
-    Date_ctor["prototype"]["getMinutes"] = new ScriptFunction("Date.prototype.getMinutes", &native_Date_getMinutes);
-    Date_ctor["prototype"]["getMonth"] = new ScriptFunction("Date.prototype.getMonth", &native_Date_getMonth);
-    Date_ctor["prototype"]["getSeconds"] = new ScriptFunction("Date.prototype.getSeconds", &native_Date_getSeconds);
-    Date_ctor["prototype"]["getTime"] = new ScriptFunction("Date.prototype.getTime", &native_Date_getTime);
-    Date_ctor["prototype"]["getTimezone"] = new ScriptFunction("Date.prototype.getTimezone", &native_Date_getTimezone);
-    Date_ctor["prototype"]["setDate"] = new ScriptFunction("Date.prototype.setDate", &native_Date_setDate);
-    Date_ctor["prototype"]["setFullYear"] = new ScriptFunction("Date.prototype.setFullYear", &native_Date_setFullYear);
-    Date_ctor["prototype"]["setHours"] = new ScriptFunction("Date.prototype.setHours", &native_Date_setHours);
+            &native_Date_getMilliseconds);
+    Date_ctor["prototype"]["getMinutes"] = new ScriptFunction("Date.prototype.getMinutes", 
+            &native_Date_getMinutes);
+    Date_ctor["prototype"]["getMonth"] = new ScriptFunction("Date.prototype.getMonth", 
+            &native_Date_getMonth);
+    Date_ctor["prototype"]["getSeconds"] = new ScriptFunction("Date.prototype.getSeconds", 
+            &native_Date_getSeconds);
+    Date_ctor["prototype"]["getTime"] = new ScriptFunction("Date.prototype.getTime", 
+            &native_Date_getTime);
+    Date_ctor["prototype"]["getTimezone"] = new ScriptFunction("Date.prototype.getTimezone", 
+            &native_Date_getTimezone);
+    Date_ctor["prototype"]["setDate"] = new ScriptFunction("Date.prototype.setDate", 
+            &native_Date_setDate);
+    Date_ctor["prototype"]["setFullYear"] = new ScriptFunction("Date.prototype.setFullYear", 
+            &native_Date_setFullYear);
+    Date_ctor["prototype"]["setHours"] = new ScriptFunction("Date.prototype.setHours", 
+            &native_Date_setHours);
     Date_ctor["prototype"]["setMilliseconds"] = new ScriptFunction("Date.prototype.setMillseconds", 
-        &native_Date_setMilliseconds);
-    Date_ctor["prototype"]["setMinutes"] = new ScriptFunction("Date.prototype.setMinutes", &native_Date_setMinutes);
-    Date_ctor["prototype"]["setMonth"] = new ScriptFunction("Date.prototype.setMonth", &native_Date_setMonth);
-    Date_ctor["prototype"]["setSeconds"] = new ScriptFunction("Date.prototype.setSeconds", &native_Date_setSeconds);
-    Date_ctor["prototype"]["setTime"] = new ScriptFunction("Date.prototype.setTime", &native_Date_setTime);
+            &native_Date_setMilliseconds);
+    Date_ctor["prototype"]["setMinutes"] = new ScriptFunction("Date.prototype.setMinutes", 
+            &native_Date_setMinutes);
+    Date_ctor["prototype"]["setMonth"] = new ScriptFunction("Date.prototype.setMonth", 
+            &native_Date_setMonth);
+    Date_ctor["prototype"]["setSeconds"] = new ScriptFunction("Date.prototype.setSeconds", 
+            &native_Date_setSeconds);
+    Date_ctor["prototype"]["setTime"] = new ScriptFunction("Date.prototype.setTime", 
+            &native_Date_setTime);
     Date_ctor["prototype"]["toDateString"] = new ScriptFunction("Date.prototype.toDateString", 
-        &native_Date_toDateString);
+            &native_Date_toDateString);
     Date_ctor["prototype"]["toISOString"] = new ScriptFunction("Date.prototype.toISOString", 
-        &native_Date_toISOString);
-    Date_ctor["prototype"]["toUTC"] = new ScriptFunction("Date.prototype.toUTC", &native_Date_toUTC);
+            &native_Date_toISOString);
+    Date_ctor["prototype"]["toUTC"] = new ScriptFunction("Date.prototype.toUTC", 
+            &native_Date_toUTC);
     interpreter.forceSetGlobal("Date", Date_ctor, false);
 }
 

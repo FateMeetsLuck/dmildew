@@ -12,6 +12,7 @@ import mildew.types.object: ScriptObject;
 class ScriptArray : ScriptObject
 {
     import mildew.types.any: ScriptAny;
+    import mildew.interpreter: Interpreter;
 public:
 
     /**

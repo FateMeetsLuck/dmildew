@@ -9,3 +9,14 @@ class Bar {
 }
 
 new Bar;
+
+let a = "global";
+{
+	function showA() {
+		console.log(a);
+	}
+
+	showA();
+	let a = "block";
+	showA();
+} // wrong output

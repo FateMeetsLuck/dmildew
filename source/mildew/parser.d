@@ -194,9 +194,9 @@ package:
 
     /// parse a single expression. See https://eli.thegreenplace.net/2012/08/02/parsing-expressions-by-precedence-climbing
     /// for algorithm.
-    Node parseExpression(int minPrec = 1)
+    ExpressionNode parseExpression(int minPrec = 1)
     {      
-        Node primaryLeft = null;
+        ExpressionNode primaryLeft = null;
 
         immutable unOpPrec = _currentToken.unaryOpPrecedence;
         if(unOpPrec > minPrec)
@@ -277,7 +277,7 @@ package:
                 }
                 else 
                 {
-                    Node primaryRight = parseExpression(nextMinPrec);
+                    ExpressionNode primaryRight = parseExpression(nextMinPrec);
                     primaryLeft = new BinaryOpNode(opToken, primaryLeft, primaryRight);
                 }
             }
@@ -362,7 +362,7 @@ private:
         else if(_currentToken.isKeyword("return"))
         {
             nextToken();
-            Node expression = null;
+            ExpressionNode expression = null;
             if(_currentToken.type != Token.Type.SEMICOLON)
                 expression = parseExpression();
             if(_currentToken.type != Token.Type.SEMICOLON)
@@ -424,11 +424,11 @@ private:
         return statement;
     }
 
-    Node parsePrimaryExpression()
+    ExpressionNode parsePrimaryExpression()
     {
         import std.conv: to, ConvException;
 
-        Node left = null;
+        ExpressionNode left = null;
         switch(_currentToken.type)
         {
             case Token.Type.LPAREN:
@@ -561,7 +561,7 @@ private:
         immutable classToken = _currentToken;
         nextToken();
         immutable className = "<anonymous class>";
-        Node baseClass = null;
+        ExpressionNode baseClass = null;
         if(_currentToken.isKeyword("extends"))
         {
             nextToken();
@@ -863,7 +863,7 @@ private:
         else if(_currentToken.type == Token.Type.SEMICOLON)
         {
             nextToken();
-            Node condition = null;
+            ExpressionNode condition = null;
             if(_currentToken.type != Token.Type.SEMICOLON)
             {
                 condition = parseExpression();
@@ -875,7 +875,7 @@ private:
                 condition = new LiteralNode(_currentToken, ScriptAny(true));
             }
             nextToken();
-            Node increment = null;
+            ExpressionNode increment = null;
             if(_currentToken.type != Token.Type.RPAREN)
             {
                 increment = parseExpression();
@@ -958,7 +958,7 @@ private:
     {
         nextToken(); // eat the {
         string[] keys = [];
-        Node[] valueExpressions = [];
+        ExpressionNode[] valueExpressions = [];
         while(_currentToken.type != Token.Type.RBRACE)
         {
             // first must be an identifier token or string literal token
@@ -999,7 +999,7 @@ private:
             throw new ScriptCompileException("Class name must be valid identifier", _currentToken);
         auto className = _currentToken.text;
         nextToken();
-        Node baseClass = null;
+        ExpressionNode baseClass = null;
         if(_currentToken.isKeyword("extends"))
         {
             nextToken();
@@ -1158,8 +1158,10 @@ private:
     SwitchStatementNode parseSwitchStatement() 
         in { assert(_switchStack >= 0); } do
     {
-        import mildew.nodes: VisitResult;
-        import mildew.context: Context;
+        import std.variant: Variant;
+        import mildew.interpreter: Interpreter;
+        import mildew.exceptions: ScriptRuntimeException;
+
         ++_switchStack;
         immutable lineNumber = _currentToken.position.line;
         immutable switchToken = _currentToken;
@@ -1179,6 +1181,7 @@ private:
         StatementNode[] statementNodes;
         size_t defaultStatementID = size_t.max;
         size_t[ScriptAny] jumpTable;
+        Interpreter interpreter = new Interpreter();
         while(_currentToken.type != Token.Type.RBRACE)
         {
             if(_currentToken.isKeyword("case"))
@@ -1187,7 +1190,7 @@ private:
                 caseStarted = true;
                 auto caseExpression = parseExpression();
                 // it has to be evaluatable at compile time
-                auto vr = caseExpression.visit(new Context(null, "<ctfe>"));
+                auto vr = caseExpression.accept(interpreter).get!(Interpreter.VisitResult);
                 if(vr.exception !is null || vr.result == ScriptAny.UNDEFINED)
                     throw new ScriptCompileException("Case expression must be determined at compile time", switchToken);
                 if(_currentToken.type != Token.Type.COLON)
@@ -1220,9 +1223,9 @@ private:
             jumpTable));
     }
 
-    Node[] parseCommaSeparatedExpressions(in Token.Type stop)
+    ExpressionNode[] parseCommaSeparatedExpressions(in Token.Type stop)
     {
-        Node[] expressions;
+        ExpressionNode[] expressions;
 
         while(_currentToken.type != stop && _currentToken.type != Token.Type.EOF && !_currentToken.isKeyword("of")
           && !_currentToken.isKeyword("in"))
@@ -1252,5 +1255,5 @@ private:
     Token _currentToken;
     int _loopStack = 0;
     int _switchStack = 0;
-    Node[] _baseClassStack; // in case we have nested class declarations
+    ExpressionNode[] _baseClassStack; // in case we have nested class declarations
 }
