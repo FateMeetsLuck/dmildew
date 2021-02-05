@@ -31,76 +31,6 @@ void initializeTypesLibrary(Interpreter interpreter)
     Object_ctor["keys"] = new ScriptFunction("Object.keys", &native_Object_s_keys);
     Object_ctor["values"] = new ScriptFunction("Object.values", &native_Object_s_values);
     interpreter.forceSetGlobal("Object", Object_ctor, false); // maybe should be const
-
-    // Function.call and apply has to be set here. 
-    getFunctionPrototype()["call"] = new ScriptFunction("Function.prototype.call", 
-        delegate ScriptAny (Context c, ScriptAny* thisIsFn, ScriptAny[] args, ref NativeFunctionError nfe)
-        {
-            import mildew.exceptions: ScriptRuntimeException;
-            // minimum args is 1 because first arg is the this to use
-            if(args.length < 1)
-            {
-                nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
-                return ScriptAny.UNDEFINED;
-            }
-            // get the function
-            if(thisIsFn.type != ScriptAny.Type.FUNCTION)
-            {
-                nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
-                return ScriptAny.UNDEFINED;
-            }
-            auto fn = thisIsFn.toValue!ScriptFunction;
-            // set up the "this" to use
-            auto thisToUse = args[0];
-            // now send the remainder of the args to a called function with this setup
-            args = args[1..$];
-            try 
-            {
-                return interpreter.callFunction(fn, thisToUse, args);
-            }
-            catch(ScriptRuntimeException ex)
-            {
-                nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
-                return ScriptAny(ex.msg);
-            }
-    });
-
-    getFunctionPrototype()["apply"] = new ScriptFunction("Function.prototype.apply", 
-        delegate ScriptAny (Context c, ScriptAny* thisIsFn, ScriptAny[] args, ref NativeFunctionError nfe)
-        {
-            import mildew.exceptions: ScriptRuntimeException;
-            // minimum args is 2 because first arg is the this to use and the second is an array
-            if(args.length < 2)
-            {
-                nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
-                return ScriptAny.UNDEFINED;
-            }
-            // get the function
-            if(thisIsFn.type != ScriptAny.Type.FUNCTION)
-            {
-                nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
-                return ScriptAny.UNDEFINED;
-            }
-            auto fn = thisIsFn.toValue!ScriptFunction;
-            // set up the "this" to use
-            auto thisToUse = args[0];
-            // set up the arg array
-            if(args[1].type != ScriptAny.Type.ARRAY)
-            {
-                nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
-                return ScriptAny.UNDEFINED;
-            }
-            auto argList = args[1].toValue!(ScriptAny[]);
-            try 
-            {
-                return interpreter.callFunction(fn, thisToUse, argList);
-            }
-            catch(ScriptRuntimeException ex)
-            {
-                nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
-                return ScriptAny(ex.msg);
-            }
-    });
 }
 
 ScriptObject getObjectPrototype()
@@ -132,8 +62,8 @@ ScriptObject getFunctionPrototype()
     if(_functionPrototype is null)
     {
         _functionPrototype = new ScriptObject("function", null);
-        // _functionPrototype["call"] = new ScriptFunction("Function.prototype.call", &native_Function_call);
-        /**/
+        _functionPrototype["apply"] = new ScriptFunction("Function.prototype.apply", &native_Function_apply);
+        _functionPrototype["call"] = new ScriptFunction("Function.prototype.call", &native_Function_call);
     }
     return _functionPrototype;
 }
@@ -363,11 +293,10 @@ private ScriptAny native_Array_splice(Context c, ScriptAny* thisObj, ScriptAny[]
 // Function methods ///////////////////////////////////////////////////////////
 //
 
-/*private ScriptAny native_Function_call(Context c, ScriptAny* thisIsFn, ScriptAny[] args, 
+private ScriptAny native_Function_call(Context c, ScriptAny* thisIsFn, ScriptAny[] args, 
                                        ref NativeFunctionError nfe)
 {
-    import mildew.nodes: callFunction, VisitResult;
-
+    import mildew.exceptions: ScriptRuntimeException;
     // minimum args is 1 because first arg is the this to use
     if(args.length < 1)
     {
@@ -385,15 +314,61 @@ private ScriptAny native_Array_splice(Context c, ScriptAny* thisObj, ScriptAny[]
     auto thisToUse = args[0];
     // now send the remainder of the args to a called function with this setup
     args = args[1..$];
-    auto vr = callFunction(c, fn, thisToUse, args, false);
-    if(vr.exception !is null)
+    try 
+    {
+        auto interpreter = c.interpreter;
+        if(c !is null)
+            return interpreter.callFunction(fn, thisToUse, args);
+        else
+            return ScriptAny.UNDEFINED;
+    }
+    catch(ScriptRuntimeException ex)
     {
         nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
-        return ScriptAny(vr.exception.message);
+        return ScriptAny(ex.msg);
     }
+}
 
-    return vr.result;
-}*/
+private ScriptAny native_Function_apply(Context c, ScriptAny* thisIsFn, ScriptAny[] args,
+                                        ref NativeFunctionError nfe)
+{
+    import mildew.exceptions: ScriptRuntimeException;
+    // minimum args is 2 because first arg is the this to use and the second is an array
+    if(args.length < 2)
+    {
+        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
+        return ScriptAny.UNDEFINED;
+    }
+    // get the function
+    if(thisIsFn.type != ScriptAny.Type.FUNCTION)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    auto fn = thisIsFn.toValue!ScriptFunction;
+    // set up the "this" to use
+    auto thisToUse = args[0];
+    // set up the arg array
+    if(args[1].type != ScriptAny.Type.ARRAY)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    auto argList = args[1].toValue!(ScriptAny[]);
+    try 
+    {
+        auto interpreter = c.interpreter;
+        if(interpreter !is null)
+            return interpreter.callFunction(fn, thisToUse, argList);
+        else
+            return ScriptAny.UNDEFINED;
+    }
+    catch(ScriptRuntimeException ex)
+    {
+        nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+        return ScriptAny(ex.msg);
+    }
+}
 
 //
 // String methods /////////////////////////////////////////////////////////////  

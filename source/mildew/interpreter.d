@@ -28,7 +28,7 @@ public:
      */
     this()
     {
-        _globalContext = new Context(null, "global");
+        _globalContext = new Context(this);
         _currentContext = _globalContext;
     }
 

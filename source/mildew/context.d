@@ -6,6 +6,7 @@ module mildew.context;
 import std.container.rbtree;
 
 import mildew.types.any;
+import mildew.interpreter: Interpreter;
 
 private alias VariableTable = ScriptAny[string];
 
@@ -30,6 +31,16 @@ public:
     {
         _parent = par;
         _name = nam;
+    }
+
+    /**
+     * Constructs a global context
+     */
+    this(Interpreter interpreter)
+    {
+        _parent = null;
+        _name = "<global>";
+        _interpreter = interpreter;
     }
 
     /**
@@ -211,6 +222,19 @@ public:
         _labelList.insert(label);
     }
 
+    /// Retrieves the interpreter object from the top level context
+    Interpreter interpreter()
+    {
+        auto search = this;
+        while(search !is null)
+        {
+            if(search._interpreter !is null)
+                return search._interpreter;
+            search = search._parent;
+        }
+        return null;
+    }
+
     /// checks context stack for a label
     bool labelExists(string label)
     {
@@ -259,4 +283,6 @@ private:
     VariableTable _constTable;
     /// holds a list of labels
     auto _labelList = new RedBlackTree!string;
+    /// Interpreter object can be held by global context
+    Interpreter _interpreter;
 }
