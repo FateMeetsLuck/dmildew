@@ -5,7 +5,7 @@ module mildew.interpreter;
 
 import std.variant;
 
-import mildew.context;
+import mildew.environment;
 import mildew.exceptions: ScriptRuntimeException;
 import mildew.lexer: Token, Lexer;
 import mildew.nodes;
@@ -21,15 +21,15 @@ class Interpreter : INodeVisitor
 public:
 
     /**
-     * Constructs a new Interpreter with a global context. Note that all calls to evaluate
-     * run in a new context below the global context. This allows keywords such as let and const
+     * Constructs a new Interpreter with a global environment. Note that all calls to evaluate
+     * run in a new environment below the global environment. This allows keywords such as let and const
      * to not pollute the global namespace. However, scripts can use var to declare variables that
      * are global.
      */
     this()
     {
-        _globalContext = new Context(this);
-        _currentContext = _globalContext;
+        _globalEnvironment = new Environment(this);
+        _currentEnvironment = _globalEnvironment;
     }
 
     /**
@@ -101,16 +101,16 @@ public:
      */
     void forceSetGlobal(T)(in string name, T value, bool isConst=false)
     {
-        _globalContext.forceSetVarOrConst(name, ScriptAny(value), isConst);
+        _globalEnvironment.forceSetVarOrConst(name, ScriptAny(value), isConst);
     }
 
     /**
-     * Unsets a variable or constant in the global context. Used by host applications to remove
+     * Unsets a variable or constant in the global environment. Used by host applications to remove
      * items that were loaded by the standard library load functions.
      */
     void forceUnsetGlobal(in string name)
     {
-        _globalContext.forceRemoveVarOrConst(name);
+        _globalEnvironment.forceRemoveVarOrConst(name);
     }
 	
 	/// extract a VisitResult from a LiteralNode
@@ -205,7 +205,7 @@ public:
     /// handles function literals
     Variant visitFunctionLiteralNode(FunctionLiteralNode flnode)
     {
-        auto func = new ScriptFunction("<anonymous function>", flnode.argList, flnode.statements, _currentContext);
+        auto func = new ScriptFunction("<anonymous function>", flnode.argList, flnode.statements, _currentEnvironment);
         return Variant(VisitResult(ScriptAny(func)));
     }
 
@@ -255,7 +255,7 @@ public:
 
         try 
         {
-            vr.result = clnode.classDefinition.create(_currentContext);
+            vr.result = clnode.classDefinition.create(_currentEnvironment);
         }
         catch(ScriptRuntimeException ex)
         {
@@ -479,7 +479,7 @@ public:
         vr.accessType = VisitResult.AccessType.VAR_ACCESS;
         vr.memberOrVarToAccess = vanode.varToken.text;
         bool _; // @suppress(dscanner.suspicious.unmodified)
-        immutable ptr = cast(immutable)_currentContext.lookupVariableOrConst(vanode.varToken.text, _);
+        immutable ptr = cast(immutable)_currentEnvironment.lookupVariableOrConst(vanode.varToken.text, _);
         if(ptr == null)
             vr.exception = new ScriptRuntimeException("Undefined variable lookup " ~ vanode.varToken.text);
         else
@@ -503,10 +503,10 @@ public:
             thisObj = vr.objectToAccess;
         }
 		// or it is local "this" if exists
-		else if(_currentContext.variableOrConstExists("this"))
+		else if(_currentEnvironment.variableOrConstExists("this"))
 		{
 			bool _; // @suppress(dscanner.suspicious.unmodified)
-			thisObj = *(_currentContext.lookupVariableOrConst("this", _));
+			thisObj = *(_currentEnvironment.lookupVariableOrConst("this", _));
 		}
 
         auto fnToCall = vr.result;
@@ -686,8 +686,8 @@ public:
     /// handles {block} statement
 	Variant visitBlockStatementNode(BlockStatementNode bsnode)
 	{
-        Context oldContext = _currentContext; // @suppress(dscanner.suspicious.unmodified)
-		_currentContext = new Context(_currentContext, "<scope>");
+        Environment oldEnvironment = _currentEnvironment; // @suppress(dscanner.suspicious.unmodified)
+		_currentEnvironment = new Environment(_currentEnvironment, "<scope>");
         auto result = VisitResult(ScriptAny.UNDEFINED);
         foreach(statement ; bsnode.statementNodes)
         {
@@ -699,7 +699,7 @@ public:
                 break;
             }
         }   
-        _currentContext = oldContext;
+        _currentEnvironment = oldEnvironment;
         return Variant(result);
 	}
 	
@@ -749,7 +749,7 @@ public:
 	Variant visitWhileStatementNode(WhileStatementNode wsnode)
 	{
 		if(wsnode.label != "")
-            _currentContext.insertLabel(wsnode.label);
+            _currentEnvironment.insertLabel(wsnode.label);
         auto vr = wsnode.conditionNode.accept(this).get!VisitResult;
         while(vr.result && vr.exception is null)
         {
@@ -760,7 +760,7 @@ public:
                     vr.breakFlag = false;
                 else
                 {
-                    if(_currentContext.labelExists(vr.labelName))
+                    if(_currentEnvironment.labelExists(vr.labelName))
                     {
                         if(wsnode.label == vr.labelName)
                             vr.breakFlag = false;
@@ -776,7 +776,7 @@ public:
                     vr.continueFlag = false;
                 else
                 {
-                    if(_currentContext.labelExists(vr.labelName))
+                    if(_currentEnvironment.labelExists(vr.labelName))
                     {
                         if(wsnode.label == vr.labelName)
                             vr.continueFlag = false;
@@ -795,7 +795,7 @@ public:
             vr = wsnode.conditionNode.accept(this).get!VisitResult;
         }
         if(wsnode.label != "")
-            _currentContext.removeLabelFromCurrent(wsnode.label);
+            _currentEnvironment.removeLabelFromCurrent(wsnode.label);
         return Variant(vr);
 	}
 	
@@ -804,7 +804,7 @@ public:
 	{
 		auto vr = VisitResult(ScriptAny.UNDEFINED);
         if(dwsnode.label != "")
-            _currentContext.insertLabel(dwsnode.label);
+            _currentEnvironment.insertLabel(dwsnode.label);
         do 
         {
             vr = dwsnode.bodyNode.accept(this).get!VisitResult;
@@ -814,7 +814,7 @@ public:
                     vr.breakFlag = false;
                 else
                 {
-                    if(_currentContext.labelExists(vr.labelName))
+                    if(_currentEnvironment.labelExists(vr.labelName))
                     {
                         if(dwsnode.label == vr.labelName)
                             vr.breakFlag = false;
@@ -830,7 +830,7 @@ public:
                     vr.continueFlag = false;
                 else
                 {
-                    if(_currentContext.labelExists(vr.labelName))
+                    if(_currentEnvironment.labelExists(vr.labelName))
                     {
                         if(dwsnode.label == vr.labelName)
                             vr.continueFlag = false;
@@ -850,17 +850,17 @@ public:
         }
         while(vr.result && vr.exception is null);
         if(dwsnode.label != "")
-            _currentContext.removeLabelFromCurrent(dwsnode.label);
+            _currentEnvironment.removeLabelFromCurrent(dwsnode.label);
         return Variant(vr);
 	}
 	
     /// handles for(;;) statements
 	Variant visitForStatementNode(ForStatementNode fsnode)
 	{
-        Context oldContext = _currentContext; // @suppress(dscanner.suspicious.unmodified)
-		_currentContext = new Context(_currentContext, "<outer_for_loop>");
+        Environment oldEnvironment = _currentEnvironment; // @suppress(dscanner.suspicious.unmodified)
+		_currentEnvironment = new Environment(_currentEnvironment, "<outer_for_loop>");
         if(fsnode.label != "")
-            _currentContext.insertLabel(fsnode.label);
+            _currentEnvironment.insertLabel(fsnode.label);
         auto vr = VisitResult(ScriptAny.UNDEFINED);
         if(fsnode.varDeclarationStatement !is null)
             vr = fsnode.varDeclarationStatement.accept(this).get!VisitResult;
@@ -876,7 +876,7 @@ public:
                         vr.breakFlag = false;
                     else
                     {
-                        if(_currentContext.labelExists(vr.labelName))
+                        if(_currentEnvironment.labelExists(vr.labelName))
                         {
                             if(fsnode.label == vr.labelName)
                                 vr.breakFlag = false;
@@ -892,7 +892,7 @@ public:
                         vr.continueFlag = false;
                     else
                     {
-                        if(_currentContext.labelExists(vr.labelName))
+                        if(_currentEnvironment.labelExists(vr.labelName))
                         {
                             if(fsnode.label == vr.labelName)
                                 vr.continueFlag = false;
@@ -915,8 +915,8 @@ public:
             }
         }
         if(fsnode.label != "")
-            _currentContext.removeLabelFromCurrent(fsnode.label);
-        _currentContext = oldContext;
+            _currentEnvironment.removeLabelFromCurrent(fsnode.label);
+        _currentEnvironment = oldEnvironment;
         return Variant(vr);
 	}
 	
@@ -929,38 +929,38 @@ public:
             return Variant(vr);
 
         if(fosnode.label != "")
-            _currentContext.insertLabel(fosnode.label);
+            _currentEnvironment.insertLabel(fosnode.label);
 
         if(vr.result.type == ScriptAny.Type.ARRAY)
         {
             auto arr = vr.result.toValue!(ScriptAny[]);
             for(size_t i = 0; i < arr.length; ++i)
             {
-                // TODO optimize this to reassign variables instead of creating new contexts each iteration
-                auto oldContext = _currentContext; // @suppress(dscanner.suspicious.unmodified)
-                _currentContext = new Context(_currentContext, "<for_of_loop>");
+                // TODO optimize this to reassign variables instead of creating new environments each iteration
+                auto oldEnvironment = _currentEnvironment; // @suppress(dscanner.suspicious.unmodified)
+                _currentEnvironment = new Environment(_currentEnvironment, "<for_of_loop>");
                 // if one var access node, then value, otherwise index then value
                 if(fosnode.varAccessNodes.length == 1)
                 {
-                    _currentContext.declareVariableOrConst(fosnode.varAccessNodes[0].varToken.text,
+                    _currentEnvironment.declareVariableOrConst(fosnode.varAccessNodes[0].varToken.text,
                         arr[i], fosnode.qualifierToken.text == "const"? true: false);
                 }
                 else 
                 {
-                    _currentContext.declareVariableOrConst(fosnode.varAccessNodes[0].varToken.text,
+                    _currentEnvironment.declareVariableOrConst(fosnode.varAccessNodes[0].varToken.text,
                         ScriptAny(i), fosnode.qualifierToken.text == "const"? true: false);
-                    _currentContext.declareVariableOrConst(fosnode.varAccessNodes[1].varToken.text,
+                    _currentEnvironment.declareVariableOrConst(fosnode.varAccessNodes[1].varToken.text,
                         arr[i], fosnode.qualifierToken.text == "const"? true: false);
                 }
                 vr = fosnode.bodyNode.accept(this).get!VisitResult;
-                _currentContext = oldContext;
+                _currentEnvironment = oldEnvironment;
                 if(vr.breakFlag)
                 {
                     if(vr.labelName == "")
                         vr.breakFlag = false;
                     else
                     {
-                        if(_currentContext.labelExists(vr.labelName))
+                        if(_currentEnvironment.labelExists(vr.labelName))
                         {
                             if(fosnode.label == vr.labelName)
                                 vr.breakFlag = false;
@@ -976,7 +976,7 @@ public:
                         vr.continueFlag = false;
                     else
                     {
-                        if(_currentContext.labelExists(vr.labelName))
+                        if(_currentEnvironment.labelExists(vr.labelName))
                         {
                             if(fosnode.label == vr.labelName)
                                 vr.continueFlag = false;
@@ -1001,22 +1001,22 @@ public:
             foreach(key, val; obj.dictionary)
             {
                 // TODO optimize this to reassign variables instead of creating new ones each iteration
-                auto oldContext = _currentContext; // @suppress(dscanner.suspicious.unmodified)
-                _currentContext = new Context(_currentContext, "<for_of_loop>");
-                _currentContext.declareVariableOrConst(fosnode.varAccessNodes[0].varToken.text,
+                auto oldEnvironment = _currentEnvironment; // @suppress(dscanner.suspicious.unmodified)
+                _currentEnvironment = new Environment(_currentEnvironment, "<for_of_loop>");
+                _currentEnvironment.declareVariableOrConst(fosnode.varAccessNodes[0].varToken.text,
                     ScriptAny(key), fosnode.qualifierToken.text == "const" ? true: false);
                 if(fosnode.varAccessNodes.length > 1)
-                    _currentContext.declareVariableOrConst(fosnode.varAccessNodes[1].varToken.text,
+                    _currentEnvironment.declareVariableOrConst(fosnode.varAccessNodes[1].varToken.text,
                         ScriptAny(val), fosnode.qualifierToken.text == "const" ? true: false);
                 vr = fosnode.bodyNode.accept(this).get!VisitResult;              
-                _currentContext = oldContext;
+                _currentEnvironment = oldEnvironment;
                 if(vr.breakFlag)
                 {
                     if(vr.labelName == "")
                         vr.breakFlag = false;
                     else
                     {
-                        if(_currentContext.labelExists(vr.labelName))
+                        if(_currentEnvironment.labelExists(vr.labelName))
                         {
                             if(fosnode.label == vr.labelName)
                                 vr.breakFlag = false;
@@ -1032,7 +1032,7 @@ public:
                         vr.continueFlag = false;
                     else
                     {
-                        if(_currentContext.labelExists(vr.labelName))
+                        if(_currentEnvironment.labelExists(vr.labelName))
                         {
                             if(fosnode.label == vr.labelName)
                                 vr.continueFlag = false;
@@ -1059,7 +1059,7 @@ public:
         }
 
         if(fosnode.label != "")
-            _currentContext.removeLabelFromCurrent(fosnode.label);
+            _currentEnvironment.removeLabelFromCurrent(fosnode.label);
 
         return Variant(vr);
 	}
@@ -1101,8 +1101,8 @@ public:
     /// handle function declarations
 	Variant visitFunctionDeclarationStatementNode(FunctionDeclarationStatementNode fdsnode)
 	{
-		auto func = new ScriptFunction(fdsnode.name, fdsnode.argNames, fdsnode.statementNodes, _currentContext);
-        immutable okToDeclare = _currentContext.declareVariableOrConst(fdsnode.name, ScriptAny(func), false);
+		auto func = new ScriptFunction(fdsnode.name, fdsnode.argNames, fdsnode.statementNodes, _currentEnvironment);
+        immutable okToDeclare = _currentEnvironment.declareVariableOrConst(fdsnode.name, ScriptAny(func), false);
         VisitResult vr = VisitResult(ScriptAny.UNDEFINED);
         if(!okToDeclare)
         {
@@ -1130,19 +1130,19 @@ public:
 	Variant visitTryCatchBlockStatementNode(TryCatchBlockStatementNode tcbsnode)
 	{
 		auto vr = tcbsnode.tryBlockNode.accept(this).get!VisitResult;
-        // if there was an exception we need to start a new context and set it as a local variable
+        // if there was an exception we need to start a new environment and set it as a local variable
         if(vr.exception !is null)
         {
-            auto oldContext = _currentContext; // @suppress(dscanner.suspicious.unmodified)
-            _currentContext = new Context(_currentContext, "<catch>");
+            auto oldEnvironment = _currentEnvironment; // @suppress(dscanner.suspicious.unmodified)
+            _currentEnvironment = new Environment(_currentEnvironment, "<catch>");
             if(vr.exception.thrownValue != ScriptAny.UNDEFINED)
-                _currentContext.forceSetVarOrConst(tcbsnode.exceptionName, vr.exception.thrownValue, false);
+                _currentEnvironment.forceSetVarOrConst(tcbsnode.exceptionName, vr.exception.thrownValue, false);
             else 
-                _currentContext.forceSetVarOrConst(tcbsnode.exceptionName, ScriptAny(vr.exception.message), false);
+                _currentEnvironment.forceSetVarOrConst(tcbsnode.exceptionName, ScriptAny(vr.exception.message), false);
             vr.exception = null;
             // if another exception is thrown in the catch block, it will propagate through this return value
             vr = tcbsnode.catchBlockNode.accept(this).get!VisitResult;
-            _currentContext = oldContext;
+            _currentEnvironment = oldEnvironment;
         }
         return Variant(vr);
 	}
@@ -1173,7 +1173,7 @@ public:
         // generate class
         try 
         {
-            vr.result = cdsnode.classDefinition.create(_currentContext);
+            vr.result = cdsnode.classDefinition.create(_currentEnvironment);
         }
         catch (ScriptRuntimeException ex)
         {
@@ -1182,7 +1182,7 @@ public:
         }
         auto ctor = vr.result;
         // first try to assign the constructor as a local function
-        immutable ok = _currentContext.declareVariableOrConst(cdsnode.classDefinition.className, 
+        immutable ok = _currentEnvironment.declareVariableOrConst(cdsnode.classDefinition.className, 
                 ctor, false);
         if(!ok)
         {
@@ -1215,9 +1215,9 @@ public:
                 return Variant(vr);
             args ~= vr.result;
         }
-        // get the "this" out of the context
+        // get the "this" out of the environment
         bool dontCare; // @suppress(dscanner.suspicious.unmodified)
-        auto thisObjPtr = _currentContext.lookupVariableOrConst("this", dontCare);
+        auto thisObjPtr = _currentEnvironment.lookupVariableOrConst("this", dontCare);
         if(thisObjPtr == null)
         {
             vr.exception = new ScriptRuntimeException("Invalid `this` object in super call");
@@ -1279,20 +1279,20 @@ private:
 		// handle script functions
 		if(func.type == ScriptFunction.Type.SCRIPT_FUNCTION)
 		{
-			auto prevContext = _currentContext; // @suppress(dscanner.suspicious.unmodified)
-			_currentContext = new Context(func.closure, func.functionName);
+			auto prevEnvironment = _currentEnvironment; // @suppress(dscanner.suspicious.unmodified)
+			_currentEnvironment = new Environment(func.closure, func.functionName);
 			// set args as locals
 			for(size_t i = 0; i < func.argNames.length; ++i)
 			{
 				if(i < args.length)
-					_currentContext.forceSetVarOrConst(func.argNames[i], args[i], false);
+					_currentEnvironment.forceSetVarOrConst(func.argNames[i], args[i], false);
 				else
-					_currentContext.forceSetVarOrConst(func.argNames[i], ScriptAny.UNDEFINED, false);
+					_currentEnvironment.forceSetVarOrConst(func.argNames[i], ScriptAny.UNDEFINED, false);
 			}
 			// put all arguments inside "arguments" local
-			_currentContext.forceSetVarOrConst("arguments", ScriptAny(args), false);
+			_currentEnvironment.forceSetVarOrConst("arguments", ScriptAny(args), false);
 			// set up "this" local
-			_currentContext.forceSetVarOrConst("this", thisObj, true);
+			_currentEnvironment.forceSetVarOrConst("this", thisObj, true);
 			foreach(statement ; func.statementNodes)
 			{
 				vr = statement.accept(this).get!VisitResult;
@@ -1311,11 +1311,11 @@ private:
 			if(returnThis)
 			{
 				bool _; // @suppress(dscanner.suspicious.unmodified)
-				immutable thisPtr = cast(immutable)_currentContext.lookupVariableOrConst("this", _);
+				immutable thisPtr = cast(immutable)_currentEnvironment.lookupVariableOrConst("this", _);
 				if(thisPtr != null)
 					vr.result = *thisPtr;
 			}
-			_currentContext = prevContext;
+			_currentEnvironment = prevEnvironment;
 			return vr;
 		}
 		else 
@@ -1325,12 +1325,12 @@ private:
 			if(func.type == ScriptFunction.Type.NATIVE_FUNCTION)
 			{
 				auto nativefn = func.nativeFunction;
-				returnValue = nativefn(_currentContext, &thisObj, args, nfe);
+				returnValue = nativefn(_currentEnvironment, &thisObj, args, nfe);
 			}
 			else
 			{
 				auto nativedg = func.nativeDelegate;
-				returnValue = nativedg(_currentContext, &thisObj, args, nfe);
+				returnValue = nativedg(_currentEnvironment, &thisObj, args, nfe);
 			}
 			if(returnThis)
 				vr.result = thisObj;
@@ -1487,19 +1487,19 @@ private:
 		string msg = "";
 		if(qual == "var")
 		{
-			ok = _globalContext.declareVariableOrConst(varName, value, false);
+			ok = _globalEnvironment.declareVariableOrConst(varName, value, false);
 			if(!ok)
 				msg = "Unable to redeclare global " ~ varName;
 		}
 		else if(qual == "let")
 		{
-			ok = _currentContext.declareVariableOrConst(varName, value, false);
+			ok = _currentEnvironment.declareVariableOrConst(varName, value, false);
 			if(!ok)
 				msg = "Unable to redeclare local variable " ~ varName;
 		}
 		else if(qual == "const")
 		{
-			ok = _currentContext.declareVariableOrConst(varName, value, true);
+			ok = _currentEnvironment.declareVariableOrConst(varName, value, true);
 			if(!ok)
 				msg = "Unable to redeclare local const " ~ varName;
 		}
@@ -1511,7 +1511,7 @@ private:
 	VisitResult handleVarReassignment(Token opToken, in string varName, ScriptAny value)
 	{
 		bool isConst; // @suppress(dscanner.suspicious.unmodified)
-		auto ptr = _currentContext.lookupVariableOrConst(varName, isConst);
+		auto ptr = _currentEnvironment.lookupVariableOrConst(varName, isConst);
 		VisitResult vr;
 		if(isConst)
 			vr.exception = new ScriptRuntimeException("Unable to reassign const " ~ varName);
@@ -1556,7 +1556,7 @@ private:
         return vr;
 	}
 
-    Context _globalContext;
-    Context _currentContext;
+    Environment _globalEnvironment;
+    Environment _currentEnvironment;
 }
 

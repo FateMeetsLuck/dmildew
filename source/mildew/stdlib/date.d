@@ -9,7 +9,7 @@ import std.datetime.date;
 import std.datetime.timezone;
 
 import mildew.binder;
-import mildew.context;
+import mildew.environment;
 import mildew.interpreter;
 import mildew.types;
 
@@ -224,7 +224,7 @@ private:
 
 private:
 
-ScriptAny native_Date_ctor(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_ctor(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(!thisObj.isObject)
     {
@@ -265,7 +265,7 @@ ScriptAny native_Date_ctor(Context c, ScriptAny* thisObj, ScriptAny[] args, ref 
     return ScriptAny.UNDEFINED;
 }
 
-ScriptAny native_Date_getDate(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_getDate(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     auto date = thisObj.toNativeObject!ScriptDate;
     if(date is null)
@@ -276,7 +276,7 @@ ScriptAny native_Date_getDate(Context c, ScriptAny* thisObj, ScriptAny[] args, r
     return ScriptAny(date.getDate());
 }
 
-ScriptAny native_Date_getDay(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_getDay(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     auto date = thisObj.toNativeObject!ScriptDate;
     if(date is null)
@@ -287,7 +287,7 @@ ScriptAny native_Date_getDay(Context c, ScriptAny* thisObj, ScriptAny[] args, re
     return ScriptAny(date.getDay());
 }
 
-ScriptAny native_Date_getFullYear(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_getFullYear(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     auto date = thisObj.toNativeObject!ScriptDate;
     if(date is null)
@@ -298,7 +298,7 @@ ScriptAny native_Date_getFullYear(Context c, ScriptAny* thisObj, ScriptAny[] arg
     return ScriptAny(date.getFullYear());
 }
 
-ScriptAny native_Date_getHours(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_getHours(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     auto date = thisObj.toNativeObject!ScriptDate;
     if(date is null)
@@ -309,7 +309,7 @@ ScriptAny native_Date_getHours(Context c, ScriptAny* thisObj, ScriptAny[] args, 
     return ScriptAny(date.getHours());
 }
 
-ScriptAny native_Date_getMilliseconds(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_getMilliseconds(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     auto date = thisObj.toNativeObject!ScriptDate;
     if(date is null)
@@ -320,7 +320,7 @@ ScriptAny native_Date_getMilliseconds(Context c, ScriptAny* thisObj, ScriptAny[]
     return ScriptAny(date.getMilliseconds());
 }
 
-ScriptAny native_Date_getMinutes(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_getMinutes(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     auto date = thisObj.toNativeObject!ScriptDate;
     if(date is null)
@@ -331,7 +331,7 @@ ScriptAny native_Date_getMinutes(Context c, ScriptAny* thisObj, ScriptAny[] args
     return ScriptAny(date.getMinutes());
 }
 
-ScriptAny native_Date_getMonth(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_getMonth(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(!thisObj.isObject)
     {
@@ -347,7 +347,7 @@ ScriptAny native_Date_getMonth(Context c, ScriptAny* thisObj, ScriptAny[] args, 
     return ScriptAny(dateObj.getMonth);
 }
 
-ScriptAny native_Date_getSeconds(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_getSeconds(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     auto date = thisObj.toNativeObject!ScriptDate;
     if(date is null)
@@ -358,7 +358,7 @@ ScriptAny native_Date_getSeconds(Context c, ScriptAny* thisObj, ScriptAny[] args
     return ScriptAny(date.getSeconds());
 }
 
-ScriptAny native_Date_getTime(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_getTime(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     auto date = thisObj.toNativeObject!ScriptDate;
     if(date is null)
@@ -369,7 +369,7 @@ ScriptAny native_Date_getTime(Context c, ScriptAny* thisObj, ScriptAny[] args, r
     return ScriptAny(date.getTime());
 }
 
-ScriptAny native_Date_getTimezone(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_getTimezone(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     auto date = thisObj.toNativeObject!ScriptDate;
     if(date is null)
@@ -380,7 +380,7 @@ ScriptAny native_Date_getTimezone(Context c, ScriptAny* thisObj, ScriptAny[] arg
     return ScriptAny(date.getTimezone());
 }
 
-ScriptAny native_Date_setDate(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_setDate(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
     mixin(TO_ARG_CHECK_INDEX!("d", 0, int));
@@ -396,7 +396,7 @@ ScriptAny native_Date_setDate(Context c, ScriptAny* thisObj, ScriptAny[] args, r
     return ScriptAny.UNDEFINED;
 }
 
-ScriptAny native_Date_setFullYear(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_setFullYear(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
     mixin(TO_ARG_CHECK_INDEX!("year", 0, int));
@@ -412,7 +412,7 @@ ScriptAny native_Date_setFullYear(Context c, ScriptAny* thisObj, ScriptAny[] arg
     return ScriptAny.UNDEFINED;
 }
 
-ScriptAny native_Date_setHours(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_setHours(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
     mixin(TO_ARG_CHECK_INDEX!("hour", 0, int));
@@ -422,7 +422,7 @@ ScriptAny native_Date_setHours(Context c, ScriptAny* thisObj, ScriptAny[] args, 
     return ScriptAny.UNDEFINED;
 }
 
-ScriptAny native_Date_setMilliseconds(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_setMilliseconds(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
     mixin(TO_ARG_CHECK_INDEX!("ms", 0, uint));
@@ -430,7 +430,7 @@ ScriptAny native_Date_setMilliseconds(Context c, ScriptAny* thisObj, ScriptAny[]
     return ScriptAny.UNDEFINED;
 }
 
-ScriptAny native_Date_setMinutes(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_setMinutes(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
     mixin(TO_ARG_CHECK_INDEX!("minutes", 0, uint));
@@ -438,7 +438,7 @@ ScriptAny native_Date_setMinutes(Context c, ScriptAny* thisObj, ScriptAny[] args
     return ScriptAny.UNDEFINED;
 }
 
-ScriptAny native_Date_setMonth(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_setMonth(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
     mixin(TO_ARG_CHECK_INDEX!("m", 0, uint));
@@ -454,7 +454,7 @@ ScriptAny native_Date_setMonth(Context c, ScriptAny* thisObj, ScriptAny[] args, 
     return ScriptAny.UNDEFINED;
 }
 
-ScriptAny native_Date_setSeconds(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_setSeconds(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
     mixin(TO_ARG_CHECK_INDEX!("s", 0, uint));
@@ -462,7 +462,7 @@ ScriptAny native_Date_setSeconds(Context c, ScriptAny* thisObj, ScriptAny[] args
     return ScriptAny.UNDEFINED;
 }
 
-ScriptAny native_Date_setTime(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_setTime(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
     mixin(TO_ARG_CHECK_INDEX!("t", 0, long));
@@ -470,19 +470,19 @@ ScriptAny native_Date_setTime(Context c, ScriptAny* thisObj, ScriptAny[] args, r
     return ScriptAny.UNDEFINED;
 }
 
-ScriptAny native_Date_toDateString(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_toDateString(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
     return ScriptAny(date.toString());
 }
 
-ScriptAny native_Date_toISOString(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_toISOString(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
     return ScriptAny(date.toISOString());
 }
 
-ScriptAny native_Date_toUTC(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+ScriptAny native_Date_toUTC(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     mixin(CHECK_THIS_NATIVE_OBJECT!("date", ScriptDate));
     auto newDate = date.toUTC();

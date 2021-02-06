@@ -3,7 +3,7 @@
  */
 module mildew.stdlib.console;
 
-import mildew.context;
+import mildew.environment;
 import mildew.interpreter;
 import mildew.types;
 
@@ -20,7 +20,7 @@ public void initializeConsoleLibrary(Interpreter interpreter)
     interpreter.forceSetGlobal("console", consoleNamespace, true);
 }
 
-private ScriptAny native_console_log(Context context,
+private ScriptAny native_console_log(Environment environment,
         ScriptAny* thisObj,
         ScriptAny[] args,
         ref NativeFunctionError nfe)
@@ -35,7 +35,7 @@ private ScriptAny native_console_log(Context context,
     return ScriptAny.UNDEFINED;
 }
 
-private ScriptAny native_console_put(Context context,
+private ScriptAny native_console_put(Environment environment,
         ScriptAny* thisObj,
         ScriptAny[] args,
         ref NativeFunctionError nfe)
@@ -49,7 +49,7 @@ import std.stdio: write, writeln;
     return ScriptAny.UNDEFINED;
 }
 
-private ScriptAny native_console_error(Context context,
+private ScriptAny native_console_error(Environment environment,
         ScriptAny* thisObj,
         ScriptAny[] args,
         ref NativeFunctionError nfe)

@@ -4,7 +4,7 @@
  */
 module mildew.types.func;
 
-import mildew.context: Context;
+import mildew.environment: Environment;
 import mildew.types.any: ScriptAny;
 import mildew.types.object: ScriptObject;
 
@@ -22,9 +22,9 @@ enum NativeFunctionError
 }
 
 /// native function signature to be usable by scripting language
-alias NativeFunction = ScriptAny function(Context, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError);
+alias NativeFunction = ScriptAny function(Environment, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError);
 /// native delegate signature to be usable by scripting language
-alias NativeDelegate = ScriptAny delegate(Context, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError);
+alias NativeDelegate = ScriptAny delegate(Environment, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError);
 
 /**
  * This class encapsulates all types of script functions including native D functions and delegates. A
@@ -96,7 +96,7 @@ package(mildew):
     /**
      * Constructor for creating script defined functions.
      */
-    this(string fnname, string[] args, StatementNode[] statementNodes, Context clos, 
+    this(string fnname, string[] args, StatementNode[] statementNodes, Environment clos, 
             bool isClass=false)
     {
         immutable tname = isClass? "class" : "function";
@@ -137,9 +137,8 @@ package(mildew):
     /// Property statementNodes
     auto statementNodes() { return _statementNodes; }
 
-	/// Property closure
+	/// Property get closure
 	auto closure() { return _closure; }
-	auto closure(Context clos) { return _closure = clos; }
 
     /// used by the parser for missing constructors in classes that don't extend
     static ScriptFunction emptyFunction(in string name, bool isClass)
@@ -152,7 +151,7 @@ private:
     string _functionName;
     string[] _argNames;
     StatementNode[] _statementNodes;
-	Context _closure = null;
+	Environment _closure = null;
 	bool _isClass = false;
     union {
         NativeFunction _nativeFunction;
@@ -167,7 +166,8 @@ private:
 
 }
 
-private ScriptAny native_EMPTY_FUNCTION(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+private ScriptAny native_EMPTY_FUNCTION(Environment e, ScriptAny* thisObj, ScriptAny[] args, 
+                                        ref NativeFunctionError nfe)
 {
     return ScriptAny.UNDEFINED;
 }

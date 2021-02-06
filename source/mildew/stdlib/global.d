@@ -4,7 +4,7 @@
  */
 module mildew.stdlib.global;
 
-import mildew.context;
+import mildew.environment;
 import mildew.interpreter;
 import mildew.types;
 
@@ -20,7 +20,7 @@ void initializeGlobalLibrary(Interpreter interpreter)
 // Global method implementations
 //
 
-private ScriptAny native_isdefined(Context context, 
+private ScriptAny native_isdefined(Environment env, 
                                    ScriptAny* thisObj, 
                                    ScriptAny[] args, 
                                    ref NativeFunctionError nfe)
@@ -28,5 +28,5 @@ private ScriptAny native_isdefined(Context context,
     if(args.length < 1)
         return ScriptAny(false);
     auto varToLookup = args[0].toString();
-    return ScriptAny(context.variableOrConstExists(varToLookup));
+    return ScriptAny(env.variableOrConstExists(varToLookup));
 }

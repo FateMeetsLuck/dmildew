@@ -10,7 +10,6 @@ module mildew.types.object;
  */
 class ScriptObject
 {
-    import mildew.context: Context;
     import mildew.types.any: ScriptAny;
     import mildew.types.func: ScriptFunction;
 public:
@@ -79,7 +78,7 @@ public:
 
     /**
      * Looks up a field through the prototype chain. Note that this does not call any getters because
-     * it is not possible to pass a Context to opIndex.
+     * it is not possible to pass a Environment to opIndex.
      */
     ScriptAny lookupField(in string name)
     {

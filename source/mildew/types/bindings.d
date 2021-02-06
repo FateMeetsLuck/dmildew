@@ -4,7 +4,7 @@
  */
 module mildew.types.bindings;
 
-import mildew.context;
+import mildew.environment;
 import mildew.interpreter;
 import mildew.types.any;
 import mildew.types.array;
@@ -90,7 +90,7 @@ private ScriptObject _stringPrototype;
 // Object methods /////////////////////////////////////////////////////////////
 //
 
-private ScriptAny native_Object_constructor(Context c, ScriptAny* thisObj, ScriptAny[] args, 
+private ScriptAny native_Object_constructor(Environment c, ScriptAny* thisObj, ScriptAny[] args, 
         ref NativeFunctionError nfe)
 {
     if(args.length >= 1)
@@ -105,7 +105,7 @@ private ScriptAny native_Object_constructor(Context c, ScriptAny* thisObj, Scrip
  * Object.create: This can be called by the script to create a new object whose prototype is the
  * parameter.
  */
-private ScriptAny native_Object_s_create(Context context,  // @suppress(dscanner.style.phobos_naming_convention)
+private ScriptAny native_Object_s_create(Environment context,  // @suppress(dscanner.style.phobos_naming_convention)
                                         ScriptAny* thisObj, 
                                         ScriptAny[] args, 
                                         ref NativeFunctionError nfe)
@@ -128,7 +128,7 @@ private ScriptAny native_Object_s_create(Context context,  // @suppress(dscanner
 }
 
 /// Returns an array of 2-element arrays representing the key and value of each dictionary entry
-private ScriptAny native_Object_s_entries(Context context,
+private ScriptAny native_Object_s_entries(Environment context,
                                         ScriptAny* thisObj,
                                         ScriptAny[] args,
                                         ref NativeFunctionError nfe)
@@ -148,7 +148,7 @@ private ScriptAny native_Object_s_entries(Context context,
 }
 
 /// Returns a possible getter or setter for an object
-private ScriptAny native_Object_s_getOwnPropertyDescriptor(Context context,
+private ScriptAny native_Object_s_getOwnPropertyDescriptor(Environment context,
                                                         ScriptAny* thisObj,
                                                         ScriptAny[] args,
                                                         ref NativeFunctionError nfe)
@@ -162,7 +162,7 @@ private ScriptAny native_Object_s_getOwnPropertyDescriptor(Context context,
 }
 
 /// returns an array of keys of an object (or function)
-private ScriptAny native_Object_s_keys(Context context,
+private ScriptAny native_Object_s_keys(Environment context,
                                     ScriptAny* thisObj,
                                     ScriptAny[] args,
                                     ref NativeFunctionError nfe)
@@ -179,7 +179,7 @@ private ScriptAny native_Object_s_keys(Context context,
 }
 
 /// returns an array of values of an object (or function)
-private ScriptAny native_Object_s_values(Context context,
+private ScriptAny native_Object_s_values(Environment context,
                                         ScriptAny* thisObj,
                                         ScriptAny[] args,
                                         ref NativeFunctionError nfe)
@@ -199,7 +199,7 @@ private ScriptAny native_Object_s_values(Context context,
 // Array methods //////////////////////////////////////////////////////////////
 //
 
-private ScriptAny native_Array_concat(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+private ScriptAny native_Array_concat(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(thisObj.type != ScriptAny.Type.ARRAY)
         return ScriptAny.UNDEFINED;
@@ -217,7 +217,7 @@ private ScriptAny native_Array_concat(Context c, ScriptAny* thisObj, ScriptAny[]
     return ScriptAny(result);
 }
 
-private ScriptAny native_Array_join(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+private ScriptAny native_Array_join(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(thisObj.type != ScriptAny.Type.ARRAY)
         return ScriptAny.UNDEFINED;
@@ -235,7 +235,7 @@ private ScriptAny native_Array_join(Context c, ScriptAny* thisObj, ScriptAny[] a
     return ScriptAny(result);
 }
 
-private ScriptAny native_Array_push(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+private ScriptAny native_Array_push(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(thisObj.type != ScriptAny.Type.ARRAY)
         return ScriptAny.UNDEFINED;
@@ -246,7 +246,7 @@ private ScriptAny native_Array_push(Context c, ScriptAny* thisObj, ScriptAny[] a
     return ScriptAny(arr.array.length);
 }
 
-private ScriptAny native_Array_pop(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+private ScriptAny native_Array_pop(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(thisObj.type != ScriptAny.Type.ARRAY)
         return ScriptAny.UNDEFINED;
@@ -258,7 +258,7 @@ private ScriptAny native_Array_pop(Context c, ScriptAny* thisObj, ScriptAny[] ar
     return result;
 }
 
-private ScriptAny native_Array_splice(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+private ScriptAny native_Array_splice(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     import std.algorithm: min;
     if(thisObj.type != ScriptAny.Type.ARRAY)
@@ -293,7 +293,7 @@ private ScriptAny native_Array_splice(Context c, ScriptAny* thisObj, ScriptAny[]
 // Function methods ///////////////////////////////////////////////////////////
 //
 
-private ScriptAny native_Function_call(Context c, ScriptAny* thisIsFn, ScriptAny[] args, 
+private ScriptAny native_Function_call(Environment c, ScriptAny* thisIsFn, ScriptAny[] args, 
                                        ref NativeFunctionError nfe)
 {
     import mildew.exceptions: ScriptRuntimeException;
@@ -329,7 +329,7 @@ private ScriptAny native_Function_call(Context c, ScriptAny* thisIsFn, ScriptAny
     }
 }
 
-private ScriptAny native_Function_apply(Context c, ScriptAny* thisIsFn, ScriptAny[] args,
+private ScriptAny native_Function_apply(Environment c, ScriptAny* thisIsFn, ScriptAny[] args,
                                         ref NativeFunctionError nfe)
 {
     import mildew.exceptions: ScriptRuntimeException;
@@ -374,7 +374,7 @@ private ScriptAny native_Function_apply(Context c, ScriptAny* thisIsFn, ScriptAn
 // String methods /////////////////////////////////////////////////////////////  
 //
 
-private ScriptAny native_String_charAt(Context c, ScriptAny* thisObj,
+private ScriptAny native_String_charAt(Environment c, ScriptAny* thisObj,
                                        ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(thisObj.type != ScriptAny.Type.STRING)
@@ -391,7 +391,7 @@ private ScriptAny native_String_charAt(Context c, ScriptAny* thisObj,
     return ScriptAny([ss.charAt(index)]);
 }
 
-private ScriptAny native_String_charCodeAt(Context c, ScriptAny* thisObj,
+private ScriptAny native_String_charCodeAt(Environment c, ScriptAny* thisObj,
                                        ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(thisObj.type != ScriptAny.Type.STRING)
@@ -408,7 +408,7 @@ private ScriptAny native_String_charCodeAt(Context c, ScriptAny* thisObj,
     return ScriptAny(ss.charCodeAt(index));
 }
 
-private ScriptAny native_String_split(Context c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+private ScriptAny native_String_split(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     import std.array: split;
     if(thisObj.type != ScriptAny.Type.STRING)

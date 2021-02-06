@@ -1,7 +1,7 @@
 /**
- * This module implements the Context class.
+ * This module implements the Environment class.
  */
-module mildew.context;
+module mildew.environment;
 
 import std.container.rbtree;
 
@@ -12,22 +12,22 @@ private alias VariableTable = ScriptAny[string];
 
 /**
  * Holds the variables and consts of a script stack frame. The global context can be accessed by
- * climbing the Context.parent chain until reaching the Context whose parent is null. This allows
+ * climbing the Environment.parent chain until reaching the Environment whose parent is null. This allows
  * native functions to define local and global variables. Note that calling a native function does
  * not create a stack frame so one could write a native function that adds local variables to the
  * stack frame where it was called.
  */
-class Context
+class Environment
 {
 public:
     /**
-     * Constructs a new Context.
+     * Constructs a new Environment.
      * Params:
      *  par = The parent context, which should be null when the global context is created
      *  nam = The name of the context. When script functions are called this is set to the name
      *        of the function being called.
      */
-    this(Context par = null, in string nam = "<context>")
+    this(Environment par = null, in string nam = "<context>")
     {
         _parent = par;
         _name = nam;
@@ -76,7 +76,7 @@ public:
     }
 
     /**
-     * Removes a variable from anywhere on the Context stack it is located. This function cannot
+     * Removes a variable from anywhere on the Environment stack it is located. This function cannot
      * be used to unset consts.
      * Params:
      *  name = The name of the variable.
@@ -121,7 +121,7 @@ public:
     }
 
     /**
-     * Searches the entire Context stack for a variable starting with the current context and climbing the parent
+     * Searches the entire Environment stack for a variable starting with the current context and climbing the parent
      * chain.
      * Params:
      *  name = The name of the variable to look for.
@@ -206,9 +206,9 @@ public:
     }
 
     /// climb context stack until finding one without a parent
-    Context getGlobalContext()
+    Environment getGlobalEnvironment()
     {
-        Context c = this;
+        Environment c = this;
         while(c._parent !is null)
         {
             c = c._parent;
@@ -255,12 +255,12 @@ public:
     }
 
     /// returns the parent property
-    Context parent()
+    Environment parent()
     {
         return _parent;
     }
 
-    /// returns the name property of the Context
+    /// returns the name property of the Environment
     string name() const
     {
         return _name;
@@ -269,13 +269,13 @@ public:
     /// Returns a string representing the type and name
     override string toString() const
     {
-        return "Context: " ~ _name;
+        return "Environment: " ~ _name;
     }
 
 private:
 
     /// parent context. null if this is the global context
-    Context _parent;
+    Environment _parent;
     /// name of context
     string _name;
     /// holds variables

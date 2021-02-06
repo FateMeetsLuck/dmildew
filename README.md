@@ -14,11 +14,11 @@ This project is in its early stages so one should probably use the ~main version
 
 ## Building
 
-Building the library is as simple as writing `dub build` in a terminal in the main project directory. To build the REPL and script runner one can write `dub build :run` in the same directory as the main project.
+Building the library is as simple as writing `dub build` in a terminal in the main project directory. To build the REPL and script runner one can write `dub build dmildew:run` in the same directory as the main project.
 
 ## Running the Examples
 
-In a terminal in the main project directory run `dub run :run -- examples/nameofexample.mds`. To try out the interactive shell simply type `dub run :run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after. One can also store anonymous class expressions in a global variable such as `var Foo = class {};`.
+In a terminal in the main project directory run `dub run dmildew:run -- examples/nameofexample.mds`. To try out the interactive shell simply type `dub run :run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after. One can also store anonymous class expressions in a global variable such as `var Foo = class {};`.
 
 ## Binding
 
@@ -41,6 +41,8 @@ For-of loops cannot iterate over chars in a string so one has to write a regular
 To declare a function to be stored in an object, one must write `objectName.fieldName = function(...)...` as `function objectName.fieldName(...)...` declarations do not work.
 
 Binding classes by extending ScriptObject will not work and is not supported. Script classes that extend native D classes must call `super` in a constructor for it to work even if there are no parameters.
+
+Closure functions that refer to variables in an outer scope beyond the immediate function declaration scope can have variables shadowed by declaring them in the same scope. See examples/thistest.mds for the issue.
 
 ## Help
 

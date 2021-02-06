@@ -1,6 +1,7 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"arsd-official": "9.0.4"
+		"arsd-official": "9.0.4",
+		"dmildew": "~main"
 	}
 }

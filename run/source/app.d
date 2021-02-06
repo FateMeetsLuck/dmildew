@@ -9,7 +9,6 @@ import std.string: strip;
 
 import arsd.terminal;
 
-import mildew.context;
 import mildew.exceptions;
 import mildew.interpreter;
 import mildew.lexer;
