@@ -553,31 +553,22 @@ private:
         }
         return left;
     }
-
-    ClassLiteralNode parseClassExpression()
+    
+    /// after class ? extend base this can begin
+    ClassDefinition parseClassDefinition(Token classToken, string className, ExpressionNode baseClass)
     {
-        immutable classToken = _currentToken;
-        nextToken();
-        immutable className = "<anonymous class>";
-        ExpressionNode baseClass = null;
-        if(_currentToken.isKeyword("extends"))
-        {
-            nextToken();
-            baseClass = parseExpression(); // let's hope this is an expression that results in a ScriptFunction value
-            _baseClassStack ~= baseClass;
-        }
         if(_currentToken.type != Token.Type.LBRACE)
-            throw new ScriptCompileException("Expected '{' after class name", _currentToken);
-        nextToken(); // eat the {
-        ScriptFunction constructor = null;
+            throw new ScriptCompileException("Expected '{' after class", _currentToken);
+        nextToken();
+        FunctionLiteralNode constructor;
         string[] methodNames;
-        ScriptFunction[] methods;
+        FunctionLiteralNode[] methods;
         string[] getMethodNames;
-        ScriptFunction[] getMethods;
+        FunctionLiteralNode[] getMethods;
         string[] setMethodNames;
-        ScriptFunction[] setMethods;
+        FunctionLiteralNode[] setMethods;
         string[] staticMethodNames;
-        ScriptFunction[] staticMethods;
+        FunctionLiteralNode[] staticMethods;
         enum PropertyType { NONE, GET, SET, STATIC }
         while(_currentToken.type != Token.Type.RBRACE && _currentToken.type != Token.Type.EOF)
         {
@@ -647,32 +638,28 @@ private:
                         throw new ScriptCompileException("Derived class constructors must have one super call", 
                                 classToken);
                 }
-                constructor = new ScriptFunction(className, argNames, statements, null, true);
+                constructor = new FunctionLiteralNode(argNames, statements);
             }
             else // it's a normal method or getter/setter
             {
                 if(ptype == PropertyType.NONE)
                 {
-                    methods ~= new ScriptFunction(currentMethodName, 
-                            argNames, statements, null, false);
+                    methods ~= new FunctionLiteralNode(argNames, statements);
                     methodNames ~= currentMethodName;
                 }
                 else if(ptype == PropertyType.GET)
                 {
-                    getMethods ~= new ScriptFunction(currentMethodName, 
-                            argNames, statements, null, false);
+                    getMethods ~= new FunctionLiteralNode(argNames, statements);
                     getMethodNames ~= currentMethodName;                    
                 }
                 else if(ptype == PropertyType.SET)
                 {
-                    setMethods ~= new ScriptFunction(currentMethodName, 
-                            argNames, statements, null, false);
+                    setMethods ~= new FunctionLiteralNode(argNames, statements);
                     setMethodNames ~= currentMethodName;                    
                 }
                 else if(ptype == PropertyType.STATIC)
                 {
-                    staticMethods ~= new ScriptFunction(currentMethodName, argNames, 
-                            statements, null, false);
+                    staticMethods ~= new FunctionLiteralNode(argNames, statements);
                     staticMethodNames ~= currentMethodName;
                 }
             }
@@ -690,11 +677,24 @@ private:
 
         if(baseClass !is null)
             _baseClassStack = _baseClassStack[0..$-1];
-        if(constructor is null)
-            constructor = ScriptFunction.emptyFunction(className, true);
-       	return new ClassLiteralNode(constructor, methodNames, methods, getMethodNames, getMethods, 
-	   		setMethodNames, setMethods, staticMethodNames, staticMethods,
-	   		baseClass);
+       	return new ClassDefinition(className, constructor, methodNames, methods, getMethodNames, getMethods, 
+	   		setMethodNames, setMethods, staticMethodNames, staticMethods, baseClass);
+    }
+
+    ClassLiteralNode parseClassExpression()
+    {
+        immutable classToken = _currentToken;
+        nextToken();
+        immutable className = "<anonymous class>";
+        ExpressionNode baseClass = null;
+        if(_currentToken.isKeyword("extends"))
+        {
+            nextToken();
+            baseClass = parseExpression(); // let's hope this is an expression that results in a ScriptFunction value
+            _baseClassStack ~= baseClass;
+        }
+        auto classDef = parseClassDefinition(classToken, className, baseClass);
+        return new ClassLiteralNode(classDef);
     }
 
     /// parses multiple statements until reaching stop
@@ -1004,134 +1004,8 @@ private:
             baseClass = parseExpression(); // let's hope this is an expression that results in a ScriptFunction value
             _baseClassStack ~= baseClass;
         }
-        if(_currentToken.type != Token.Type.LBRACE)
-            throw new ScriptCompileException("Expected '{' after class name", _currentToken);
-        nextToken(); // eat the {
-        ScriptFunction constructor = null;
-        string[] methodNames;
-        ScriptFunction[] methods;
-        string[] getMethodNames;
-        ScriptFunction[] getMethods;
-        string[] setMethodNames;
-        ScriptFunction[] setMethods;
-        string[] staticMethodNames;
-        ScriptFunction[] staticMethods;
-        enum PropertyType { NONE, GET, SET, STATIC }
-        while(_currentToken.type != Token.Type.RBRACE && _currentToken.type != Token.Type.EOF)
-        {
-            PropertyType ptype = PropertyType.NONE;
-            string currentMethodName = "";
-            // could be a get or set
-            if(_currentToken.isIdentifier("get"))
-            {
-                ptype = PropertyType.GET;
-                nextToken();
-            }
-            else if(_currentToken.isIdentifier("set"))
-            {
-                ptype = PropertyType.SET;
-                nextToken();
-            }
-            else if(_currentToken.isIdentifier("static"))
-            {
-                ptype = PropertyType.STATIC;
-                nextToken();
-            }
-            // then an identifier
-            if(_currentToken.type != Token.Type.IDENTIFIER)
-                throw new ScriptCompileException("Method names must be valid identifiers", _currentToken);
-            currentMethodName = _currentToken.text;
-            nextToken();
-            // then a (
-            if(_currentToken.type != Token.Type.LPAREN)
-                throw new ScriptCompileException("Expected '(' after method name", _currentToken);
-            nextToken();
-            string[] argNames;
-            while(_currentToken.type != Token.Type.RPAREN)
-            {
-                if(_currentToken.type != Token.Type.IDENTIFIER)
-                    throw new ScriptCompileException("Method arguments must be valid identifiers", _currentToken);
-                argNames ~= _currentToken.text;
-                nextToken();
-                if(_currentToken.type == Token.Type.COMMA)
-                    nextToken();
-                else if(_currentToken.type != Token.Type.RPAREN)
-                    throw new ScriptCompileException("Method arguments must be separated by ','", _currentToken);
-            }
-            nextToken(); // eat the )
-            // then a {
-            if(_currentToken.type != Token.Type.LBRACE)
-                throw new ScriptCompileException("Method bodies must begin with '{'", _currentToken);
-            nextToken();
-            auto statements = parseStatements(Token.Type.RBRACE);
-            nextToken(); // eat }
-            // now we have a method but if this is the constructor
-            if(currentMethodName == "constructor")
-            {
-                if(ptype != PropertyType.NONE)
-                    throw new ScriptCompileException("Get and set not allowed for constructor", classToken);
-                if(constructor !is null)
-                    throw new ScriptCompileException("Classes may only have one constructor", classToken);
-                // if this is extending a class it MUST have ONE super call
-                if(baseClass !is null)
-                {
-                    ulong numSupers = 0;
-                    foreach(stmt ; statements)
-                    {
-                        if(cast(SuperCallStatementNode)stmt)
-                            numSupers++;
-                    }
-                    if(numSupers != 1)
-                        throw new ScriptCompileException("Derived class constructors must have one super call", 
-                                classToken);
-                }
-                constructor = new ScriptFunction(className, argNames, statements, null, true);
-            }
-            else // it's a normal method or getter/setter
-            {
-                if(ptype == PropertyType.NONE)
-                {
-                    methods ~= new ScriptFunction(className ~ ".prototype." ~ currentMethodName, 
-                            argNames, statements, null, false);
-                    methodNames ~= currentMethodName;
-                }
-                else if(ptype == PropertyType.GET)
-                {
-                    getMethods ~= new ScriptFunction(className ~ ".prototype." ~ currentMethodName, 
-                            argNames, statements, null, false);
-                    getMethodNames ~= currentMethodName;                    
-                }
-                else if(ptype == PropertyType.SET)
-                {
-                    setMethods ~= new ScriptFunction(className ~ ".prototype." ~ currentMethodName, 
-                            argNames, statements, null, false);
-                    setMethodNames ~= currentMethodName;                    
-                }
-                else if(ptype == PropertyType.STATIC)
-                {
-                    staticMethods ~= new ScriptFunction(className ~ "." ~ currentMethodName, argNames, 
-                            statements, null, false);
-                    staticMethodNames ~= currentMethodName;
-                }
-            }
-        }
-        nextToken(); // eat the class body }
-
-        // check for duplicate methods
-        bool[string] mnameMap;
-        foreach(mname ; methodNames)
-        {
-            if(mname in mnameMap)
-                throw new ScriptCompileException("Duplicate methods are not allowed", classToken);
-            mnameMap[mname] = true;
-        }
-
-        if(baseClass !is null)
-            _baseClassStack = _baseClassStack[0..$-1];
-        if(constructor is null)
-            constructor = ScriptFunction.emptyFunction(className, true);
-        return new ClassDeclarationStatementNode(lineNumber, className, constructor, methodNames, methods, 
-                getMethodNames, getMethods, setMethodNames, setMethods, staticMethodNames, staticMethods, baseClass);
+        auto classDef = parseClassDefinition(classToken, className, baseClass);
+        return new ClassDeclarationStatementNode(lineNumber, classDef);
     }
 
     SuperCallStatementNode parseSuperCallStatement()

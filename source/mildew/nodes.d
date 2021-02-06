@@ -14,6 +14,111 @@ import mildew.visitors;
 
 package:
 
+/// handles class expression and declaration data
+class ClassDefinition
+{
+    this(string clsname, FunctionLiteralNode ctor,
+            string[] mnames, FunctionLiteralNode[] ms,
+            string[] gmnames, FunctionLiteralNode[] gms,
+            string[] smnames, FunctionLiteralNode[] sms,
+            string[] statNames, FunctionLiteralNode[] statms,
+            ExpressionNode base = null)
+    {
+        className = clsname;
+        constructor = ctor;
+        methodNames = mnames;
+        methods = ms;
+        assert(methodNames.length == methods.length);
+        getMethodNames = gmnames;
+        getMethods = gms;
+        assert(getMethodNames.length == getMethods.length);
+        setMethodNames = smnames;
+        setMethods = sms;
+        assert(setMethodNames.length == setMethods.length);
+        staticMethodNames = statNames;
+        staticMethods = statms;
+        assert(staticMethodNames.length == staticMethods.length);
+        baseClass = base;
+    }
+
+    ScriptFunction create(Context context)
+    {
+        import mildew.interpreter: Interpreter;
+
+        ScriptFunction ctor;
+        if(constructor !is null)
+            ctor = new ScriptFunction(className, constructor.argList, constructor.statements, context, true);
+        else
+            ctor = ScriptFunction.emptyFunction(className, true);
+        // fill in the function.prototype with the methods
+        for(size_t i = 0; i < methodNames.length; ++i) 
+		{
+            ctor["prototype"][methodNames[i]] = new ScriptFunction(methodNames[i], 
+                    methods[i].argList, methods[i].statements, context, false);
+		}
+        // fill in any get properties
+        for(size_t i = 0; i < getMethodNames.length; ++i)
+		{
+            ctor["prototype"].addGetterProperty(getMethodNames[i], new ScriptFunction(
+                getMethodNames[i], getMethods[i].argList, getMethods[i].statements, 
+                context, false));
+		}
+        // fill in any set properties
+        for(size_t i = 0; i < setMethodNames.length; ++i)
+		{
+            ctor["prototype"].addSetterProperty(setMethodNames[i], new ScriptFunction(
+                setMethodNames[i], setMethods[i].argList, setMethods[i].statements,
+                context, false));
+		}
+		// static methods are assigned directly to the constructor itself
+		for(size_t i=0; i < staticMethodNames.length; ++i)
+		{
+			ctor[staticMethodNames[i]] = new ScriptFunction(staticMethodNames[i], 
+                staticMethods[i].argList, staticMethods[i].statements, context, false);
+		}
+
+        if(baseClass !is null)
+        {
+            immutable vr = cast(immutable)baseClass.accept(context.interpreter).get!(Interpreter.VisitResult);
+            if(vr.exception !is null)
+                throw vr.exception;
+            if(vr.result.type != ScriptAny.Type.FUNCTION)
+            {
+                throw new ScriptRuntimeException("Only classes can be extended");
+            }   
+            auto baseClassConstructor = vr.result.toValue!ScriptFunction;
+            auto constructorPrototype = ctor["prototype"].toValue!ScriptObject;
+            // if the base class constructor's "prototype" is null or non-object, it won't work anyway
+            // NOTE that ["prototype"] and .prototype are completely unrelated
+            constructorPrototype.prototype = baseClassConstructor["prototype"].toValue!ScriptObject;
+            // set the constructor's __proto__ to the base class so that static methods are inherited
+            // and the Function.call look up should still work
+            ctor.prototype = baseClassConstructor;
+        }
+        return ctor;
+    }
+
+    override string toString() const 
+    {
+        string output = "class " ~ className;
+        if(baseClass) output ~= " extends " ~ baseClass.toString();
+        output ~= " {...}";
+        return output;
+    }
+
+    string className;
+    FunctionLiteralNode constructor;
+    string[] methodNames;
+    FunctionLiteralNode[] methods;
+    string[] getMethodNames;
+    FunctionLiteralNode[] getMethods;
+    string[] setMethodNames;
+    FunctionLiteralNode[] setMethods;
+	string[] staticMethodNames;
+	FunctionLiteralNode[] staticMethods;
+    ExpressionNode baseClass; // should be an expression that returns a constructor function
+}
+
 /// root class of expression nodes
 abstract class ExpressionNode
 {
@@ -137,23 +242,9 @@ class ObjectLiteralNode : ExpressionNode
 
 class ClassLiteralNode : ExpressionNode 
 {
-    this(ScriptFunction cfn, string[] mnames, ScriptFunction[] ms, string[] gnames, ScriptFunction[] gs, 
-			string[] snames, ScriptFunction[] ss, string[] statNames, ScriptFunction[] statics, ExpressionNode baseClass)
+    this(ClassDefinition cdef)
     {
-        constructorFn = cfn;
-		methodNames = mnames;
-		methods = ms;
-		assert(methodNames.length == methods.length);
-		getterNames = gnames;
-		getters = gs;
-		assert(getterNames.length == getters.length);
-		setterNames = snames;
-		setters = ss;
-		assert(setterNames.length == setters.length);
-		staticMethodNames = statNames;
-		staticMethods = statics;
-		assert(staticMethodNames.length == staticMethods.length);
-        baseClassNode = baseClass;
+        classDefinition = cdef;
     }
 
 	override Variant accept(IExpressionVisitor visitor)
@@ -163,22 +254,10 @@ class ClassLiteralNode : ExpressionNode
 
     override string toString() const 
     {
-        auto str = "class";
-        if(baseClassNode !is null)
-            str ~= " extends " ~ baseClassNode.toString();
-        return str;
+        return classDefinition.toString();
     }
 
-    ScriptFunction constructorFn;
-	string[] methodNames;
-	ScriptFunction[] methods;
-	string[] getterNames;
-	ScriptFunction[] getters;
-	string[] setterNames;
-	ScriptFunction[] setters;
-	string[] staticMethodNames;
-	ScriptFunction[] staticMethods;
-	ExpressionNode baseClassNode;
+    ClassDefinition classDefinition;
 }
 
 class BinaryOpNode : ExpressionNode
@@ -826,27 +905,10 @@ class DeleteStatementNode : StatementNode
 
 class ClassDeclarationStatementNode : StatementNode
 {
-    this(size_t lineNo, string name, ScriptFunction con, string[] mnames, ScriptFunction[] ms, 
-         string[] gnames, ScriptFunction[] getters, string[] snames, ScriptFunction[] setters,
-		 string[] sfnNames, ScriptFunction[] staticMs, 
-         ExpressionNode bc = null)
+    this(size_t lineNo, ClassDefinition cdef)
     {
         super(lineNo);
-        className = name;
-        constructor = con; // can't be null must at least be ScriptFunction.emptyFunction("NameOfClass")
-        methodNames = mnames;
-        methods = ms;
-        assert(methodNames.length == methods.length);
-        getMethodNames = gnames;
-        getMethods = getters;
-        assert(getMethodNames.length == getMethods.length);
-        setMethodNames = snames;
-        setMethods = setters;
-        assert(setMethodNames.length == setMethods.length);
-		staticMethodNames = sfnNames;
-		staticMethods = staticMs;
-		assert(staticMethodNames.length == staticMethods.length);
-        baseClass = bc;
+        classDefinition = cdef;
     }
 
 	override Variant accept(IStatementVisitor visitor)
@@ -854,17 +916,7 @@ class ClassDeclarationStatementNode : StatementNode
 		return visitor.visitClassDeclarationStatementNode(this);
 	}
 
-    string className;
-    ScriptFunction constructor;
-    string[] methodNames;
-    ScriptFunction[] methods;
-    string[] getMethodNames;
-    ScriptFunction[] getMethods;
-    string[] setMethodNames;
-    ScriptFunction[] setMethods;
-	string[] staticMethodNames;
-	ScriptFunction[] staticMethods;
-    ExpressionNode baseClass; // should be an expression that returns a constructor function
+    ClassDefinition classDefinition;
 }
 
 class SuperCallStatementNode : StatementNode

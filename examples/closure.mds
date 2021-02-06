@@ -27,7 +27,7 @@ function makeClass(name) {
 let Cls1 = makeClass("class1");
 let Cls2 = makeClass("class2");
 
-new Cls1();
-new Cls2();
-new Cls1();
-// The output is still wrong. Functions have to be created at the moment of node access.
+new Cls1(); // New anon class class1
+new Cls2(); // New anon class class2
+new Cls1(); // New anon class class1
+// As of 8:51 2/6/2021 This program produces the correct output

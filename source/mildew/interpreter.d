@@ -253,53 +253,15 @@ public:
 	{
 		VisitResult vr;
 
-		// set constructor closure because parser couldn't set it
-		clnode.constructorFn.closure = _currentContext;
-        // fill in the function.prototype with the methods and set the closure context because the parser couldn't
-        for(size_t i = 0; i < clnode.methodNames.length; ++i) 
-		{
-            clnode.constructorFn["prototype"][clnode.methodNames[i]] = ScriptAny(clnode.methods[i]);
-			clnode.methods[i].closure = _currentContext;
-		}
-        // fill in any get properties and set closures
-        for(size_t i = 0; i < clnode.getterNames.length; ++i)
-		{
-            clnode.constructorFn["prototype"].addGetterProperty(clnode.getterNames[i], clnode.getters[i]);
-			clnode.getters[i].closure = _currentContext;
-		}
-        // fill in any set properties and set closures
-        for(size_t i = 0; i < clnode.setterNames.length; ++i)
-		{
-            clnode.constructorFn["prototype"].addSetterProperty(clnode.setterNames[i], clnode.setters[i]);
-			clnode.setters[i].closure = _currentContext;
-		}
-		// static methods are assigned directly to the constructor itself
-		for(size_t i=0; i < clnode.staticMethodNames.length; ++i)
-		{
-			clnode.constructorFn[clnode.staticMethodNames[i]] = ScriptAny(clnode.staticMethods[i]);
-			clnode.staticMethods[i].closure = _currentContext;
-		}
-
-        if(clnode.baseClassNode !is null)
+        try 
         {
-            vr = clnode.baseClassNode.accept(this).get!VisitResult;
-            if(vr.exception !is null)
-                return Variant(vr);
-            if(vr.result.type != ScriptAny.Type.FUNCTION)
-            {
-                vr.exception = new ScriptRuntimeException("Only classes can be extended");
-                return Variant(vr);
-            }   
-            auto baseClassConstructor = vr.result.toValue!ScriptFunction;
-            auto constructorPrototype = clnode.constructorFn["prototype"].toValue!ScriptObject;
-            // if the base class constructor's "prototype" is null or non-object, it won't work anyway
-            // NOTE that ["prototype"] and .prototype are completely unrelated
-            constructorPrototype.prototype = baseClassConstructor["prototype"].toValue!ScriptObject;
-            // set the constructor's __proto__ to the base class so that static methods are inherited
-            // and the Function.call look up should still work
-            clnode.constructorFn.prototype = baseClassConstructor;
+            vr.result = clnode.classDefinition.create(_currentContext);
         }
-        vr.result = clnode.constructorFn;
+        catch(ScriptRuntimeException ex)
+        {
+            vr.exception = ex;
+        }
+		        
         return Variant(vr);
 	}
 	
@@ -1208,63 +1170,28 @@ public:
 	Variant visitClassDeclarationStatementNode(ClassDeclarationStatementNode cdsnode)
 	{
 		VisitResult vr;
+        // generate class
+        try 
+        {
+            vr.result = cdsnode.classDefinition.create(_currentContext);
+        }
+        catch (ScriptRuntimeException ex)
+        {
+            vr.exception = ex;
+            return Variant(vr);
+        }
+        auto ctor = vr.result;
         // first try to assign the constructor as a local function
-        immutable ok = _currentContext.declareVariableOrConst(cdsnode.className, ScriptAny(cdsnode.constructor), false);
+        immutable ok = _currentContext.declareVariableOrConst(cdsnode.classDefinition.className, 
+                ctor, false);
         if(!ok)
         {
-            vr.exception = new ScriptRuntimeException("Class declaration " ~ cdsnode.className 
+            vr.exception = new ScriptRuntimeException("Class declaration " ~ cdsnode.classDefinition.className 
                 ~ " may not overwrite local variable or const");
             return Variant(vr);
         }
-		// set constructor closure because parser couldn't set it
-		cdsnode.constructor.closure = _currentContext;
-        // fill in the function.prototype with the methods and set the closure context because the parser couldn't
-        for(size_t i = 0; i < cdsnode.methodNames.length; ++i) 
-		{
-            cdsnode.constructor["prototype"][cdsnode.methodNames[i]] = ScriptAny(cdsnode.methods[i]);
-			cdsnode.methods[i].closure = _currentContext;
-		}
-        // fill in any get properties and set closures
-        for(size_t i = 0; i < cdsnode.getMethodNames.length; ++i)
-		{
-            cdsnode.constructor["prototype"].addGetterProperty(cdsnode.getMethodNames[i], cdsnode.getMethods[i]);
-			cdsnode.getMethods[i].closure = _currentContext;
-		}
-        // fill in any set properties and set closures
-        for(size_t i = 0; i < cdsnode.setMethodNames.length; ++i)
-		{
-            cdsnode.constructor["prototype"].addSetterProperty(cdsnode.setMethodNames[i], cdsnode.setMethods[i]);
-			cdsnode.setMethods[i].closure = _currentContext;
-		}
-		// static methods are assigned directly to the constructor itself
-		for(size_t i=0; i < cdsnode.staticMethodNames.length; ++i)
-		{
-			cdsnode.constructor[cdsnode.staticMethodNames[i]] = ScriptAny(cdsnode.staticMethods[i]);
-			cdsnode.staticMethods[i].closure = _currentContext;
-		}
-        // if there is a base class, we must set the class's prototype's __proto__ to the base class's prototype
-        if(cdsnode.baseClass !is null)
-        {
-            vr = cdsnode.baseClass.accept(this).get!VisitResult;
-            if(vr.exception !is null)
-                return Variant(vr);
-            if(vr.result.type != ScriptAny.Type.FUNCTION)
-            {
-                // TODO also check that it is a constructor?
-                vr.exception = new ScriptRuntimeException("Only classes can be extended");
-                return Variant(vr);
-            }   
-            auto baseClassConstructor = vr.result.toValue!ScriptFunction;
-            auto constructorPrototype = cdsnode.constructor["prototype"].toValue!ScriptObject;
-            // if the base class constructor's "prototype" is null or non-object, it won't work anyway
-            // NOTE that ["prototype"] and .prototype are completely unrelated
-            constructorPrototype.prototype = baseClassConstructor["prototype"].toValue!ScriptObject;
-            // set the constructor's __proto__ to the base class so that static methods are inherited
-            // and the Function.call look up should still work
-            cdsnode.constructor.prototype = baseClassConstructor;
-        }
-        vr.result = ScriptAny.UNDEFINED;
-        return Variant(vr);
+		
+        return Variant(VisitResult(ScriptAny.UNDEFINED)); // everything was ok
 	}
 	
     /// handle super constructor calls TODO use super as reference to base class with correct "this"
