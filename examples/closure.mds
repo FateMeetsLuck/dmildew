@@ -1,14 +1,33 @@
-function makeCounter() {
+function makeCounter(name) {
 	let i = 0;
 	let count = function() {
 		i = i + 1;
-		console.log(i);
+		console.log(`${name} ${i}`);
 	};
 	return count;
 }
   
-var counter = makeCounter();
-counter(); // 1
-counter(); // 2
-var counter2 = makeCounter();
-counter2();
+var counter = makeCounter("first");
+counter(); // first 1
+counter(); // first 2
+var counter2 = makeCounter("second");
+counter2(); // second 1
+let i = 6;
+counter(); // first 3
+counter2(); // second 2
+
+function makeClass(name) {
+    return class {
+        constructor() {
+            console.log("New anon class " + name);
+        }
+    };
+}
+
+let Cls1 = makeClass("class1");
+let Cls2 = makeClass("class2");
+
+new Cls1();
+new Cls2();
+new Cls1();
+// The output is still wrong. Functions have to be created at the moment of node access.

@@ -9,6 +9,7 @@ package:
 interface IExpressionVisitor
 {
 	Variant visitLiteralNode(LiteralNode lnode);
+    Variant visitFunctionLiteralNode(FunctionLiteralNode flnode);
 	Variant visitArrayLiteralNode(ArrayLiteralNode alnode);
 	Variant visitObjectLiteralNode(ObjectLiteralNode olnode);
 	Variant visitClassLiteralNode(ClassLiteralNode clnode);

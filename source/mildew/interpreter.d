@@ -198,15 +198,17 @@ public:
 		}
 		else
 		{
-			if(lnode.value.type == ScriptAny.Type.FUNCTION)
-			{
-				auto fn = lnode.value.toValue!ScriptFunction;
-				fn.closure = _currentContext;
-			}
 			return Variant(VisitResult(lnode.value));
 		}
 	}
 	
+    /// handles function literals
+    Variant visitFunctionLiteralNode(FunctionLiteralNode flnode)
+    {
+        auto func = new ScriptFunction("<anonymous function>", flnode.argList, flnode.statements, _currentContext);
+        return Variant(VisitResult(ScriptAny(func)));
+    }
+
 	/// return an array from an array literal node
 	Variant visitArrayLiteralNode(ArrayLiteralNode alnode)
 	{

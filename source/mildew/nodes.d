@@ -51,6 +51,41 @@ class LiteralNode : ExpressionNode
     ScriptAny value;
 }
 
+class FunctionLiteralNode : ExpressionNode
+{
+    this(string[] args, StatementNode[] stmts)
+    {
+        argList = args;
+        statements = stmts;
+    }
+
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitFunctionLiteralNode(this);
+    }
+
+    override string toString() const
+    {
+        string output = "function(";
+        for(size_t i = 0; i < argList.length; ++i)
+        {
+            output ~= argList[i];
+            if(i < argList.length - 1)
+                output ~= ", ";
+        }
+        output ~= "){\n";
+        foreach(stmt ; statements)
+        {
+            output ~= "\t" ~ stmt.toString();
+        }
+        output ~= "\n}";
+        return output;
+    }
+
+    string[] argList;
+    StatementNode[] statements;
+}
+
 class ArrayLiteralNode : ExpressionNode 
 {
     this(ExpressionNode[] values)

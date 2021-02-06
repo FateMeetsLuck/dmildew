@@ -488,13 +488,11 @@ private:
                 }
                 else if(_currentToken.text == "function") // function literal
                 {
-                    auto funcToken = _currentToken;
                     nextToken();
                     if(_currentToken.type != Token.Type.LPAREN)
                         throw new ScriptCompileException("Argument list expected after anonymous function", 
                             _currentToken);
                     nextToken();
-                    auto name = "<anonymous function>";
                     string[] argNames = [];
                     while(_currentToken.type != Token.Type.RPAREN)
                     {
@@ -513,8 +511,8 @@ private:
                     nextToken(); // eat the {
                     auto statements = parseStatements(Token.Type.RBRACE);
                     nextToken();
-                    auto func = new ScriptFunction(name, argNames, statements, null);
-                    left = new LiteralNode(funcToken, ScriptAny(func));
+                    // auto func = new ScriptFunction(name, argNames, statements, null);
+                    left = new FunctionLiteralNode(argNames, statements);
                 }
                 else if(_currentToken.text == "class")
                 {

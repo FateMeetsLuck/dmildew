@@ -54,20 +54,20 @@ public:
      *  A pointer to the located variable, or null if the variable was not found. If this value is needed for later
      *  the caller should make a copy of the variable immediately.
      */
-    ScriptAny* lookupVariableOrConst(in string name, out bool isConst)
+    ScriptAny* lookupVariableOrConst(in string varName, out bool isConst)
     {
         auto context = this;
         while(context !is null)
         {
-            if(name in context._varTable)
+            if(varName in context._varTable)
             {
                 isConst = false;
-                return (name in context._varTable);
+                return (varName in context._varTable);
             }
-            if(name in context._constTable)
+            if(varName in context._constTable)
             {
                 isConst = true;
-                return (name in context._constTable);
+                return (varName in context._constTable);
             }
             context = context._parent;
         }
@@ -273,6 +273,7 @@ public:
     }
 
 private:
+
     /// parent context. null if this is the global context
     Context _parent;
     /// name of context
