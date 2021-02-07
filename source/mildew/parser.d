@@ -467,7 +467,10 @@ private:
                 nextToken();
                 break;
             case Token.Type.STRING:
-                left = new LiteralNode(_currentToken, ScriptAny(_currentToken.text));
+                if(_currentToken.literalFlag != Token.LiteralFlag.TEMPLATE_STRING)
+                    left = new LiteralNode(_currentToken, ScriptAny(_currentToken.text));
+                else
+                    left = parseTemplateStringNode();
                 nextToken();
                 break;
             case Token.Type.KEYWORD:
@@ -554,6 +557,70 @@ private:
         return left;
     }
     
+    TemplateStringNode parseTemplateStringNode()
+    {
+        import mildew.lexer: Lexer;
+
+        enum TSState { LIT, EXPR }
+
+        size_t textIndex;
+        string currentExpr = "";
+        string currentLiteral = "";
+        ExpressionNode[] nodes;
+        TSState state = TSState.LIT;
+
+        string peekTwo(in string text, size_t i)
+        {
+            immutable char first = i >= text.length ? '\0' : text[i];
+            immutable char second = i+1 >= text.length ? '\0' : text[i+1];
+            return cast(string)[first,second];
+        }
+
+        while(textIndex < _currentToken.text.length)
+        {
+            if(state == TSState.LIT)
+            {
+                if(peekTwo(_currentToken.text, textIndex) == "${")
+                {
+                    currentExpr = "";
+                    textIndex += 2;
+                    state = TSState.EXPR;
+                    if(currentLiteral.length > 0)
+                        nodes ~= new LiteralNode(_currentToken, ScriptAny(currentLiteral));
+                }
+                else
+                {
+                    currentLiteral ~= _currentToken.text[textIndex++];
+                }
+            }
+            else
+            {
+                if(_currentToken.text[textIndex] == '}')
+                {
+                    currentLiteral = "";
+                    textIndex++;
+                    state = TSState.LIT;
+                    if(currentExpr.length > 0)
+                    {
+                        auto lexer = Lexer(currentExpr);
+                        auto tokens = lexer.tokenize();
+                        auto parser = Parser(tokens);
+                        nodes ~= parser.parseExpression();
+                    }
+                }
+                else
+                {
+                    currentExpr ~= _currentToken.text[textIndex++];
+                }
+            }
+        }
+        if(state == TSState.EXPR)
+            throw new ScriptCompileException("Unclosed template expression", _currentToken);
+        if(currentLiteral.length > 0)
+            nodes ~= new LiteralNode(_currentToken, ScriptAny(currentLiteral));
+        return new TemplateStringNode(nodes);
+    }
+
     /// after class ? extend base this can begin
     ClassDefinition parseClassDefinition(Token classToken, string className, ExpressionNode baseClass)
     {

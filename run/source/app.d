@@ -3,7 +3,8 @@
  */
 module app;
 
-import std.file: readText;
+import std.file: readText, FileException;
+import std.getopt;
 import std.stdio;
 import std.string: strip;
 
@@ -39,6 +40,14 @@ void evaluateWithErrorChecking(Interpreter interpreter, in string code, in strin
     }
 }
 
+private void printUsage()
+{
+    stderr.writeln("Usage: dmildew_run <scriptfile> [options]");
+    stderr.writeln("       dmildew_run [options]");
+    stderr.writeln("Options: -usevm : Use bytecode generation instead of tree walker (experimental)");
+    stderr.writeln("         -h     : Print this usage message");
+}
+
 /**
  * Main function for the REPL or interpreter. If no command line arguments are specified, it enters
  * interactive REPL mode, otherwise it attempts to execute the first argument as a script file.
@@ -48,12 +57,41 @@ int main(string[] args)
     auto terminal = Terminal(ConsoleOutputType.linear);
     auto interpreter = new Interpreter();
     interpreter.initializeStdlib();
+    bool useVM = false;
+
+    try 
+    {
+        auto options = cast(immutable)getopt(args, "usevm", &useVM);
+        if(options.helpWanted) 
+        {
+            printUsage();
+            return 1;
+        }
+    }
+    catch(Exception ex)
+    {
+        printUsage();
+        return 64;
+    }
+
+    if(useVM)
+    {
+        stderr.writeln("UseVM option is not yet implemented");
+    }
 
     if(args.length > 1)
     {
         immutable fileName = args[1];
-        auto code = readText(fileName);
-        evaluateWithErrorChecking(interpreter, code, fileName);
+        try 
+        {
+            auto code = readText(fileName);
+            evaluateWithErrorChecking(interpreter, code, fileName);
+        }
+        catch(FileException fex)
+        {
+            stderr.writeln("Could not read file: " ~ fileName);
+            return 66;
+        }
     }    
     else
     {

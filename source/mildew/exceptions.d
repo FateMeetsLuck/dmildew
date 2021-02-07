@@ -5,6 +5,8 @@
  */
 module mildew.exceptions;
 
+import std.typecons;
+
 import mildew.lexer: Token;
 
 /**
@@ -62,13 +64,13 @@ class ScriptRuntimeException : Exception
         string str = "ScriptRuntimeException: " ~ msg ~ "\n";
         foreach(tb ; scriptTraceback)
         {
-            str ~= " at line " ~ tb.line.to!string ~ ":" ~ tb.toString() ~ "\n";
+            str ~= " at line " ~ tb[0].to!string ~ ":" ~ tb[1] ~ "\n";
         }
         return str;
     }
 
-    /// A chain of statement nodes where the exception occurred
-    StatementNode[] scriptTraceback;
+    /// A chain of statements where the exception occurred
+    Tuple!(immutable size_t, string)[] scriptTraceback;
     /// If it is thrown by a script, this is the value that was thrown
     ScriptAny thrownValue = ScriptAny.UNDEFINED; 
 }

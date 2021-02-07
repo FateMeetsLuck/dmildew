@@ -260,6 +260,19 @@ public:
         return _parent;
     }
 
+    /// depth property how far from root
+    size_t depth()
+    {
+        size_t d = 0;
+        auto env = _parent;
+        while(env !is null)
+        {
+            ++d;
+            env = env._parent;
+        }
+        return d;
+    }
+
     /// returns the name property of the Environment
     string name() const
     {

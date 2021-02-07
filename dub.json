@@ -4,8 +4,10 @@
 	],
 	"copyright": "Copyright © 2020, Johnny Postblock",
 	"description": "Scripting language for D",
-    "license": "GPL-3.0",
-    "name": "dmildew",
-    "targetType": "library",
-    "subPackages": [ "run" ]
+	"license": "GPL-3.0",
+	"name": "dmildew",
+	"subPackages": [
+		"run"
+	],
+	"targetType": "library"
 }

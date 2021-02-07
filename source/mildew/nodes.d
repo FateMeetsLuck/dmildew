@@ -191,6 +191,36 @@ class FunctionLiteralNode : ExpressionNode
     StatementNode[] statements;
 }
 
+class TemplateStringNode : ExpressionNode
+{
+    this(ExpressionNode[] ns)
+    {
+        nodes = ns;
+    }
+
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitTemplateStringNode(this);
+    }
+
+    override string toString() const
+    {
+        import std.format: format;
+        string output = "`";
+        foreach(node ; nodes)
+        {
+            if(auto lit = cast(LiteralNode)node)
+                output ~= lit.literalToken.text;
+            else // any other expression
+                output ~= format("${%s}", node.toString());
+        }
+        output ~= "`";
+        return output;
+    }
+
+    ExpressionNode[] nodes;
+}
+
 class ArrayLiteralNode : ExpressionNode 
 {
     this(ExpressionNode[] values)

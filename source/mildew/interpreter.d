@@ -3,6 +3,7 @@
  */
 module mildew.interpreter;
 
+import std.typecons;
 import std.variant;
 
 import mildew.environment;
@@ -44,19 +45,21 @@ public:
         import mildew.stdlib.console: initializeConsoleLibrary;
         import mildew.stdlib.date: initializeDateLibrary;
         import mildew.stdlib.math: initializeMathLibrary;
+        import mildew.stdlib.system: initializeSystemLib;
         initializeTypesLibrary(this);
         initializeGlobalLibrary(this);
         initializeConsoleLibrary(this);
         initializeDateLibrary(this);
         initializeMathLibrary(this);
+        initializeSystemLib(this);
     }
 
     /**
      * Calls a script function. Can throw ScriptRuntimeException.
      */
-    ScriptAny callFunction(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args)
+    ScriptAny callFunction(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args, bool useVM=false)
     {
-        auto vr = callFn(func, thisObj, args, false);
+        auto vr = callFn(func, thisObj, args, false, useVM);
         if(vr.exception)
             throw vr.exception;
         return vr.result;
@@ -116,90 +119,7 @@ public:
 	/// extract a VisitResult from a LiteralNode
 	Variant visitLiteralNode(LiteralNode lnode)
 	{
-		import mildew.exceptions: ScriptCompileException;
-		import mildew.parser: Parser;
-		import mildew.lexer: Lexer;
-
-		if(lnode.literalToken.literalFlag == Token.LiteralFlag.TEMPLATE_STRING)
-		{
-			size_t currentStart = 0;
-            size_t endLast;
-            bool addToParseString = false;
-            string result;
-            string stringToParse;
-            for(size_t index = 0; index < lnode.literalToken.text.length; ++index)
-            {
-                if(lnode.literalToken.text[index] == '$')
-                {
-                    if(index < lnode.literalToken.text.length - 1) // @suppress(dscanner.suspicious.length_subtraction)
-                    {
-                        if(lnode.literalToken.text[index+1] == '{')
-                        {
-                            addToParseString = true;
-                            index += 1;
-                        }
-                        else
-                        {
-                            if(addToParseString)
-                                stringToParse ~= lnode.literalToken.text[index];
-                            else
-                                endLast = index + 1;
-                        }
-                    }
-                    else 
-                    {
-                        if(addToParseString)
-                            stringToParse ~= lnode.literalToken.text[index];
-                        else
-                            endLast = index + 1; 
-                    }
-                }
-                else if(lnode.literalToken.text[index] == '}' && addToParseString)
-                {
-                    result ~= lnode.literalToken.text[currentStart .. endLast];
-                    auto lexer = Lexer(stringToParse);
-                    auto parser = Parser(lexer.tokenize());
-                    ExpressionNode expressionNode;
-                    VisitResult vr;
-                    try 
-                    {
-                        expressionNode = parser.parseExpression();
-                    }
-                    catch(ScriptCompileException ex)
-                    {
-                        vr.exception = new ScriptRuntimeException(ex.msg);
-                        return Variant(vr);
-                    }
-                    vr = expressionNode.accept(this).get!VisitResult;
-                    if(vr.exception !is null)
-                        return Variant(vr);
-                    result ~= vr.result.toString();
-                    addToParseString = false;
-                    currentStart = index+1;
-                    stringToParse = "";
-                }
-                else
-                {
-                    if(addToParseString)
-                        stringToParse ~= lnode.literalToken.text[index];
-                    else
-                        endLast = index + 1;
-                }
-            }
-            if(addToParseString)
-            {
-                VisitResult vr;
-                vr.exception = new ScriptRuntimeException("Unclosed template string expression");
-                return Variant(vr);
-            }
-            if(currentStart < lnode.literalToken.text.length)
-                result ~= lnode.literalToken.text[currentStart .. endLast];
-            return Variant(VisitResult(result));
-		}
-		else
-		{
-			return Variant(VisitResult(lnode.value));
-		}
+		return Variant(VisitResult(lnode.value));
 	}
 	
     /// handles function literals
@@ -207,6 +127,21 @@ public:
     {
         auto func = new ScriptFunction("<anonymous function>", flnode.argList, flnode.statements, _currentEnvironment);
         return Variant(VisitResult(ScriptAny(func)));
+    }
+
+    /// handle template literal nodes
+    Variant visitTemplateStringNode(TemplateStringNode tsnode)
+    {
+        VisitResult vr;
+        string result = "";
+        foreach(node ; tsnode.nodes)
+        {
+            vr = node.accept(this).get!VisitResult;
+            if(vr.exception)
+                return Variant(vr);
+            result ~= vr.result.toString();
+        }
+        return Variant(VisitResult(result));
     }
 
 	/// return an array from an array literal node
@@ -239,7 +174,7 @@ public:
                 return Variant(vr);
             vals ~= vr.result;
         }
-        auto obj = new ScriptObject("", null, null);
+        auto obj = new ScriptObject("object", null, null);
         for(size_t i = 0; i < olnode.keys.length; ++i)
         {
             obj.assignField(olnode.keys[i], vals[i]);
@@ -695,7 +630,7 @@ public:
             if(result.returnFlag || result.breakFlag || result.continueFlag || result.exception !is null)
             {
                 if(result.exception)
-                    result.exception.scriptTraceback ~= statement;
+                    result.exception.scriptTraceback ~= tuple(statement.line, statement.toString());
                 break;
             }
         }   
@@ -1268,7 +1203,8 @@ package:
 
 private:
 
-    VisitResult callFn(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args, bool returnThis = false)
+    VisitResult callFn(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args, 
+                       bool returnThis = false, bool useVM = false)
 	{
 		VisitResult vr;
 		if(returnThis)
@@ -1303,7 +1239,7 @@ private:
 				if(vr.returnFlag || vr.exception !is null)
 				{
 					if(vr.exception !is null)
-						vr.exception.scriptTraceback ~= statement;
+						vr.exception.scriptTraceback ~= tuple(statement.line, statement.toString());
 					vr.returnFlag = false;
 					break;
 				}
