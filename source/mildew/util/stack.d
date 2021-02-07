@@ -8,9 +8,10 @@ struct Stack(T)
 {
 public:
     /// push an item to the stack
-    void push(T item)
+    size_t push(T item)
     {
         _data ~= item;
+        return _data.length - 1;
     }
     /// pushes multiple items to the stack such that the last element is on the top
     void push(T[] items)

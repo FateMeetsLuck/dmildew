@@ -6,6 +6,7 @@ module mildew.interpreter;
 import std.typecons;
 import std.variant;
 
+import mildew.compiler;
 import mildew.environment;
 import mildew.exceptions: ScriptRuntimeException;
 import mildew.lexer: Token, Lexer;
@@ -13,6 +14,7 @@ import mildew.nodes;
 import mildew.parser;
 import mildew.types;
 import mildew.visitors;
+import mildew.vm;
 
 /**
  * This is the main interface for the host application to interact with scripts.
@@ -27,10 +29,15 @@ public:
      * to not pollute the global namespace. However, scripts can use var to declare variables that
      * are global.
      */
-    this()
+    this(bool useVM = false)
     {
         _globalEnvironment = new Environment(this);
         _currentEnvironment = _globalEnvironment;
+        if(useVM)
+        {
+            _compiler = new Compiler();
+            _vm = new VirtualMachine(_globalEnvironment);
+        }
     }
 
     /**
@@ -75,19 +82,25 @@ public:
      */
     ScriptAny evaluate(in string code)
     {
-        debug import std.stdio: writeln;
-
-        auto lexer = Lexer(code);
-        auto tokens = lexer.tokenize();
-        auto parser = Parser(tokens);
-        // debug writeln(tokens);
-        auto programBlock = parser.parseProgram();
-        auto vr = programBlock.accept(this).get!VisitResult;
-        if(vr.exception !is null)
-            throw vr.exception;
-        if(vr.returnFlag)
-            return vr.result;
-        return ScriptAny.UNDEFINED;
+        if(_compiler is null)
+        {
+            auto lexer = Lexer(code);
+            auto tokens = lexer.tokenize();
+            auto parser = Parser(tokens);
+            auto programBlock = parser.parseProgram();
+            auto vr = programBlock.accept(this).get!VisitResult;
+            if(vr.exception !is null)
+                throw vr.exception;
+            if(vr.returnFlag)
+                return vr.result;
+            return ScriptAny.UNDEFINED;
+        }
+        else
+        {
+            auto chunk = _compiler.compile(code);
+            _vm.run(chunk);
+            return _vm.getReturnValue();
+        }
     }
 
     // TODO: Read script from file
@@ -1496,6 +1509,8 @@ private:
         return vr;
 	}
 
+    Compiler _compiler;
+    VirtualMachine _vm;
     Environment _globalEnvironment;
     Environment _currentEnvironment;
 }

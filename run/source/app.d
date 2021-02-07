@@ -28,15 +28,19 @@ void evaluateWithErrorChecking(Interpreter interpreter, in string code, in strin
     }
     catch(ScriptCompileException ex)
     {
-        writeln("In file " ~ fileName);
-        writefln("%s", ex);
+        stderr.writeln("In file " ~ fileName);
+        stderr.writefln("%s", ex);
     }
     catch(ScriptRuntimeException ex)
     {
-        writeln("In file " ~ fileName);
-        writefln("%s", ex);
+        stderr.writeln("In file " ~ fileName);
+        stderr.writefln("%s", ex);
         if(ex.thrownValue.type != ScriptAny.Type.UNDEFINED)
-            writefln("Value thrown: %s", ex.thrownValue);
+            stderr.writefln("Value thrown: %s", ex.thrownValue);
+    }
+    catch(Exception ex)
+    {
+        stderr.writeln(ex.msg);
     }
 }
 
@@ -55,8 +59,6 @@ private void printUsage()
 int main(string[] args)
 {
     auto terminal = Terminal(ConsoleOutputType.linear);
-    auto interpreter = new Interpreter();
-    interpreter.initializeStdlib();
     bool useVM = false;
 
     try 
@@ -74,10 +76,8 @@ int main(string[] args)
         return 64;
     }
 
-    if(useVM)
-    {
-        stderr.writeln("UseVM option is not yet implemented");
-    }
+    auto interpreter = new Interpreter(useVM);
+    interpreter.initializeStdlib();
 
     if(args.length > 1)
     {
