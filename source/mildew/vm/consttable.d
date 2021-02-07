@@ -21,6 +21,12 @@ public:
         return location;
     }
 
+    /// same as addValue but returns an uint for easy encoding
+    uint addValueUint(ScriptAny value)
+    {
+        return cast(uint)addValue(value);
+    }
+
     /// get a specific constant
     ScriptAny get(size_t index) const
     {

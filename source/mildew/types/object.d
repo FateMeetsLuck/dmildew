@@ -220,6 +220,7 @@ protected:
 
 private:
 
+    // TODO complete rewrite
     string formattedString(int indent = 0) const
     {
         immutable indentation = "    ";
@@ -238,10 +239,10 @@ private:
             }
             else
                 result ~= v.toString();
-            result ~= "\n";
+            result ~= ",";
         }
-        for(int i = 0; i < indent; ++i)
-            result ~= indentation;
+        // for(int i = 0; i < indent; ++i)
+        //    result ~= indentation;
         result ~= "}";
         return result;
     }

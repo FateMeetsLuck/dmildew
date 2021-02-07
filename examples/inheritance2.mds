@@ -25,4 +25,8 @@ var e1 = new Employee("Vladimir Lenin", 53, "CCCP");
 e1.greet();
 e1.work();
 console.log(e1.eat === undefined);
-// As of Dec 30 00:51 2020 This program produces the correct output.
+var e2 = new Employee("Joe Biden", 889, "Imperialist Corporate State");
+e2.work();
+e2.greet();
+e1.work();
+// As of 2/7/2021 13:22 This program produces the correct output.

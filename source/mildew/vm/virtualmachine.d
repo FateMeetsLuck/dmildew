@@ -24,6 +24,7 @@ enum OpCode : ubyte
     ARRAY, // array(uint) : pops n items to create array and pushes to top
     OBJECT, // array(uint) : create an object from key-value pairs starting with stack[-n] so n must be even
     NEW, // similar to call(uint)
+    THIS, // pushes local "this" or undefined if not found
     OPENSCOPE, // openscope() : open an environment scope
     CLOSESCOPE, // closescope() : close an environment scope
     DECLVAR, // declvar(uint) : declare pop() as stack[-2] to a global described by a const
@@ -33,7 +34,7 @@ enum OpCode : ubyte
     SETVAR, // setvar(uint) : store top() in variable described by const table index string leave value on top
     OBJGET, // objget() : retrieves stack[-2][stack[-1]], popping 2 and pushing 1
     OBJSET, // objset() : sets stack[-3][stack[-2]] to stack[-1], pops 3 and pushes the value that was set
-    CALL, // call(uint) : stack should be func, arg1, arg2, arg3
+    CALL, // call(uint) : stack should be this, func, arg1, arg2, arg3 and arg would be 3
     JMPFALSE, // jmpfalse(int) : relative jump
     JMP,  // jmp(int) -> : relative jump
     GOTO, // goto(uint, ubyte) : absolute ip. second param is number of scopes to subtract
@@ -152,6 +153,18 @@ private size_t opObject(VirtualMachine vm, size_t ip, Chunk chunk)
 // todo new
 
 pragma(inline)
+private size_t opThis(VirtualMachine vm, size_t ip, Chunk chunk)
+{
+    bool _; // @suppress(dscanner.suspicious.unmodified)
+    auto thisPtr = vm._environment.lookupVariableOrConst("this", _);
+    if(thisPtr == null)
+        vm._stack.push(ScriptAny.UNDEFINED);
+    else
+        vm._stack.push(*thisPtr);
+    return ip + 1;
+}
+
+pragma(inline)
 private size_t opOpenScope(VirtualMachine vm, size_t ip, Chunk chunk)
 {
     vm._environment = new Environment(vm._environment);
@@ -234,6 +247,178 @@ private size_t opSetVar(VirtualMachine vm, size_t ip, Chunk chunk)
 }
 
 pragma(inline)
+private size_t opObjGet(VirtualMachine vm, size_t ip, Chunk chunk)
+{
+    auto objToAccess = vm._stack.array[$-2];
+    auto field = vm._stack.array[$-1]; // @suppress(dscanner.suspicious.unmodified)
+    vm._stack.pop(2);
+    // TODO handle getters
+    // if field is integer it is array access
+    if(field.type == ScriptAny.Type.INTEGER)
+    {
+        auto index = field.toValue!long;
+        if(objToAccess.type == ScriptAny.Type.ARRAY)
+        {
+            auto arr = objToAccess.toValue!(ScriptAny[]);
+            if(index < 0)
+                index = arr.length + index;
+            if(index < 0 || index >= arr.length)
+                throwRuntimeError("Out of bounds array access", ip, chunk);
+            vm._stack.push(arr[index]);
+        }
+        else if(objToAccess.type == ScriptAny.Type.STRING)
+        {
+            auto wstr = objToAccess.toValue!(ScriptString)().getWString();
+            if(index < 0)
+                index = wstr.length + index;
+            if(index < 0 || index >= wstr.length)
+                throwRuntimeError("Out of bounds string access", ip, chunk);
+            vm._stack.push(ScriptAny([wstr[index]]));
+        }
+        else
+        {
+            throwRuntimeError("Value " ~ objToAccess.toString() ~ " is not an array or string", ip, chunk);
+        }
+    }
+    else // else object field access
+    {
+        auto index = field.toString();
+        if(!objToAccess.isObject)
+            throwRuntimeError("Unable to access members of non-object " ~ objToAccess.toString(), ip, chunk);
+        // TODO check getters and run them if found
+        // for now just access fields
+        vm._stack.push(objToAccess[index]);
+    }
+    return ip + 1;
+}
+
+pragma(inline)
+private size_t opObjSet(VirtualMachine vm, size_t ip, Chunk chunk)
+{
+    auto objToAccess = vm._stack.array[$-3];
+    auto fieldToAssign = vm._stack.array[$-2]; // @suppress(dscanner.suspicious.unmodified)
+    auto value = vm._stack.array[$-1];
+    vm._stack.pop(3);
+    if(fieldToAssign.type == ScriptAny.Type.INTEGER)
+    {
+        auto index = fieldToAssign.toValue!long;
+        if(objToAccess.type == ScriptAny.Type.ARRAY)
+        {
+            auto arr = objToAccess.toValue!(ScriptAny[]);
+            if(index < 0)
+                index = arr.length + index;
+            if(index < 0 || index >= arr.length)
+                throwRuntimeError("Out of bounds array assignment", ip, chunk);
+            arr[index] = value;
+            vm._stack.push(value);
+        }
+        else
+        {
+            throwRuntimeError("Value " ~ objToAccess.toString() ~ " is not an array", ip, chunk);
+        }
+    }
+    else
+    {
+        auto index = fieldToAssign.toValue!string;
+        if(!objToAccess.isObject)
+            throwRuntimeError("Unable to assign member of non-object " ~ objToAccess.toString(), ip, chunk);
+        // TODO check setters, and in cases where there is a setter but no getter, undefined will be pushed
+        objToAccess[index] = value;
+        vm._stack.push(value);
+    }
+    return ip + 1;
+}
+
+pragma(inline)
+private size_t opCall(VirtualMachine vm, size_t ip, Chunk chunk)
+{
+    immutable n = decode!uint(chunk.bytecode.ptr + ip + 1) + 2;
+    auto callInfo = vm._stack.pop(n);
+    auto thisObj = callInfo[0]; // @suppress(dscanner.suspicious.unmodified)
+    auto funcAny = callInfo[1];
+    auto args = callInfo[2..$];
+    NativeFunctionError nfe = NativeFunctionError.NO_ERROR;
+    if(funcAny.type != ScriptAny.Type.FUNCTION)
+        throwRuntimeError("Unable to call non-function " ~ funcAny.toString(), ip, chunk);
+    auto func = funcAny.toValue!ScriptFunction; // @suppress(dscanner.suspicious.unmodified)
+    if(func.type == ScriptFunction.Type.SCRIPT_FUNCTION)
+    {
+        throw new VMException("Calling script functions is not yet implemented", ip, OpCode.CALL);
+    }
+    else if(func.type == ScriptFunction.Type.NATIVE_FUNCTION)
+    {
+        auto nativeFunc = func.nativeFunction;
+        vm._stack.push(nativeFunc(vm._environment, &thisObj, args, nfe));
+    }
+    else if(func.type == ScriptFunction.Type.NATIVE_DELEGATE)
+    {
+        auto nativeDelegate = func.nativeDelegate;
+        vm._stack.push(nativeDelegate(vm._environment, &thisObj, args, nfe));
+    }
+    final switch(nfe)
+    {
+    case NativeFunctionError.NO_ERROR:
+        break;
+    case NativeFunctionError.RETURN_VALUE_IS_EXCEPTION:
+        throwRuntimeError(vm._stack.peek().toString(), ip, chunk);
+        break;
+    case NativeFunctionError.WRONG_NUMBER_OF_ARGS:
+        throwRuntimeError("Wrong number of arguments to native function", ip, chunk);
+        break;
+    case NativeFunctionError.WRONG_TYPE_OF_ARG:
+        throwRuntimeError("Wrong type of argument to native function", ip, chunk);
+        break;
+    }
+    return ip + 1 + uint.sizeof;
+}
+
+pragma(inline)
+private size_t opJmpFalse(VirtualMachine vm, size_t ip, Chunk chunk)
+{
+    immutable jmpAmount = decode!int(chunk.bytecode.ptr + ip + 1);
+    immutable shouldJump = vm._stack.pop();
+    if(!shouldJump)
+        return ip + jmpAmount;
+    else
+        return ip + 1 + int.sizeof;
+}
+
+pragma(inline)
+private size_t opJmp(VirtualMachine vm, size_t ip, Chunk chunk)
+{
+    immutable jmpAmount = decode!int(chunk.bytecode.ptr + ip + 1);
+    return ip + jmpAmount;
+}
+
+pragma(inline)
+private size_t opGoto(VirtualMachine vm, size_t ip, Chunk chunk)
+{
+    immutable address = decode!uint(chunk.bytecode.ptr + ip + 1);
+    return address;
+}
+
+pragma(inline)
+private size_t opBitNot(VirtualMachine vm, size_t ip, Chunk chunk)
+{
+    vm._stack.array[$-1] = ~vm._stack.array[$-1];
+    return ip + 1;
+}
+
+pragma(inline)
+private size_t opNot(VirtualMachine vm, size_t ip, Chunk chunk)
+{
+    vm._stack.array[$-1] = ScriptAny(!vm._stack.array[$-1]);
+    return ip + 1;
+}
+
+pragma(inline)
+private size_t opNegate(VirtualMachine vm, size_t ip, Chunk chunk)
+{
+    vm._stack.array[$-1] = -vm._stack.array[$-1];
+    return ip + 1;
+}
+
+pragma(inline)
 private size_t opReturn(VirtualMachine vm, size_t ip, Chunk chunk)
 {
     return chunk.bytecode.length; // this will stop the VM current function
@@ -256,6 +441,7 @@ class VirtualMachine
         _ops[OpCode.ARRAY] = &opArray;
         _ops[OpCode.OBJECT] = &opObject;
         // TODO new
+        _ops[OpCode.THIS] = &opThis;
         _ops[OpCode.OPENSCOPE] = &opOpenScope;
         _ops[OpCode.CLOSESCOPE] = &opCloseScope;
         _ops[OpCode.DECLVAR] = &opDeclVar;
@@ -263,6 +449,15 @@ class VirtualMachine
         _ops[OpCode.DECLCONST] = &opDeclConst;
         _ops[OpCode.GETVAR] = &opGetVar;
         _ops[OpCode.SETVAR] = &opSetVar;
+        _ops[OpCode.OBJGET] = &opObjGet;
+        _ops[OpCode.OBJSET] = &opObjSet;
+        _ops[OpCode.CALL] = &opCall;
+        _ops[OpCode.JMPFALSE] = &opJmpFalse;
+        _ops[OpCode.JMP] = &opJmp;
+        _ops[OpCode.GOTO] = &opGoto;
+        _ops[OpCode.BITNOT] = &opBitNot;
+        _ops[OpCode.NOT] = &opNot;
+        _ops[OpCode.NEGATE] = &opNegate;
         _ops[OpCode.RETURN] = &opReturn;
     }
 
@@ -315,6 +510,9 @@ class VirtualMachine
                 ip += 1 + uint.sizeof;
                 break;
             // TODO new
+            case OpCode.THIS:
+                ++ip;
+                break;
             case OpCode.OPENSCOPE:
                 ++ip;
                 break;
@@ -330,6 +528,10 @@ class VirtualMachine
             case OpCode.SETVAR:
                 ip += 1 + uint.sizeof;
                 break;
+            case OpCode.OBJGET:
+            case OpCode.OBJSET:
+                ++ip;
+                break;
             case OpCode.CALL:
                 ip += 1 + uint.sizeof;
                 break;
@@ -340,7 +542,10 @@ class VirtualMachine
             case OpCode.GOTO:
                 ip += 1 + uint.sizeof;
                 break;
+            case OpCode.BITNOT:
+            case OpCode.NOT:
             case OpCode.ADD:
+            case OpCode.NEGATE:
                 ++ip;
                 break;
             case OpCode.RETURN:
@@ -402,6 +607,9 @@ class VirtualMachine
             break;
         }
         // TODO new
+        case OpCode.THIS:
+            writefln("%05d: %s", ip, op.to!string);
+            break;
         case OpCode.OPENSCOPE:
         case OpCode.CLOSESCOPE:
             writefln("%05d: %s", ip, op.to!string);
@@ -419,9 +627,13 @@ class VirtualMachine
             printInstructionWithConstID(ip, op, constID, chunk);
             break;
         }
+        case OpCode.OBJSET:
+        case OpCode.OBJGET:
+            writefln("%05d: %s", ip, op.to!string);
+            break;
         case OpCode.CALL: {
-            immutable amount = decode!uint(chunk.bytecode.ptr + ip + 1);
-            writefln("%05d: %s amount=%s", ip, op.to!string, amount);
+            immutable args = decode!uint(chunk.bytecode.ptr + ip + 1);
+            writefln("%05d: %s args=%s", ip, op.to!string, args);
             break;
         }
         case OpCode.JMPFALSE: 
@@ -435,6 +647,9 @@ class VirtualMachine
             writefln("%05d: %s instruction=%s", ip, op.to!string, instruction);
             break;
         }
+        case OpCode.BITNOT:
+        case OpCode.NOT:
+        case OpCode.NEGATE:
         case OpCode.ADD:
             writefln("%05d: %s", ip, op.to!string);
             break;
@@ -476,22 +691,37 @@ unittest
 {
     auto vm = new VirtualMachine(new Environment(null, "<global>"));
     auto chunk = new Chunk();
-    immutable str_a_index = chunk.constTable.addValue(ScriptAny("a"));
-    immutable val_99_index = chunk.constTable.addValue(ScriptAny(99));
-    immutable str_foo_index = chunk.constTable.addValue(ScriptAny("foo"));
-    immutable val_420_index = chunk.constTable.addValue(ScriptAny(420));
+
+    ubyte[] getConst(T)(T value)
+    {
+        return encode(chunk.constTable.addValueUint(ScriptAny(value)));
+    }
+
+    ScriptAny native_testFunc(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+    {
+        writefln("The type of this is %s", thisObj.typeToString);
+        for(size_t i = 0; i < args.length; ++i)
+        {
+            writefln("The type of arg #%s is %s", i, args[i].typeToString);
+        }
+        return ScriptAny(1000);
+    }
 
     chunk.bytecode ~= encode(OpCode.OPENSCOPE);
-    chunk.bytecode ~= encode(OpCode.CONST) ~ encode!uint(cast(uint)str_a_index);
-    chunk.bytecode ~= encode(OpCode.CONST) ~ encode!uint(cast(uint)val_99_index);
+    chunk.bytecode ~= encode(OpCode.CONST) ~ getConst("a");
+    chunk.bytecode ~= encode(OpCode.CONST) ~ getConst(69);
     chunk.bytecode ~= encode(OpCode.OBJECT) ~ encode!uint(2);
-    chunk.bytecode ~= encode(OpCode.DECLVAR) ~ encode!uint(cast(uint)str_foo_index);
-    chunk.bytecode ~= encode(OpCode.CONST) ~ encode!uint(cast(uint)str_a_index);
-    chunk.bytecode ~= encode(OpCode.DECLLET) ~ encode!uint(cast(uint)str_foo_index);
-    chunk.bytecode ~= encode(OpCode.GETVAR) ~ encode!uint(cast(uint)str_foo_index);
-    chunk.bytecode ~= encode(OpCode.POP);
-    chunk.bytecode ~= encode(OpCode.CONST) ~ encode!uint(cast(uint)val_420_index);
-    chunk.bytecode ~= encode(OpCode.SETVAR) ~ encode!uint(cast(uint)str_foo_index);
+    chunk.bytecode ~= encode(OpCode.PUSH) ~ encode!int(-1);
+    chunk.bytecode ~= encode(OpCode.CONST) ~ getConst("foo");
+    chunk.bytecode ~= encode(OpCode.CONST) ~ getConst(420);
+    chunk.bytecode ~= encode(OpCode.OBJSET);
+    chunk.bytecode ~= encode(OpCode.PUSH) ~ encode!int(-2);
+    chunk.bytecode ~= encode(OpCode.CONST) ~ getConst("a");
+    chunk.bytecode ~= encode(OpCode.OBJGET);
+    chunk.bytecode ~= encode(OpCode.CONST) ~ getConst(new ScriptFunction("testFunc", &native_testFunc));
+    chunk.bytecode ~= encode(OpCode.PUSH) ~ encode!int(-1);
+    chunk.bytecode ~= encode(OpCode.CALL) ~ encode!uint(1);
+    chunk.bytecode ~= encode(OpCode.NEGATE);
     chunk.bytecode ~= encode(OpCode.CLOSESCOPE);
 
     vm.printChunk(chunk);

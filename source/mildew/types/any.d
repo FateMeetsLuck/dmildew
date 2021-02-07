@@ -818,7 +818,7 @@ private:
             if(_type != Type.FUNCTION)
             {
                 if(throwing)
-                    throw new ScriptAnyException("ScriptAny " ~ toString ~ " is not a function", this);
+                    throw new ScriptAnyException("ScriptAny " ~ toString ~ " is not a ScriptFunction", this);
                 else
                     return cast(T)null;
             }

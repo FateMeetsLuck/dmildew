@@ -431,18 +431,22 @@ public:
         if(vr.exception !is null)
             return Variant(vr);
 
-		// the "this" is the left hand of dot operation
-        if(vr.accessType == VisitResult.AccessType.OBJECT_ACCESS 
-            || vr.accessType == VisitResult.AccessType.ARRAY_ACCESS)
+        // if not a new expression pull this
+        if(!fcnode.returnThis)
         {
-            thisObj = vr.objectToAccess;
+            // the "this" is the left hand of dot operation
+            if(vr.accessType == VisitResult.AccessType.OBJECT_ACCESS 
+                || vr.accessType == VisitResult.AccessType.ARRAY_ACCESS)
+            {
+                thisObj = vr.objectToAccess;
+            }
+            // or it is local "this" if exists
+            else if(_currentEnvironment.variableOrConstExists("this"))
+            {
+                bool _; // @suppress(dscanner.suspicious.unmodified)
+                thisObj = *(_currentEnvironment.lookupVariableOrConst("this", _));
+            }
         }
-		// or it is local "this" if exists
-		else if(_currentEnvironment.variableOrConstExists("this"))
-		{
-			bool _; // @suppress(dscanner.suspicious.unmodified)
-			thisObj = *(_currentEnvironment.lookupVariableOrConst("this", _));
-		}
 
         auto fnToCall = vr.result;
         if(fnToCall.type == ScriptAny.Type.FUNCTION)

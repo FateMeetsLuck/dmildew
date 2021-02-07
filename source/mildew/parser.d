@@ -606,6 +606,12 @@ private:
                         auto tokens = lexer.tokenize();
                         auto parser = Parser(tokens);
                         nodes ~= parser.parseExpression();
+                        if(parser._currentToken.type != Token.Type.EOF)
+                        {
+                            parser._currentToken.position = _currentToken.position;
+                            throw new ScriptCompileException("Unexpected token in template expression", 
+                                    parser._currentToken);
+                        }
                     }
                 }
                 else
