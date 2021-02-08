@@ -317,6 +317,8 @@ private ScriptAny native_Function_call(Environment c, ScriptAny* thisIsFn, Scrip
     try 
     {
         auto interpreter = c.interpreter;
+        if(interpreter.usingVM)
+            throw new ScriptRuntimeException("VM implementation of call is incomplete");
         if(c !is null)
             return interpreter.callFunction(fn, thisToUse, args);
         else
@@ -358,6 +360,8 @@ private ScriptAny native_Function_apply(Environment c, ScriptAny* thisIsFn, Scri
     try 
     {
         auto interpreter = c.interpreter;
+        if(interpreter.usingVM)
+            throw new ScriptRuntimeException("VM implementation of apply is incomplete");
         if(interpreter !is null)
             return interpreter.callFunction(fn, thisToUse, argList);
         else

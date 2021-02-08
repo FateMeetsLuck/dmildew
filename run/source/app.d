@@ -10,6 +10,7 @@ import std.string: strip;
 
 import arsd.terminal;
 
+import mildew.compiler : Compiler;
 import mildew.exceptions;
 import mildew.interpreter;
 import mildew.lexer;
@@ -38,7 +39,7 @@ void evaluateWithErrorChecking(Interpreter interpreter, in string code, in strin
         if(ex.thrownValue.type != ScriptAny.Type.UNDEFINED)
             stderr.writefln("Value thrown: %s", ex.thrownValue);
     }
-    catch(Exception ex)
+    catch(Compiler.UnimplementedException ex)
     {
         stderr.writeln(ex.msg);
     }
@@ -81,16 +82,20 @@ int main(string[] args)
 
     if(args.length > 1)
     {
-        immutable fileName = args[1];
-        try 
+        string[] fileNames = args[1..$];
+        foreach(fileName ; fileNames)
         {
-            auto code = readText(fileName);
-            evaluateWithErrorChecking(interpreter, code, fileName);
-        }
-        catch(FileException fex)
-        {
-            stderr.writeln("Could not read file: " ~ fileName);
-            return 66;
+            try 
+            {
+                auto code = readText(fileName);
+                evaluateWithErrorChecking(interpreter, code, fileName);
+            }
+            catch(FileException fex)
+            {
+                stderr.writeln("Could not read file " ~ fileName);
+                stderr.writeln(fex.msg);
+                return 66;
+            }
         }
     }    
     else

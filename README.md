@@ -18,7 +18,9 @@ Building the library is as simple as writing `dub build` in a terminal in the ma
 
 ## Running the Examples
 
-In a terminal in the main project directory run `dub run dmildew:run -- examples/nameofexample.mds`. To try out the interactive shell simply type `dub run :run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after. One can also store anonymous class expressions in a global variable such as `var Foo = class {};`.
+In a terminal in the main project directory run `dub run dmildew:run -- examples/nameofexample.mds`. To try out the interactive shell simply type `dub run dmilew:run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after. One can also store anonymous class expressions in a global variable such as `var Foo = class {};`.
+
+An experimental VM option is now available and can be accessed by adding the --usevm flag as an argument. This feature is not yet completely implemented and most test scripts will not run.
 
 ## Binding
 
@@ -44,6 +46,8 @@ Binding classes by extending ScriptObject will not work and is not supported. Sc
 
 Closure functions that refer to variables in an outer scope beyond the immediate function declaration scope can have variables shadowed by declaring them in the same scope. See examples/thistest.mds for the issue.
 
+DMildew has only been tested on Windows and Linux x86_64 operating systems. Please test on other operating systems to report problems. Note that compiled bytecode is platform dependent (byte order matters) and bytecode scripts must be compiled for each platform, similar to Lua.
+
 ## Help
 
 There is now a ##dmildew channel on the Freenode IRC network. If no one is there, leave a question or comment on the github project page.
@@ -59,5 +63,5 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Write a more complete and robust standard library for the scripting language.
 * Allow super keyword to be used to call base class methods and properties other than the constructor.
 * Allow unicode support for source code text.
-* Reduce parse tree to low level bytecode.
+* Reduce parse tree to low level bytecode (in progress).
 * Implement yield keyword.

@@ -44,6 +44,9 @@ public:
     }
     /// direct access to array
     auto array() { return _data; }
+
+    /// the top element by reference
+    ref auto top() { return _data[$-1]; }
 private:
     T[] _data;
 }

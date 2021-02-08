@@ -1,0 +1,8 @@
+let start = System.getCurrentMillis();
+const LIMIT = 1000000;
+for(let i=0; i < LIMIT; ++i) {
+
+}
+let totalms = System.getCurrentMillis() - start;
+console.log(`It took ${totalms} ms to count to ${LIMIT}`);
+

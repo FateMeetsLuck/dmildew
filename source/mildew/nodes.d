@@ -189,6 +189,7 @@ class FunctionLiteralNode : ExpressionNode
 
     string[] argList;
     StatementNode[] statements;
+    string optionalName;
 }
 
 class TemplateStringNode : ExpressionNode
@@ -459,9 +460,10 @@ class ArrayIndexNode : ExpressionNode
 
 class MemberAccessNode : ExpressionNode 
 {
-    this(ExpressionNode obj, ExpressionNode member)
+    this(ExpressionNode obj, Token dt, ExpressionNode member)
     {
         objectNode = obj;
+        dotToken = dt;
         memberNode = member;
     }
 
@@ -476,6 +478,7 @@ class MemberAccessNode : ExpressionNode
     }
 
     ExpressionNode objectNode;
+    Token dotToken;
     ExpressionNode memberNode;
 }
 

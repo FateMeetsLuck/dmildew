@@ -36,8 +36,13 @@ class Chunk
     /// get a line of source if it exists
     string getSourceLine(size_t lineNum)
     {
-        if(lineNum >= source.length)
+        if(lineNum-1 >= source.length)
             return "";
-        return source[lineNum];
+        return source[lineNum-1];
     }
+
+private:
+    /// enums used when serializing to and from file
+    static const ubyte VERSION = 0x01;
+    static const uint MAGIC = 0x001abe15;
 }

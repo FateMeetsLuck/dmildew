@@ -312,6 +312,11 @@ public:
             return arr1.array == arr2.array;
         }
 
+        if(_type == Type.FUNCTION && other._type == Type.FUNCTION)
+        {
+            return (cast(ScriptFunction)_asObject).opEquals(cast(ScriptFunction)other._asObject);
+        }
+
         // else compare the objects for now
         return _asObject == other._asObject;
     }
@@ -384,13 +389,16 @@ public:
                 return 0;
         }
 
+        // if both are functions they can be compared
+        if(_type == Type.FUNCTION && other._type == Type.FUNCTION)
+        {
+            return (cast(ScriptFunction)_asObject).opCmp(cast(ScriptFunction)other._asObject);
+        }
+
+        // TODO write opCmp for object
         if(_asObject == other._asObject)
             return 0;
 
-        // TODO handle object and functions
-
-        // TODO handle native functions and delegates. Not sure how that comparison should work
-        // throw new ScriptAnyException("Unable to compare " ~ this.toString ~ " to " ~ other.toString, other);
         return -1; // for now
     }
 

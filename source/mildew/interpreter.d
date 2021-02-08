@@ -129,6 +129,12 @@ public:
         _globalEnvironment.forceRemoveVarOrConst(name);
     }
 	
+    /// whether or not VM option was set when created
+    bool usingVM() const 
+    {
+        return _vm !is null;
+    }
+
 	/// extract a VisitResult from a LiteralNode
 	Variant visitLiteralNode(LiteralNode lnode)
 	{
@@ -1189,6 +1195,9 @@ public:
         vr.result = ScriptAny.UNDEFINED; // they should never return a result
         return Variant(vr); // caller will handle any exception
 	}
+
+    /// Virtual machine property, may be null
+    VirtualMachine vm() { return _vm; }
 	
 package:
 	/// holds information from visiting nodes TODO redesign this as a union

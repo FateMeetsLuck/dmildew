@@ -5,8 +5,10 @@
 module mildew.types.func;
 
 import mildew.environment: Environment;
+import mildew.compiler;
 import mildew.types.any: ScriptAny;
 import mildew.types.object: ScriptObject;
+import mildew.vm;
 
 /** When a native function or delegate encounters an error with the arguments sent,
  *  the last reference parameter should be set to the appropriate enum value.
@@ -90,6 +92,81 @@ public:
     auto functionName() const { return _functionName; }
     /// Property argNames
     auto argNames() { return _argNames; }
+    /// Compiled form cached
+    ubyte[] compiled() { return _compiled; }
+
+    int opCmp(const ScriptFunction other) const
+    {
+        if(_type != other._type)
+            return cast(int)_type - cast(int)other._type;
+
+        if(_functionName < other._functionName)
+            return -1;
+        else if(_functionName > other._functionName)
+            return 1;
+
+        if(_isClass && !other._isClass)
+            return 1;
+        else if(!_isClass && other._isClass)
+            return -1;
+        
+        if(_type == Type.SCRIPT_FUNCTION)
+        {
+            if(_compiled.length != other._compiled.length)
+            {
+                if(_compiled.length > other._compiled.length)
+                    return 1;
+                else if(_compiled.length < other._compiled.length)
+                    return -1;
+            }
+            else if(_compiled > other._compiled)
+                return 1;
+            else if(_compiled < other._compiled)
+                return -1;
+            else if(_compiled.length == 0)
+            {
+                if(_argNames > other._argNames)
+                    return 1;
+                else if(_argNames < other._argNames)
+                    return -1;
+
+                if(_statementNodes > other._statementNodes)
+                    return 1;
+                else if(_statementNodes < other._statementNodes)
+                    return -1;
+            }
+        }
+        else if(_type == Type.NATIVE_DELEGATE)
+        {
+            if(_nativeDelegate > other._nativeDelegate)
+                return 1;
+            else if(_nativeDelegate < other._nativeDelegate)
+                return -1;
+        }
+        else if(_type == Type.NATIVE_FUNCTION)
+        {
+            if(_nativeFunction > other._nativeFunction)
+                return 1;
+            else if(_nativeFunction < other._nativeFunction)
+                return -1;
+        }
+        return 0;
+    }
+
+    override size_t toHash() const @safe nothrow
+    {
+        if(_compiled.length > 0)
+        {
+            return typeid(_compiled).getHash(&_compiled);
+        }
+        // lacking but not sure what else to do
+        return typeid(_functionName).getHash(&_functionName);
+    }
+
+    bool opEquals(ScriptFunction other) const
+    {
+        return opCmp(other) == 0;
+    }
 
 package(mildew):
 
@@ -99,8 +176,8 @@ package(mildew):
     this(string fnname, string[] args, StatementNode[] statementNodes, Environment clos, 
             bool isClass=false)
     {
-        immutable tname = isClass? "class" : "function";
         import mildew.types.bindings: getFunctionPrototype;
+        immutable tname = isClass? "class" : "function";
         super(tname, getFunctionPrototype(), null);
         _functionName = fnname;
         _argNames = args;
@@ -109,6 +186,32 @@ package(mildew):
 		_isClass = isClass;
         initializePrototypeProperty();
         _type = Type.SCRIPT_FUNCTION;
+    }
+
+    /**
+     * Constructor for functions created from compilation of statements.
+     */
+    this(string fnname, string[] args, ubyte[] bc, bool isClass = false)
+    {
+        import mildew.types.bindings: getFunctionPrototype;
+        immutable tname = isClass? "class" : "function";
+        super(tname, getFunctionPrototype(), null);
+        _functionName = fnname;
+        _argNames = args;
+        _compiled = bc;
+        _isClass = isClass;
+        initializePrototypeProperty();
+        _type = Type.SCRIPT_FUNCTION;
+    }
+
+    /**
+     * Method to copy fresh compiled functions with the correct context
+     */
+    ScriptFunction copyCompiled(Environment env)
+    {
+        auto newFunc = new ScriptFunction(_functionName, _argNames, _compiled, _isClass);
+        newFunc._closure = env;
+        return newFunc;
     }
 
     // must check type before using these properties or one gets an exception
@@ -163,6 +266,8 @@ private:
         _dictionary["prototype"] = ScriptAny(new ScriptObject("Object", null));
         _dictionary["prototype"]["constructor"] = ScriptAny(this);
     }
+
+    ubyte[] _compiled;
 
 }
 

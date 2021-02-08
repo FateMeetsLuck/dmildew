@@ -1,0 +1,15 @@
+let makeClosure = function(name) {
+    let i = 0;
+    return function() {
+        i = i + 1;
+        console.log(`${name} ${i}`);
+    };
+};
+
+let c1 = makeClosure("foo");
+let c2 = makeClosure("bar");
+
+c1();
+c2();
+c2();
+c1();

@@ -239,15 +239,18 @@ package:
                 else if(opToken.type == Token.Type.DOT)
                 {
                     auto right = parsePrimaryExpression();
+                    if(!cast(VarAccessNode)right)
+                        throw new ScriptCompileException("Right hand side of `.` operator must be identifier", opToken);
                     if(cast(VarAccessNode)right is null)
                         throw new ScriptCompileException("Object members must be valid identifiers", _currentToken);
                     if(unOpPrec != 0 && prec > unOpPrec)
                     {
                         auto uon = cast(UnaryOpNode)primaryLeft;
-                        primaryLeft = new UnaryOpNode(uon.opToken, new MemberAccessNode(uon.operandNode, right));
+                        primaryLeft = new UnaryOpNode(uon.opToken, 
+                                new MemberAccessNode(uon.operandNode, opToken, right));
                     }
                     else
-                        primaryLeft = new MemberAccessNode(primaryLeft, right);
+                        primaryLeft = new MemberAccessNode(primaryLeft, opToken, right);
                 }
                 else if(opToken.type == Token.Type.LBRACKET)
                 {
@@ -278,6 +281,17 @@ package:
                 else 
                 {
                     ExpressionNode primaryRight = parseExpression(nextMinPrec);
+                    // catch invalid assignments
+                    if(opToken.isAssignmentOperator)
+                    {
+                        if(!(cast(VarAccessNode)primaryLeft 
+                          || cast(MemberAccessNode)primaryLeft 
+                          || cast(ArrayIndexNode)primaryLeft))
+                        {
+                            throw new ScriptCompileException("Invalid left hand operand for assignment "
+                                    ~ primaryLeft.toString(), opToken);
+                        }
+                    }
                     primaryLeft = new BinaryOpNode(opToken, primaryLeft, primaryRight);
                 }
             }
@@ -794,6 +808,8 @@ private:
             {
                 if(!cast(VarAccessNode)node.leftNode)
                     throw new ScriptCompileException("Invalid assignment node", _currentToken);
+                if(node.opToken.type != Token.Type.ASSIGN)
+                    throw new ScriptCompileException("Invalid assignment statement", node.opToken);
             }
             else if(!cast(VarAccessNode)expression)
             {
