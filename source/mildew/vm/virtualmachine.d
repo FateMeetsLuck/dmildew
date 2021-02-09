@@ -2,6 +2,7 @@ module mildew.vm.virtualmachine;
 
 import std.conv: to;
 import std.stdio;
+import std.string;
 import std.typecons;
 
 import mildew.environment;
@@ -87,6 +88,11 @@ private void throwRuntimeError(in string message, size_t ip, Chunk chunk)
     immutable lineNum = chunk.getLineNumber(ip);
     ex.scriptTraceback ~= tuple(lineNum, chunk.getSourceLine(lineNum));
     throw ex;
+}
+
+private string opCodeToString(const OpCode op)
+{
+    return op.to!string().toLower();
 }
 
 pragma(inline, true)
@@ -732,17 +738,10 @@ class VirtualMachine
         _stack.reserve(256);
     }
 
-    /// get the value at top of stack, assumed to be return value at end of run
-    ScriptAny getReturnValue()
-    {
-        if(_stack.size < 1)
-            return ScriptAny.UNDEFINED;
-        return _stack.peek();
-    }
-
     /// print a chunk instruction by instruction, using the const table to indicate values
     void printChunk(Chunk chunk)
     {
+        writeln("===== DISASSEMBLY =====");
         size_t ip = 0;
         while(ip < chunk.bytecode.length)
         {
@@ -854,6 +853,7 @@ class VirtualMachine
                 ++ip;
             }
         }
+        writeln("=======================");
     }
 
     /// prints an individual instruction without moving the ip
@@ -863,7 +863,7 @@ class VirtualMachine
         switch(op)
         {
         case OpCode.NOP:
-            writefln("%05d: %s", ip, op.to!string);
+            writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.CONST: {
             immutable constID = decode!uint(chunk.bytecode.ptr + ip + 1);
@@ -872,55 +872,55 @@ class VirtualMachine
         }
         case OpCode.CONST_0:
         case OpCode.CONST_1:
-            writefln("%05d: %s", ip, op.to!string);
+            writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.PUSH: {
             immutable index = decode!int(chunk.bytecode.ptr + ip + 1);
-            writefln("%05d: %s index=%s", ip, op.to!string, index);
+            writefln("%05d: %s index=%s", ip, op.opCodeToString, index);
             break;
         }
         case OpCode.POP:
-            writefln("%05d: %s", ip, op.to!string);
+            writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.POPN: {
             immutable amount = decode!uint(chunk.bytecode.ptr + ip + 1);
-            writefln("%05d: %s amount=%s", ip, op.to!string, amount);
+            writefln("%05d: %s amount=%s", ip, op.opCodeToString, amount);
             break;
         }
         case OpCode.SET: {
             immutable index = decode!uint(chunk.bytecode.ptr + ip + 1);
-            writefln("%05d: %s index=%s", ip, op.to!string, index);
+            writefln("%05d: %s index=%s", ip, op.opCodeToString, index);
             break;
         }
         case OpCode.STACK: {
             immutable n = decode!uint(chunk.bytecode.ptr + ip + 1);
-            writefln("%05d: %s n=%s", ip, op.to!string, n);
+            writefln("%05d: %s n=%s", ip, op.opCodeToString, n);
             break;
         }
         case OpCode.STACK_1:
-            writefln("%05d: %s", ip, op.to!string);
+            writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.ARRAY: {
             immutable n = decode!uint(chunk.bytecode.ptr + ip + 1);
-            writefln("%05d: %s n=%s", ip, op.to!string, n);
+            writefln("%05d: %s n=%s", ip, op.opCodeToString, n);
             break;
         }
         case OpCode.OBJECT: {
             immutable n = decode!uint(chunk.bytecode.ptr + ip + 1);
-            writefln("%05d: %s n=%s", ip, op.to!string, n);
+            writefln("%05d: %s n=%s", ip, op.opCodeToString, n);
             break;
         }
         case OpCode.NEW: {
             immutable args = decode!uint(chunk.bytecode.ptr + ip + 1);
-            writefln("%05d: %s args=%s", ip, op.to!string, args);
+            writefln("%05d: %s args=%s", ip, op.opCodeToString, args);
             break;
         }
         case OpCode.THIS:
-            writefln("%05d: %s", ip, op.to!string);
+            writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.OPENSCOPE:
         case OpCode.CLOSESCOPE:
-            writefln("%05d: %s", ip, op.to!string);
+            writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.DECLVAR: 
         case OpCode.DECLLET:
@@ -937,28 +937,28 @@ class VirtualMachine
         }
         case OpCode.OBJSET:
         case OpCode.OBJGET:
-            writefln("%05d: %s", ip, op.to!string);
+            writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.CALL: {
             immutable args = decode!uint(chunk.bytecode.ptr + ip + 1);
-            writefln("%05d: %s args=%s", ip, op.to!string, args);
+            writefln("%05d: %s args=%s", ip, op.opCodeToString, args);
             break;
         }
         case OpCode.JMPFALSE: 
         case OpCode.JMP: {
             immutable jump = decode!int(chunk.bytecode.ptr + ip + 1);
-            writefln("%05d: %s jump=%s", ip, op.to!string, jump);
+            writefln("%05d: %s jump=%s", ip, op.opCodeToString, jump);
             break;
         }
         case OpCode.GOTO: {
             immutable instruction = decode!uint(chunk.bytecode.ptr + ip + 1);
             immutable depth = decode!ubyte(chunk.bytecode.ptr + ip + 1 + uint.sizeof);
-            writefln("%05d: %s instruction=%s, depth=%s", ip, op.to!string, instruction, depth);
+            writefln("%05d: %s instruction=%s, depth=%s", ip, op.opCodeToString, instruction, depth);
             break;
         }
         case OpCode.CONCAT: {
             immutable n = decode!uint(chunk.bytecode.ptr + ip + 1);
-            writefln("%05d: %s n=%s", ip, op.to!string, n);
+            writefln("%05d: %s n=%s", ip, op.opCodeToString, n);
             break;
         }
         case OpCode.BITNOT:
@@ -983,11 +983,11 @@ class VirtualMachine
         case OpCode.AND:
         case OpCode.OR:
         case OpCode.TERN:
-            writefln("%05d: %s", ip, op.to!string);
+            writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.RETURN:
         case OpCode.HALT:
-            writefln("%05d: %s", ip, op.to!string);
+            writefln("%05d: %s", ip, op.opCodeToString);
             break;
         default:
             writefln("%05d: ??? (%s)", ip, cast(ubyte)op);
@@ -995,7 +995,7 @@ class VirtualMachine
     }
 
     /// run a chunk of bytecode with a given const table
-    void run(Chunk chunk)
+    ScriptAny run(Chunk chunk)
     {
         _ip = 0;
         ubyte op;
@@ -1007,6 +1007,10 @@ class VirtualMachine
             _ops[op](this, chunk);
             debug writefln("Stack: %s", _stack.array);
         }
+        // if something is on the stack, that's the return value
+        if(_stack.size > 0)
+            return _stack.pop();
+        return ScriptAny.UNDEFINED;
     }
 
 private:
@@ -1023,7 +1027,7 @@ private:
     void printInstructionWithConstID(size_t ip, OpCode op, uint constID, Chunk chunk)
     {
         writefln("%05d: %s #%s // <%s> %s", 
-                ip, op.to!string, constID, chunk.constTable.get(constID).typeToString(),
+                ip, op.opCodeToString, constID, chunk.constTable.get(constID).typeToString(),
                 chunk.constTable.get(constID));
     }
 
@@ -1049,7 +1053,7 @@ class VMException : Exception
     override string toString() const
     {
         import std.format: format;
-        return msg ~ " at instruction " ~ format("%x", ip) ~ " (" ~ opcode.to!string ~ ")";
+        return msg ~ " at instruction " ~ format("%x", ip) ~ " (" ~ opcode.opCodeToString ~ ")";
     }
 
     size_t ip;

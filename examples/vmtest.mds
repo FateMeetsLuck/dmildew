@@ -33,17 +33,11 @@ while(i < 1000000) {
 let elapsed = System.getCurrentMillis() - start;
 console.log(`It took ${elapsed} ms to count to ${i}`);*/
 
-foo:
-while(true) {
-    bar: while(true) {
-        break bar;
-    }
-    break foo;
+let i = 5;
+foo: while(i < 20) {
+    ++i;
+    continue;
+    console.log("Not continuing");
 }
-
-fart: do {
-    console.log("Doing once");
-    break fart;
-} while(false);
 
 

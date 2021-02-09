@@ -530,6 +530,13 @@ class VarDeclarationStatementNode : StatementNode
         varAccessOrAssignmentNodes = nodes;
     }
 
+    this(size_t lineNo, Token qual, ExpressionNode[] nodes)
+    {
+        super(lineNo);
+        qualifier = qual;
+        varAccessOrAssignmentNodes = nodes;
+    }
+
 	override Variant accept(IStatementVisitor visitor)
 	{
 		return visitor.visitVarDeclarationStatementNode(this);

@@ -46,7 +46,7 @@ public:
     {
         import std.string: splitLines;
         _chunk = new Chunk();
-        _compDataStack.push(new CompilationData);
+        _compDataStack.push(CompilationData.init);
         auto lexer = Lexer(source);
         auto parser = Parser(lexer.tokenize());
         _chunk.source = splitLines(source);
@@ -68,7 +68,7 @@ public:
         // want booleans to be booleans not 1
         if(lnode.value.type == ScriptAny.Type.BOOLEAN)
         {
-            _chunk.bytecode ~= OpCode.CONST ~ encodeConst(lnode.literalToken.text == "true" ? true : false);
+            _chunk.bytecode ~= OpCode.CONST ~ encodeConst(lnode.value.toValue!bool);
             return Variant(null);
         }
 
@@ -86,7 +86,8 @@ public:
     Variant visitFunctionLiteralNode(FunctionLiteralNode flnode)
     {
         auto oldChunk = _chunk.bytecode; // @suppress(dscanner.suspicious.unmodified)
-        _compDataStack.push(new CompilationData);
+        _compDataStack.push(CompilationData.init);
+        _stackVariables = new Environment(_stackVariables);
         _chunk.bytecode = [];
         foreach(stmt ; flnode.statements)
             stmt.accept(this);
@@ -98,6 +99,7 @@ public:
             flnode.optionalName == "" ? "<anonymous function>" : flnode.optionalName, 
             flnode.argList, _chunk.bytecode, false);
         _chunk.bytecode = oldChunk;
+        _stackVariables = _stackVariables.parent;
         _compDataStack.pop();
         _chunk.bytecode ~= OpCode.CONST ~ encodeConst(func);
         return Variant(null);
@@ -308,6 +310,16 @@ public:
     /// These should not be directly visited for assignment
 	Variant visitVarAccessNode(VarAccessNode vanode)
     {
+        if(_stackVariables.variableOrConstExists(vanode.varToken.text))
+        {
+            bool _; // @suppress(dscanner.suspicious.unmodified)
+            auto var = *(_stackVariables.lookupVariableOrConst(vanode.varToken.text, _));
+            if(var != ScriptAny.UNDEFINED) // this means it's a stack var
+            {
+                _chunk.bytecode ~= OpCode.PUSH ~ encode!int(var.toValue!int);
+                return Variant(null);
+            }
+        }
         _chunk.bytecode ~= OpCode.GETVAR ~ encodeConst(vanode.varToken.text);
         return Variant(null);
     }
@@ -392,6 +404,7 @@ public:
         foreach(expr ; vdsnode.varAccessOrAssignmentNodes)
         {
             string varName = "";
+
             // is it a validated binop node
             if(auto bopnode = cast(BinaryOpNode)expr)
             {
@@ -409,6 +422,15 @@ public:
             }
             else
                 throw new Exception("Parser failure: " ~ vdsnode.toString());
+
+            // make sure it's not overwriting a stack value
+            if(vdsnode.qualifier.text != "var")
+            {
+                immutable ok = _stackVariables.declareVariableOrConst(varName, ScriptAny.UNDEFINED,
+                        vdsnode.qualifier.text == "const");
+                if(!ok)
+                    throw new ScriptCompileException("Variable redeclaration " ~ varName, vdsnode.qualifier);
+            }
             
             if(vdsnode.qualifier.text == "var")
                 _chunk.bytecode ~= OpCode.DECLVAR ~ encodeConst(varName);
@@ -418,9 +440,6 @@ public:
                 _chunk.bytecode ~= OpCode.DECLCONST ~ encodeConst(varName);
             else
                 throw new Exception("Catastrophic parser fail: " ~ vdsnode.toString());
-
-            if(vdsnode.qualifier.text != "var")
-                _compDataStack.top.env.forceSetVarOrConst(varName, ScriptAny(true), vdsnode.qualifier.text == "const");
         }
         return Variant(null);
     }
@@ -430,11 +449,13 @@ public:
     {
         import std.conv: to;
         _chunk.addLine(_chunk.bytecode.length, bsnode.line);
-        // if there are no vardeclarations at the top level the scope op can be omitted
+        // if there are no declarations at the top level the scope op can be omitted
         bool omitScope = true;
         foreach(stmt ; bsnode.statementNodes)
         {
-            if(cast(VarDeclarationStatementNode)stmt)
+            if(cast(VarDeclarationStatementNode)stmt
+            || cast(FunctionDeclarationStatementNode)stmt 
+            || cast(ClassDeclarationStatementNode)stmt)
             {
                 omitScope = false;
                 break;
@@ -443,7 +464,7 @@ public:
         if(!omitScope)
         {
             ++_compDataStack.top.depthCounter;
-            _compDataStack.top.env = new Environment(_compDataStack.top.env, 
+            _stackVariables = new Environment(_stackVariables, 
                     to!string(_compDataStack.top.depthCounter));
 
             _chunk.bytecode ~= OpCode.OPENSCOPE;
@@ -455,7 +476,7 @@ public:
         {
             _chunk.bytecode ~= OpCode.CLOSESCOPE;
 
-            _compDataStack.top.env = _compDataStack.top.env.parent;
+            _stackVariables = _stackVariables.parent;
             --_compDataStack.top.depthCounter;
         }
         return Variant(null);
@@ -545,11 +566,33 @@ public:
         return Variant(null);
     }
 
-    /// TODO
+    /// handle regular for loops
 	Variant visitForStatementNode(ForStatementNode fsnode)
     {
+        writeln("For statement: " ~ fsnode.toString);
         _chunk.addLine(_chunk.bytecode.length, fsnode.line);
-        throwUnimplemented(fsnode);
+        ++_compDataStack.top.loopOrSwitchStack;
+        // set up stack variables
+        handleStackDeclaration(fsnode.varDeclarationStatement);
+        immutable length0 = _chunk.bytecode.length;
+        fsnode.conditionNode.accept(this);
+        immutable length1 = _chunk.bytecode.length;
+        immutable jmpFalse = genJmpFalse();
+        fsnode.bodyNode.accept(this);
+        immutable continueLocation = _chunk.bytecode.length;
+        // increment is a single expression not a statement so we must add a pop
+        fsnode.incrementNode.accept(this);
+        _chunk.bytecode ~= OpCode.POP;
+        immutable length2 = _chunk.bytecode.length;
+        immutable jmp = genJmp();
+        immutable breakLocation = _chunk.bytecode.length;
+        handleStackCleanup(fsnode.varDeclarationStatement);
+        // patch jmps
+        *cast(int*)(_chunk.bytecode.ptr + jmpFalse) = cast(int)(breakLocation - length1);
+        *cast(int*)(_chunk.bytecode.ptr + jmp) = -cast(int)(length2 - length0);
+        --_compDataStack.top.loopOrSwitchStack;
+        patchBreaksAndContinues(fsnode.label, breakLocation, continueLocation, _compDataStack.top.depthCounter);
+        removePatches();
         return Variant(null);
     }
 
@@ -576,7 +619,10 @@ public:
 	Variant visitContinueStatementNode(ContinueStatementNode csnode)
     {
         _chunk.addLine(_chunk.bytecode.length, csnode.line);
-        throwUnimplemented(csnode);
+        immutable patchLocation = _chunk.bytecode.length + 1;
+        _chunk.bytecode ~= OpCode.GOTO ~ encode(uint.max - 1) ~ cast(ubyte)0;
+        _compDataStack.top.continuesToPatch ~= BreakOrContinueToPatch(csnode.label, patchLocation,
+                _compDataStack.top.depthCounter);
         return Variant(null);
     }
 
@@ -592,11 +638,24 @@ public:
         return Variant(null);
     }
 
-    /// TODO
+    /// function declarations
 	Variant visitFunctionDeclarationStatementNode(FunctionDeclarationStatementNode fdsnode)
     {
         _chunk.addLine(_chunk.bytecode.length, fdsnode.line);
-        throwUnimplemented(fdsnode);
+        // easy, reduce it to a let fname = function(){...} VarDeclarationStatement
+        auto vdsn = new VarDeclarationStatementNode(
+            fdsnode.line,
+            Token.createFakeToken(Token.Type.KEYWORD, "let"), [
+                new BinaryOpNode(
+                    Token.createFakeToken(Token.Type.ASSIGN, ""),
+                    new VarAccessNode(Token.createFakeToken(Token.Type.IDENTIFIER, fdsnode.name)),
+                    new FunctionLiteralNode(
+                        fdsnode.argNames, fdsnode.statementNodes, fdsnode.name
+                    )
+                )
+            ]
+        );
+        vdsn.accept(this);
         return Variant(null);
     }
 
@@ -652,6 +711,13 @@ public:
 private:
     enum UNPATCHED_JMP = 262_561_909;
 
+    size_t addStackVar(string name, bool isConst)
+    {
+        size_t id = _stackVarCounter++;
+        _stackVariables.forceSetVarOrConst(name, ScriptAny(id), isConst);
+        return id;
+    }
+
     ubyte[] encodeConst(T)(T value)
     {
         return encode(_chunk.constTable.addValueUint(ScriptAny(value)));
@@ -686,6 +752,19 @@ private:
         if(auto van = cast(VarAccessNode)leftExpr)
         {
             rightExpr.accept(this);
+            if(_stackVariables.variableOrConstExists(van.varToken.text))
+            {
+                bool isConst; // @suppress(dscanner.suspicious.unmodified)
+                auto var = *(_stackVariables.lookupVariableOrConst(van.varToken.text, isConst));
+                if(var != ScriptAny.UNDEFINED)
+                {
+                    if(isConst)
+                        throw new ScriptCompileException("Cannot reassign stack const " ~ van.varToken.text, 
+                                van.varToken);
+                    _chunk.bytecode ~= OpCode.SET ~ encode!uint(var.toValue!uint);
+                    return;        
+                }
+            }
             _chunk.bytecode ~= OpCode.SETVAR ~ encodeConst(van.varToken.text);
         }
         else if(auto man = cast(MemberAccessNode)leftExpr)
@@ -705,6 +784,61 @@ private:
         }
         else
             throw new Exception("Another parser fail");
+    }
+
+    void handleStackCleanup(VarDeclarationStatementNode vdsnode)
+    {
+        if(vdsnode is null)
+            return;
+        uint numToPop = 0;
+        foreach(node ; vdsnode.varAccessOrAssignmentNodes)
+        {
+            if(auto bopnode = cast(BinaryOpNode)node)
+            {
+                auto van = cast(VarAccessNode)bopnode.leftNode;
+                _stackVariables.forceRemoveVarOrConst(van.varToken.text);
+                ++numToPop;
+            }
+            else if(auto van = cast(VarAccessNode)node)
+            {
+                _stackVariables.forceRemoveVarOrConst(van.varToken.text);
+                ++numToPop;
+            }
+        }
+        if(numToPop == 1)
+            _chunk.bytecode ~= OpCode.POP;
+        else
+            _chunk.bytecode ~= OpCode.POPN ~ encode!uint(numToPop);
+        _stackVarCounter -= numToPop;
+        _stackVariables = _stackVariables.parent;
+    }
+
+    void handleStackDeclaration(VarDeclarationStatementNode vdsnode)
+    {
+        if(vdsnode is null)
+            return;
+        _stackVariables = new Environment(_stackVariables);
+        foreach(node ; vdsnode.varAccessOrAssignmentNodes)
+        {
+            if(auto bopnode = cast(BinaryOpNode)node)
+            {
+                if(bopnode.opToken.type != Token.Type.ASSIGN)
+                    throw new ScriptCompileException("Invalid declaration in for loop", bopnode.opToken);
+                auto van = cast(VarAccessNode)bopnode.leftNode;
+                auto id = addStackVar(van.varToken.text, vdsnode.qualifier.text == "const");
+                _chunk.bytecode ~= OpCode.STACK_1;
+                bopnode.rightNode.accept(this);
+                _chunk.bytecode ~= OpCode.SET ~ encode!int(cast(int)id);
+                _chunk.bytecode ~= OpCode.POP;
+            }
+            else if(auto van = cast(VarAccessNode)node)
+            {
+                addStackVar(van.varToken.text, vdsnode.qualifier.text == "const");
+                _chunk.bytecode ~= OpCode.STACK_1;
+            }
+            else
+                throw new Exception("Not sure what happened here");
+        }
     }
 
     BinaryOpNode reduceAssignment(BinaryOpNode original)
@@ -747,7 +881,8 @@ private:
         {
             if(!_compDataStack.top.breaksToPatch[i].patched)
             {
-                if(_compDataStack.top.breaksToPatch[i].labelName == label)
+                if(_compDataStack.top.breaksToPatch[i].labelName == label
+                || _compDataStack.top.breaksToPatch[i].labelName == "")
                 {
                     *cast(uint*)(_chunk.bytecode.ptr + _compDataStack.top.breaksToPatch[i].gotoPatchParam) 
                             = cast(uint)breakGoto;
@@ -762,7 +897,8 @@ private:
         {
             if(!_compDataStack.top.continuesToPatch[i].patched)
             {
-                if(_compDataStack.top.continuesToPatch[i].labelName == label)
+                if(_compDataStack.top.continuesToPatch[i].labelName == label 
+                || _compDataStack.top.continuesToPatch[i].labelName == "")
                 {
                     *cast(uint*)(_chunk.bytecode.ptr + _compDataStack.top.continuesToPatch[i].gotoPatchParam) 
                             = cast(uint)continueGoto;
@@ -807,6 +943,12 @@ private:
         }
     }
 
+    /// this doesn't handle the stack counter
+    void removeStackVar(string name)
+    {
+        _stackVariables.forceRemoveVarOrConst(name);
+    }
+
     void throwUnimplemented(ExpressionNode expr)
     {
         throw new UnimplementedException("Unimplemented: " ~ expr.toString());
@@ -834,17 +976,10 @@ private:
         bool patched = false;
     }
 
-    class CompilationData
+    struct CompilationData
     {
-        this()
-        {
-            env = new Environment(null, "<base>");
-        }
-
         /// environment depth counter
         int depthCounter;
-        /// uses the Environment class to handle variable resolution in the future
-        Environment env;
         /// how many loops nested
         int loopOrSwitchStack = 0;
         /// list of breaks needing patched
@@ -853,7 +988,13 @@ private:
         BreakOrContinueToPatch[] continuesToPatch;
     }
 
+    Environment _stackVariables;
     Stack!CompilationData _compDataStack;
+    /**
+     * The stack is guaranteed to be empty between statements so absolute stack positions for variables
+     * can be used. The var name and stack ID is stored in the environment. The stack must be manually cleaned up
+     */
+    size_t _stackVarCounter = 0;
 }
 
 unittest

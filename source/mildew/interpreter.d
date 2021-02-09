@@ -98,8 +98,9 @@ public:
         else
         {
             auto chunk = _compiler.compile(code);
-            _vm.run(chunk);
-            return _vm.getReturnValue();
+            _vm.printChunk(chunk);
+
+            return _vm.run(chunk);
         }
     }
 
