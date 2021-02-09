@@ -32,11 +32,12 @@ console.log(`It took ${elapsed} ms to count to a million`);*/
 
 // return 69;
 
-f1:
-for(;;) {
-    f2:
-    for(;;) {
-        break;
+console.log("OK");
+function bad() {
+    for(let i = 0, j = 25; i < 10; ++i) {
+        return function() { console.log(i,j); };
     }
-    break f1;
 }
+
+let wtf = bad();
+wtf();

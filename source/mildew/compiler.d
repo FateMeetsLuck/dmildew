@@ -6,7 +6,6 @@ module mildew.compiler;
 debug import std.stdio;
 import std.variant;
 
-import mildew.environment;
 import mildew.exceptions;
 import mildew.lexer;
 import mildew.parser;
@@ -17,6 +16,7 @@ import mildew.util.stack;
 import mildew.visitors;
 import mildew.vm.chunk;
 import mildew.vm.consttable;
+import mildew.vm.debuginfo;
 import mildew.vm.virtualmachine;
 
 private enum BREAKLOOP_CODE = uint.max;
@@ -45,18 +45,25 @@ public:
     Chunk compile(string source)
     {
         import std.string: splitLines;
+        _currentSource = source;
         _chunk = new Chunk();
         _compDataStack.push(CompilationData.init);
         auto lexer = Lexer(source);
         auto parser = Parser(lexer.tokenize());
-        _chunk.source = splitLines(source);
+        _debugInfoStack.push(new DebugInfo(source));
         // for now just expressions
         auto block = parser.parseProgram();
         block.accept(this);
         destroy(block);
         Chunk send = _chunk;
+        _chunk.debugMap[_chunk.bytecode.idup] = _debugInfoStack.pop();
+        foreach(k, v ; _chunk.debugMap)
+        {
+            writefln("%x(%s): %s", k.ptr, v.name, v);
+        }
         _chunk = null; // ensure node functions cannot be used by outsiders at all
         _compDataStack.pop();
+        _currentSource = null;
         return send;
     }
 
@@ -87,7 +94,9 @@ public:
     {
         auto oldChunk = _chunk.bytecode; // @suppress(dscanner.suspicious.unmodified)
         _compDataStack.push(CompilationData.init);
-        _stackVariables = new Environment(_stackVariables);
+        _stackVariables.push(VarTable.init);
+        _debugInfoStack.push(new DebugInfo(_currentSource, flnode.optionalName));
+        ++_funcDepth;
         _chunk.bytecode = [];
         foreach(stmt ; flnode.statements)
             stmt.accept(this);
@@ -98,9 +107,11 @@ public:
         ScriptAny func = new ScriptFunction(
             flnode.optionalName == "" ? "<anonymous function>" : flnode.optionalName, 
             flnode.argList, _chunk.bytecode, false);
+        _chunk.debugMap[_chunk.bytecode.idup] = _debugInfoStack.pop();
         _chunk.bytecode = oldChunk;
-        _stackVariables = _stackVariables.parent;
+        _stackVariables.pop;
         _compDataStack.pop();
+        --_funcDepth;
         _chunk.bytecode ~= OpCode.CONST ~ encodeConst(func);
         return Variant(null);
     }
@@ -310,13 +321,12 @@ public:
     /// These should not be directly visited for assignment
 	Variant visitVarAccessNode(VarAccessNode vanode)
     {
-        if(_stackVariables.variableOrConstExists(vanode.varToken.text))
+        if(varExists(vanode.varToken.text))
         {
-            bool _; // @suppress(dscanner.suspicious.unmodified)
-            auto var = *(_stackVariables.lookupVariableOrConst(vanode.varToken.text, _));
-            if(var != ScriptAny.UNDEFINED) // this means it's a stack var
+            auto varMeta = lookupVar(vanode.varToken.text);
+            if(varMeta.funcDepth == _funcDepth && varMeta.stackLocation != -1)
             {
-                _chunk.bytecode ~= OpCode.PUSH ~ encode!int(var.toValue!int);
+                _chunk.bytecode ~= OpCode.PUSH ~ encode!int(varMeta.stackLocation);
                 return Variant(null);
             }
         }
@@ -400,7 +410,7 @@ public:
     /// Handle var declaration
     Variant visitVarDeclarationStatementNode(VarDeclarationStatementNode vdsnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, vdsnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, vdsnode.line);
         foreach(expr ; vdsnode.varAccessOrAssignmentNodes)
         {
             string varName = "";
@@ -426,10 +436,11 @@ public:
             // make sure it's not overwriting a stack value
             if(vdsnode.qualifier.text != "var")
             {
-                immutable ok = _stackVariables.declareVariableOrConst(varName, ScriptAny.UNDEFINED,
-                        vdsnode.qualifier.text == "const");
-                if(!ok)
-                    throw new ScriptCompileException("Variable redeclaration " ~ varName, vdsnode.qualifier);
+                immutable lookup = lookupVar(varName);
+                if(lookup.isDefined && lookup.stackLocation != -1)
+                    throw new ScriptCompileException("Attempt to redeclare stack variable " ~ varName, 
+                            vdsnode.qualifier);
+                defineVar(varName, VarMetadata(true, -1, cast(int)_funcDepth, vdsnode.qualifier.text == "const"));
             }
             
             if(vdsnode.qualifier.text == "var")
@@ -448,7 +459,7 @@ public:
 	Variant visitBlockStatementNode(BlockStatementNode bsnode)
     {
         import std.conv: to;
-        _chunk.addLine(_chunk.bytecode.length, bsnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, bsnode.line);
         // if there are no declarations at the top level the scope op can be omitted
         bool omitScope = true;
         foreach(stmt ; bsnode.statementNodes)
@@ -464,8 +475,7 @@ public:
         if(!omitScope)
         {
             ++_compDataStack.top.depthCounter;
-            _stackVariables = new Environment(_stackVariables, 
-                    to!string(_compDataStack.top.depthCounter));
+            _stackVariables.push(VarTable.init);
 
             _chunk.bytecode ~= OpCode.OPENSCOPE;
         }
@@ -476,7 +486,7 @@ public:
         {
             _chunk.bytecode ~= OpCode.CLOSESCOPE;
 
-            _stackVariables = _stackVariables.parent;
+            _stackVariables.pop();
             --_compDataStack.top.depthCounter;
         }
         return Variant(null);
@@ -485,6 +495,7 @@ public:
     /// emit if statements
 	Variant visitIfStatementNode(IfStatementNode isnode)
     {
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, isnode.line);
         // first analysis, if the if or else blocks are a var declaration, auto surround with {}
         // so that variables under if or else cannot escape
         if(cast(VarDeclarationStatementNode)isnode.onTrueStatement)
@@ -495,7 +506,6 @@ public:
                 isnode.onFalseStatement = new BlockStatementNode(isnode.onFalseStatement.line, 
                         [isnode.onFalseStatement]);
         }
-        _chunk.addLine(_chunk.bytecode.length, isnode.line);
         isnode.conditionNode.accept(this);
         auto length = cast(int)_chunk.bytecode.length;
         auto jmpFalseToPatch = genJmpFalse();
@@ -518,7 +528,7 @@ public:
     /// TODO
 	Variant visitSwitchStatementNode(SwitchStatementNode ssnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, ssnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, ssnode.line);
         throwUnimplemented(ssnode);
         return Variant(null);
     }
@@ -526,7 +536,7 @@ public:
     /// Handle while loops
 	Variant visitWhileStatementNode(WhileStatementNode wsnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, wsnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, wsnode.line);
         ++_compDataStack.top.loopOrSwitchStack;
         immutable length0 = _chunk.bytecode.length;
         immutable continueLocation = length0;
@@ -550,7 +560,7 @@ public:
     /// do-while loops
 	Variant visitDoWhileStatementNode(DoWhileStatementNode dwsnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, dwsnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, dwsnode.line);
         ++_compDataStack.top.loopOrSwitchStack;
         immutable continueLocation = _chunk.bytecode.length;
         // first emit the body for the guaranteed once run
@@ -570,8 +580,7 @@ public:
     /// handle regular for loops
 	Variant visitForStatementNode(ForStatementNode fsnode)
     {
-        writeln("For statement: " ~ fsnode.toString);
-        _chunk.addLine(_chunk.bytecode.length, fsnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, fsnode.line);
         ++_compDataStack.top.loopOrSwitchStack;
         // set up stack variables
         handleStackDeclaration(fsnode.varDeclarationStatement);
@@ -601,7 +610,7 @@ public:
     /// TODO
 	Variant visitForOfStatementNode(ForOfStatementNode fosnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, fosnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, fosnode.line);
         throwUnimplemented(fosnode);
         return Variant(null);
     }
@@ -609,7 +618,7 @@ public:
     /// TODO
 	Variant visitBreakStatementNode(BreakStatementNode bsnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, bsnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, bsnode.line);
         immutable patchLocation = _chunk.bytecode.length + 1;
         _chunk.bytecode ~= OpCode.GOTO ~ encode(uint.max) ~ cast(ubyte)0;
         _compDataStack.top.breaksToPatch ~= BreakOrContinueToPatch(bsnode.label, patchLocation,
@@ -620,7 +629,7 @@ public:
     /// TODO
 	Variant visitContinueStatementNode(ContinueStatementNode csnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, csnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, csnode.line);
         immutable patchLocation = _chunk.bytecode.length + 1;
         _chunk.bytecode ~= OpCode.GOTO ~ encode(uint.max - 1) ~ cast(ubyte)0;
         _compDataStack.top.continuesToPatch ~= BreakOrContinueToPatch(csnode.label, patchLocation,
@@ -631,7 +640,8 @@ public:
     /// Return statements
 	Variant visitReturnStatementNode(ReturnStatementNode rsnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, rsnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, rsnode.line);
+        // should handle escaping for-loop stack vars
         if(rsnode.expressionNode !is null)
             rsnode.expressionNode.accept(this);
         else
@@ -643,7 +653,7 @@ public:
     /// function declarations
 	Variant visitFunctionDeclarationStatementNode(FunctionDeclarationStatementNode fdsnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, fdsnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, fdsnode.line);
         // easy, reduce it to a let fname = function(){...} VarDeclarationStatement
         auto vdsn = new VarDeclarationStatementNode(
             fdsnode.line,
@@ -664,7 +674,7 @@ public:
     /// TODO
 	Variant visitThrowStatementNode(ThrowStatementNode tsnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, tsnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, tsnode.line);
         throwUnimplemented(tsnode);
         return Variant(null);
     }
@@ -672,7 +682,7 @@ public:
     /// TODO
 	Variant visitTryCatchBlockStatementNode(TryCatchBlockStatementNode tcbsnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, tcbsnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, tcbsnode.line);
         throwUnimplemented(tcbsnode);
         return Variant(null);
     }
@@ -680,7 +690,7 @@ public:
     /// TODO
 	Variant visitDeleteStatementNode(DeleteStatementNode dsnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, dsnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, dsnode.line);
         throwUnimplemented(dsnode);
         return Variant(null);
     }
@@ -688,7 +698,7 @@ public:
     /// TODO
 	Variant visitClassDeclarationStatementNode(ClassDeclarationStatementNode cdsnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, cdsnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, cdsnode.line);
         throwUnimplemented(cdsnode);
         return Variant(null);
     }
@@ -696,7 +706,7 @@ public:
     /// TODO
 	Variant visitSuperCallStatementNode(SuperCallStatementNode scsnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, scsnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, scsnode.line);
         throwUnimplemented(scsnode);
         return Variant(null);
     }
@@ -704,7 +714,7 @@ public:
     /// handle expression statements
 	Variant visitExpressionStatementNode(ExpressionStatementNode esnode)
     {
-        _chunk.addLine(_chunk.bytecode.length, esnode.line);
+        _debugInfoStack.top.addLine(_chunk.bytecode.length, esnode.line);
         esnode.expressionNode.accept(this);
         _chunk.bytecode ~= OpCode.POP;
         return Variant(null);
@@ -716,8 +726,14 @@ private:
     size_t addStackVar(string name, bool isConst)
     {
         size_t id = _stackVarCounter++;
-        _stackVariables.forceSetVarOrConst(name, ScriptAny(id), isConst);
+        defineVar(name, VarMetadata(true, cast(int)id, cast(int)_funcDepth, isConst));
+        _stackVarNames ~= name;
         return id;
+    }
+
+    void defineVar(string name, VarMetadata vmeta)
+    {
+        _stackVariables.top[name] = vmeta;
     }
 
     ubyte[] encodeConst(T)(T value)
@@ -754,16 +770,16 @@ private:
         if(auto van = cast(VarAccessNode)leftExpr)
         {
             rightExpr.accept(this);
-            if(_stackVariables.variableOrConstExists(van.varToken.text))
+            if(varExists(van.varToken.text))
             {
                 bool isConst; // @suppress(dscanner.suspicious.unmodified)
-                auto var = *(_stackVariables.lookupVariableOrConst(van.varToken.text, isConst));
-                if(var != ScriptAny.UNDEFINED)
+                immutable varMeta = lookupVar(van.varToken.text);
+                if(varMeta.stackLocation != -1)
                 {
-                    if(isConst)
+                    if(varMeta.isConst)
                         throw new ScriptCompileException("Cannot reassign stack const " ~ van.varToken.text, 
                                 van.varToken);
-                    _chunk.bytecode ~= OpCode.SET ~ encode!uint(var.toValue!uint);
+                    _chunk.bytecode ~= OpCode.SET ~ encode!uint(cast(uint)varMeta.stackLocation);
                     return;
                 }
             }
@@ -798,12 +814,12 @@ private:
             if(auto bopnode = cast(BinaryOpNode)node)
             {
                 auto van = cast(VarAccessNode)bopnode.leftNode;
-                _stackVariables.forceRemoveVarOrConst(van.varToken.text);
+                removeStackVar(van.varToken.text);
                 ++numToPop;
             }
             else if(auto van = cast(VarAccessNode)node)
             {
-                _stackVariables.forceRemoveVarOrConst(van.varToken.text);
+                removeStackVar(van.varToken.text);
                 ++numToPop;
             }
         }
@@ -812,14 +828,16 @@ private:
         else
             _chunk.bytecode ~= OpCode.POPN ~ encode!uint(numToPop);
         _stackVarCounter -= numToPop;
-        _stackVariables = _stackVariables.parent;
+        _counterStack.pop();
+        _stackVariables.pop();
+        _stackVarNames = _stackVarNames[0 .. $-numToPop];
     }
 
     void handleStackDeclaration(VarDeclarationStatementNode vdsnode)
     {
         if(vdsnode is null)
             return;
-        _stackVariables = new Environment(_stackVariables);
+        _stackVariables.push(VarTable.init);
         foreach(node ; vdsnode.varAccessOrAssignmentNodes)
         {
             if(auto bopnode = cast(BinaryOpNode)node)
@@ -841,29 +859,17 @@ private:
             else
                 throw new Exception("Not sure what happened here");
         }
+        _counterStack.push(_stackVarCounter);
     }
 
-    BinaryOpNode reduceAssignment(BinaryOpNode original)
+    VarMetadata lookupVar(string name)
     {
-        switch(original.opToken.type)
+        for(auto i = 1; i <= _stackVariables.array.length; ++i)
         {
-        case Token.Type.ASSIGN:
-            return original; // nothing to do
-        case Token.Type.PLUS_ASSIGN:
-            return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
-                    original.leftNode, 
-                    new BinaryOpNode(Token.createFakeToken(Token.Type.PLUS,""),
-                            original.leftNode, original.rightNode)
-            );
-        case Token.Type.DASH_ASSIGN:
-            return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
-                    original.leftNode, 
-                    new BinaryOpNode(Token.createFakeToken(Token.Type.DASH,""),
-                            original.leftNode, original.rightNode)
-            );
-        default:
-            throw new Exception("Misuse of reduce assignment");
+            if(name in _stackVariables.array[$-i])
+                return _stackVariables.array[$-i][name];
         }
+        return VarMetadata(false, -1, 0, false);
     }
 
     bool nodeIsAssignable(ExpressionNode node)
@@ -914,6 +920,29 @@ private:
         }
     }
 
+    BinaryOpNode reduceAssignment(BinaryOpNode original)
+    {
+        switch(original.opToken.type)
+        {
+        case Token.Type.ASSIGN:
+            return original; // nothing to do
+        case Token.Type.PLUS_ASSIGN:
+            return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
+                    original.leftNode, 
+                    new BinaryOpNode(Token.createFakeToken(Token.Type.PLUS,""),
+                            original.leftNode, original.rightNode)
+            );
+        case Token.Type.DASH_ASSIGN:
+            return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
+                    original.leftNode, 
+                    new BinaryOpNode(Token.createFakeToken(Token.Type.DASH,""),
+                            original.leftNode, original.rightNode)
+            );
+        default:
+            throw new Exception("Misuse of reduce assignment");
+        }
+    }
+
     void removePatches()
     {
         if(_compDataStack.top.loopOrSwitchStack == 0)
@@ -950,7 +979,7 @@ private:
     /// this doesn't handle the stack counter
     void removeStackVar(string name)
     {
-        _stackVariables.forceRemoveVarOrConst(name);
+        _stackVariables.top.remove(name);
     }
 
     void throwUnimplemented(ExpressionNode expr)
@@ -963,8 +992,27 @@ private:
         throw new UnimplementedException("Unimplemented: " ~ stmt.toString());
     }
 
-    /// the chunk being compiled
-    Chunk _chunk;
+    bool varExists(string name)
+    {
+        for(auto i = 1; i <= _stackVariables.array.length; ++i)
+        {
+            if(name in _stackVariables.array[$-i])
+                return true;
+        }
+        return false;
+    }
+
+    struct CompilationData
+    {
+        /// environment depth counter
+        int depthCounter;
+        /// how many loops nested
+        int loopOrSwitchStack = 0;
+        /// list of breaks needing patched
+        BreakOrContinueToPatch[] breaksToPatch;
+        /// list of continues needing patched
+        BreakOrContinueToPatch[] continuesToPatch;
+    }
 
     struct BreakOrContinueToPatch
     {
@@ -982,25 +1030,37 @@ private:
         bool patched = false;
     }
 
-    struct CompilationData
+    struct VarMetadata
     {
-        /// environment depth counter
-        int depthCounter;
-        /// how many loops nested
-        int loopOrSwitchStack = 0;
-        /// list of breaks needing patched
-        BreakOrContinueToPatch[] breaksToPatch;
-        /// list of continues needing patched
-        BreakOrContinueToPatch[] continuesToPatch;
+        bool isDefined;
+        int stackLocation; // can be -1 for regular lookup
+        int funcDepth; // how deep in function calls
+        bool isConst;
     }
 
-    Environment _stackVariables;
+    alias VarTable = VarMetadata[string];
+
+    /// the chunk being compiled
+    Chunk _chunk;
+
+    /// debug info stack
+    Stack!DebugInfo _debugInfoStack;
+    /// current source to send to each debugInfo
+    string _currentSource;
+
+    Stack!VarTable _stackVariables;
     Stack!CompilationData _compDataStack;
     /**
      * The stack is guaranteed to be empty between statements so absolute stack positions for variables
      * can be used. The var name and stack ID is stored in the environment. The stack must be manually cleaned up
      */
     size_t _stackVarCounter = 0;
+    /// keep track of function depth
+    size_t _funcDepth;
+    /// In case of a return statement in a for loop
+    Stack!size_t _counterStack;
+    /// List of stack vars
+    string[] _stackVarNames;
 }
 
 unittest

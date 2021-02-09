@@ -81,12 +81,39 @@ enum OpCode : ubyte
 
 alias OpCodeFunction = void function(VirtualMachine, Chunk chunk);
 
-/// helper function. TODO: rework as flag system that unwinds stack and implement try-catch-finally mechanics
+/*/// helper function. TODO: rework as flag system that unwinds stack and implement try-catch-finally mechanics
 private void throwRuntimeError(in string message, size_t ip, Chunk chunk)
 {
     auto ex = new ScriptRuntimeException(message);
-    immutable lineNum = chunk.getLineNumber(ip);
-    ex.scriptTraceback ~= tuple(lineNum, chunk.getSourceLine(lineNum));
+    if(chunk.bytecode in chunk.debugMap)
+    {
+        immutable lineNum = chunk.debugMap[chunk.bytecode].getLineNumber(ip);
+        ex.scriptTraceback ~= tuple(lineNum, chunk.debugMap[chunk.bytecode].getSourceLine(lineNum));
+    }
+    // This will be replaced by a stack unwinding searching the future catch-goto stack
+    throw ex;
+}*/
+
+/// helper function. TODO: rework as flag system that implements try-catch-finally mechanics
+private void throwRuntimeError(in string message, VirtualMachine vm, Chunk chunk)
+{
+    auto ex = new ScriptRuntimeException(message);
+    // unwind stack starting with current
+    if(chunk.bytecode in chunk.debugMap)
+    {
+        immutable lineNum = chunk.debugMap[chunk.bytecode].getLineNumber(vm._ip);
+        ex.scriptTraceback ~= tuple(lineNum, chunk.debugMap[chunk.bytecode].getSourceLine(lineNum));
+    }
+    while(vm._callStack.size > 0)
+    {
+        auto csData = vm._callStack.pop();
+        // bc and ip
+        if(csData.bc in chunk.debugMap)
+        {
+            immutable lineNum = chunk.debugMap[csData.bc].getLineNumber(csData.ip);
+            ex.scriptTraceback ~= tuple(lineNum, chunk.debugMap[csData.bc].getSourceLine(lineNum));
+        }
+    }
     throw ex;
 }
 
@@ -209,7 +236,7 @@ private void opNew(VirtualMachine vm, Chunk chunk)
     
     NativeFunctionError nfe = NativeFunctionError.NO_ERROR;
     if(funcAny.type != ScriptAny.Type.FUNCTION)
-        throwRuntimeError("Unable to instantiate new object from non-function " ~ funcAny.toString(), vm._ip, chunk);
+        throwRuntimeError("Unable to instantiate new object from non-function " ~ funcAny.toString(), vm, chunk);
     auto func = funcAny.toValue!ScriptFunction; // @suppress(dscanner.suspicious.unmodified)
 
     ScriptAny thisObj = new ScriptObject(func.functionName, func["prototype"].toValue!ScriptObject, null);
@@ -252,13 +279,13 @@ private void opNew(VirtualMachine vm, Chunk chunk)
     case NativeFunctionError.NO_ERROR:
         break;
     case NativeFunctionError.RETURN_VALUE_IS_EXCEPTION:
-        throwRuntimeError(vm._stack.pop().toString(), vm._ip, chunk);
+        throwRuntimeError(vm._stack.pop().toString(), vm, chunk);
         break;
     case NativeFunctionError.WRONG_NUMBER_OF_ARGS:
-        throwRuntimeError("Wrong number of arguments to native function", vm._ip, chunk);
+        throwRuntimeError("Wrong number of arguments to native function", vm, chunk);
         break;
     case NativeFunctionError.WRONG_TYPE_OF_ARG:
-        throwRuntimeError("Wrong type of argument to native function", vm._ip, chunk);
+        throwRuntimeError("Wrong type of argument to native function", vm, chunk);
         break;
     }
     vm._ip += 1 + uint.sizeof;
@@ -300,7 +327,7 @@ private void opDeclVar(VirtualMachine vm, Chunk chunk)
     auto value = vm._stack.pop();
     immutable ok = vm._globals.declareVariableOrConst(varName, value, false);
     if(!ok)
-        throwRuntimeError("Cannot redeclare global " ~ varName, vm._ip, chunk);
+        throwRuntimeError("Cannot redeclare global " ~ varName, vm, chunk);
     vm._ip += 1 + uint.sizeof;
 }
 
@@ -312,7 +339,7 @@ private void opDeclLet(VirtualMachine vm, Chunk chunk)
     auto value = vm._stack.pop();
     immutable ok = vm._environment.declareVariableOrConst(varName, value, false);
     if(!ok)
-        throwRuntimeError("Cannot redeclare local " ~ varName, vm._ip, chunk);
+        throwRuntimeError("Cannot redeclare local " ~ varName, vm, chunk);
     vm._ip += 1 + uint.sizeof;
 }
 
@@ -324,7 +351,7 @@ private void opDeclConst(VirtualMachine vm, Chunk chunk)
     auto value = vm._stack.pop();
     immutable ok = vm._environment.declareVariableOrConst(varName, value, true);
     if(!ok)
-        throwRuntimeError("Cannot redeclare const " ~ varName, vm._ip, chunk);
+        throwRuntimeError("Cannot redeclare const " ~ varName, vm, chunk);
     vm._ip += 1 + uint.sizeof;
 }
 
@@ -336,7 +363,7 @@ private void opGetVar(VirtualMachine vm, Chunk chunk)
     bool isConst; // @suppress(dscanner.suspicious.unmodified)
     auto valuePtr = vm._environment.lookupVariableOrConst(varName, isConst);
     if(valuePtr == null)
-        throwRuntimeError("Variable lookup failed: " ~ varName, vm._ip, chunk);
+        throwRuntimeError("Variable lookup failed: " ~ varName, vm, chunk);
     vm._stack.push(*valuePtr);
     vm._ip += 1 + uint.sizeof;
 }
@@ -349,7 +376,7 @@ private void opSetVar(VirtualMachine vm, Chunk chunk)
     bool isConst; // @suppress(dscanner.suspicious.unmodified)
     auto varPtr = vm._environment.lookupVariableOrConst(varName, isConst);
     if(varPtr == null)
-        throwRuntimeError("Cannot assign to undefined variable: " ~ varName, vm._ip, chunk);
+        throwRuntimeError("Cannot assign to undefined variable: " ~ varName, vm, chunk);
     auto value = vm._stack.peek(); // @suppress(dscanner.suspicious.unmodified)
     if(value == ScriptAny.UNDEFINED)
         vm._environment.unsetVariable(varName);
@@ -375,7 +402,7 @@ private void opObjGet(VirtualMachine vm, Chunk chunk)
             if(index < 0)
                 index = arr.length + index;
             if(index < 0 || index >= arr.length)
-                throwRuntimeError("Out of bounds array access", vm._ip, chunk);
+                throwRuntimeError("Out of bounds array access", vm, chunk);
             vm._stack.push(arr[index]);
         }
         else if(objToAccess.type == ScriptAny.Type.STRING)
@@ -384,19 +411,19 @@ private void opObjGet(VirtualMachine vm, Chunk chunk)
             if(index < 0)
                 index = wstr.length + index;
             if(index < 0 || index >= wstr.length)
-                throwRuntimeError("Out of bounds string access", vm._ip, chunk);
+                throwRuntimeError("Out of bounds string access", vm, chunk);
             vm._stack.push(ScriptAny([wstr[index]]));
         }
         else
         {
-            throwRuntimeError("Value " ~ objToAccess.toString() ~ " is not an array or string", vm._ip, chunk);
+            throwRuntimeError("Value " ~ objToAccess.toString() ~ " is not an array or string", vm, chunk);
         }
     }
     else // else object field access
     {
         auto index = field.toString();
         if(!objToAccess.isObject)
-            throwRuntimeError("Unable to access members of non-object " ~ objToAccess.toString(), vm._ip, chunk);
+            throwRuntimeError("Unable to access members of non-object " ~ objToAccess.toString(), vm, chunk);
         // TODO check getters and run them if found
         // for now just access fields
         vm._stack.push(objToAccess[index]);
@@ -420,20 +447,20 @@ private void opObjSet(VirtualMachine vm, Chunk chunk)
             if(index < 0)
                 index = arr.length + index;
             if(index < 0 || index >= arr.length)
-                throwRuntimeError("Out of bounds array assignment", vm._ip, chunk);
+                throwRuntimeError("Out of bounds array assignment", vm, chunk);
             arr[index] = value;
             vm._stack.push(value);
         }
         else
         {
-            throwRuntimeError("Value " ~ objToAccess.toString() ~ " is not an array", vm._ip, chunk);
+            throwRuntimeError("Value " ~ objToAccess.toString() ~ " is not an array", vm, chunk);
         }
     }
     else
     {
         auto index = fieldToAssign.toValue!string;
         if(!objToAccess.isObject)
-            throwRuntimeError("Unable to assign member of non-object " ~ objToAccess.toString(), vm._ip, chunk);
+            throwRuntimeError("Unable to assign member of non-object " ~ objToAccess.toString(), vm, chunk);
         // TODO check setters, and in cases where there is a setter but no getter, undefined will be pushed
         objToAccess[index] = value;
         vm._stack.push(value);
@@ -451,7 +478,7 @@ private void opCall(VirtualMachine vm, Chunk chunk)
     auto args = callInfo[2..$];
     NativeFunctionError nfe = NativeFunctionError.NO_ERROR;
     if(funcAny.type != ScriptAny.Type.FUNCTION)
-        throwRuntimeError("Unable to call non-function " ~ funcAny.toString(), vm._ip, chunk);
+        throwRuntimeError("Unable to call non-function " ~ funcAny.toString(), vm, chunk);
     auto func = funcAny.toValue!ScriptFunction; // @suppress(dscanner.suspicious.unmodified)
     if(func.type == ScriptFunction.Type.SCRIPT_FUNCTION)
     {
@@ -489,13 +516,13 @@ private void opCall(VirtualMachine vm, Chunk chunk)
     case NativeFunctionError.NO_ERROR:
         break;
     case NativeFunctionError.RETURN_VALUE_IS_EXCEPTION:
-        throwRuntimeError(vm._stack.peek().toString(), vm._ip, chunk);
+        throwRuntimeError(vm._stack.peek().toString(), vm, chunk);
         break;
     case NativeFunctionError.WRONG_NUMBER_OF_ARGS:
-        throwRuntimeError("Wrong number of arguments to native function", vm._ip, chunk);
+        throwRuntimeError("Wrong number of arguments to native function", vm, chunk);
         break;
     case NativeFunctionError.WRONG_TYPE_OF_ARG:
-        throwRuntimeError("Wrong type of argument to native function", vm._ip, chunk);
+        throwRuntimeError("Wrong type of argument to native function", vm, chunk);
         break;
     }
     vm._ip += 1 + uint.sizeof;
@@ -665,7 +692,6 @@ private void opReturn(VirtualMachine vm, Chunk chunk)
     {
         vm._ip = chunk.bytecode.length;
     }
-
     vm._ip += 1 + uint.sizeof; // the size of call()    
 }
 
