@@ -280,7 +280,7 @@ pragma(inline, true)
 private void opOpenScope(VirtualMachine vm, Chunk chunk)
 {
     vm._environment = new Environment(vm._environment);
-    debug writefln("VM{ environment depth=%s", vm._environment.depth);
+    // debug writefln("VM{ environment depth=%s", vm._environment.depth);
     ++vm._ip;
 }
 
@@ -288,7 +288,7 @@ pragma(inline, true)
 private void opCloseScope(VirtualMachine vm, Chunk chunk)
 {
     vm._environment = vm._environment.parent;
-    debug writefln("VM} environment depth=%s", vm._environment.depth);
+    // debug writefln("VM} environment depth=%s", vm._environment.depth);
     ++vm._ip;
 }
 
@@ -660,6 +660,10 @@ private void opReturn(VirtualMachine vm, Chunk chunk)
         }
         vm._ip = fcdata.ip;
         vm._environment = fcdata.env;
+    }
+    else
+    {
+        vm._ip = chunk.bytecode.length;
     }
 
     vm._ip += 1 + uint.sizeof; // the size of call()    

@@ -542,7 +542,7 @@ public:
         *cast(int*)(_chunk.bytecode.ptr + jmpFalse) = cast(int)(_chunk.bytecode.length - length1);
         // patch gotos
         patchBreaksAndContinues(wsnode.label, breakLocation, continueLocation,
-                _compDataStack.top.depthCounter);
+                _compDataStack.top.depthCounter, _compDataStack.top.loopOrSwitchStack);
         removePatches();
         return Variant(null);
     }
@@ -558,7 +558,8 @@ public:
         immutable breakLocation = _chunk.bytecode.length;
         --_compDataStack.top.loopOrSwitchStack;
         // patch the breaks or continues that may happen in the first run.
-        patchBreaksAndContinues(dwsnode.label, breakLocation, continueLocation, _compDataStack.top.depthCounter);
+        patchBreaksAndContinues(dwsnode.label, breakLocation, continueLocation, _compDataStack.top.depthCounter,
+                _compDataStack.top.loopOrSwitchStack);
         removePatches();
         // reconstruct into while-loop and emit it
         auto wsnode = new WhileStatementNode(dwsnode.line, dwsnode.conditionNode, dwsnode.bodyNode, dwsnode.label);
@@ -591,7 +592,8 @@ public:
         *cast(int*)(_chunk.bytecode.ptr + jmpFalse) = cast(int)(breakLocation - length1);
         *cast(int*)(_chunk.bytecode.ptr + jmp) = -cast(int)(length2 - length0);
         --_compDataStack.top.loopOrSwitchStack;
-        patchBreaksAndContinues(fsnode.label, breakLocation, continueLocation, _compDataStack.top.depthCounter);
+        patchBreaksAndContinues(fsnode.label, breakLocation, continueLocation, _compDataStack.top.depthCounter,
+                _compDataStack.top.loopOrSwitchStack);
         removePatches();
         return Variant(null);
     }
@@ -611,7 +613,7 @@ public:
         immutable patchLocation = _chunk.bytecode.length + 1;
         _chunk.bytecode ~= OpCode.GOTO ~ encode(uint.max) ~ cast(ubyte)0;
         _compDataStack.top.breaksToPatch ~= BreakOrContinueToPatch(bsnode.label, patchLocation,
-                _compDataStack.top.depthCounter);
+                _compDataStack.top.depthCounter, _compDataStack.top.loopOrSwitchStack - 1);
         return Variant(null);
     }
 
@@ -622,7 +624,7 @@ public:
         immutable patchLocation = _chunk.bytecode.length + 1;
         _chunk.bytecode ~= OpCode.GOTO ~ encode(uint.max - 1) ~ cast(ubyte)0;
         _compDataStack.top.continuesToPatch ~= BreakOrContinueToPatch(csnode.label, patchLocation,
-                _compDataStack.top.depthCounter);
+                _compDataStack.top.depthCounter, _compDataStack.top.loopOrSwitchStack - 1);
         return Variant(null);
     }
 
@@ -762,7 +764,7 @@ private:
                         throw new ScriptCompileException("Cannot reassign stack const " ~ van.varToken.text, 
                                 van.varToken);
                     _chunk.bytecode ~= OpCode.SET ~ encode!uint(var.toValue!uint);
-                    return;        
+                    return;
                 }
             }
             _chunk.bytecode ~= OpCode.SETVAR ~ encodeConst(van.varToken.text);
@@ -875,11 +877,12 @@ private:
         return false;
     }
 
-    void patchBreaksAndContinues(string label, size_t breakGoto, size_t continueGoto, int depthCounter)
+    void patchBreaksAndContinues(string label, size_t breakGoto, size_t continueGoto, int depthCounter, int loopLevel)
     {
         for(size_t i = 0; i < _compDataStack.top.breaksToPatch.length; ++i)
         {
-            if(!_compDataStack.top.breaksToPatch[i].patched)
+            if(!_compDataStack.top.breaksToPatch[i].patched 
+            && _compDataStack.top.breaksToPatch[i].loopLevel == loopLevel)
             {
                 if(_compDataStack.top.breaksToPatch[i].labelName == label
                 || _compDataStack.top.breaksToPatch[i].labelName == "")
@@ -895,7 +898,8 @@ private:
 
         for(size_t i = 0; i < _compDataStack.top.continuesToPatch.length; ++i)
         {
-            if(!_compDataStack.top.continuesToPatch[i].patched)
+            if(!_compDataStack.top.continuesToPatch[i].patched
+            && _compDataStack.top.continuesToPatch[i].loopLevel == loopLevel)
             {
                 if(_compDataStack.top.continuesToPatch[i].labelName == label 
                 || _compDataStack.top.continuesToPatch[i].labelName == "")
@@ -964,15 +968,17 @@ private:
 
     struct BreakOrContinueToPatch
     {
-        this(string lbl, size_t param, int d)
+        this(string lbl, size_t param, int d, int ll)
         {
             labelName = lbl;
             gotoPatchParam = param;
             depth = d;
+            loopLevel = ll;
         }
         string labelName;
         size_t gotoPatchParam;
         int depth;
+        int loopLevel;
         bool patched = false;
     }
 
