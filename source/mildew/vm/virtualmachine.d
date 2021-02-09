@@ -88,13 +88,13 @@ private void throwRuntimeError(in string message, size_t ip, Chunk chunk)
     throw ex;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opNop(VirtualMachine vm, Chunk chunk)
 {
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opConst(VirtualMachine vm, Chunk chunk)
 {
     immutable constID = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
@@ -105,21 +105,21 @@ private void opConst(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opConst1(VirtualMachine vm, Chunk chunk)
 {
     vm._stack.push(ScriptAny(1));
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opConstN1(VirtualMachine vm, Chunk chunk)
 {
     vm._stack.push(ScriptAny(-1));
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opPush(VirtualMachine vm, Chunk chunk)
 {
     immutable index = decode!int(chunk.bytecode.ptr + vm._ip + 1);
@@ -130,14 +130,14 @@ private void opPush(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + int.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opPop(VirtualMachine vm, Chunk chunk)
 {
     vm._stack.pop();
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opPopN(VirtualMachine vm, Chunk chunk)
 {
     immutable amount = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
@@ -145,7 +145,7 @@ private void opPopN(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opSet(VirtualMachine vm, Chunk chunk)
 {
     immutable index = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
@@ -153,7 +153,7 @@ private void opSet(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opStack(VirtualMachine vm, Chunk chunk)
 {
     immutable n = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
@@ -162,14 +162,14 @@ private void opStack(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opStack1(VirtualMachine vm, Chunk chunk)
 {
     vm._stack.push(ScriptAny.UNDEFINED);
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opArray(VirtualMachine vm, Chunk chunk)
 {
     immutable n = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
@@ -178,7 +178,7 @@ private void opArray(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opObject(VirtualMachine vm, Chunk chunk)
 {
     immutable n = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
@@ -192,7 +192,7 @@ private void opObject(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opNew(VirtualMachine vm, Chunk chunk)
 {
     immutable n = decode!uint(chunk.bytecode.ptr + vm._ip + 1) + 1;
@@ -257,7 +257,7 @@ private void opNew(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opThis(VirtualMachine vm, Chunk chunk)
 {
     bool _; // @suppress(dscanner.suspicious.unmodified)
@@ -269,7 +269,7 @@ private void opThis(VirtualMachine vm, Chunk chunk)
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opOpenScope(VirtualMachine vm, Chunk chunk)
 {
     vm._environment = new Environment(vm._environment);
@@ -277,7 +277,7 @@ private void opOpenScope(VirtualMachine vm, Chunk chunk)
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opCloseScope(VirtualMachine vm, Chunk chunk)
 {
     vm._environment = vm._environment.parent;
@@ -285,7 +285,7 @@ private void opCloseScope(VirtualMachine vm, Chunk chunk)
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opDeclVar(VirtualMachine vm, Chunk chunk)
 {
     auto constID = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
@@ -297,7 +297,7 @@ private void opDeclVar(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opDeclLet(VirtualMachine vm, Chunk chunk)
 {
     auto constID = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
@@ -309,7 +309,7 @@ private void opDeclLet(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opDeclConst(VirtualMachine vm, Chunk chunk)
 {
     auto constID = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
@@ -321,7 +321,7 @@ private void opDeclConst(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opGetVar(VirtualMachine vm, Chunk chunk)
 {
     auto constID = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
@@ -334,7 +334,7 @@ private void opGetVar(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opSetVar(VirtualMachine vm, Chunk chunk)
 {
     auto constID = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
@@ -351,7 +351,7 @@ private void opSetVar(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opObjGet(VirtualMachine vm, Chunk chunk)
 {
     auto objToAccess = vm._stack.array[$-2];
@@ -397,7 +397,7 @@ private void opObjGet(VirtualMachine vm, Chunk chunk)
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opObjSet(VirtualMachine vm, Chunk chunk)
 {
     auto objToAccess = vm._stack.array[$-3];
@@ -434,7 +434,7 @@ private void opObjSet(VirtualMachine vm, Chunk chunk)
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opCall(VirtualMachine vm, Chunk chunk)
 {
     immutable n = decode!uint(chunk.bytecode.ptr + vm._ip + 1) + 2;
@@ -494,7 +494,7 @@ private void opCall(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opJmpFalse(VirtualMachine vm, Chunk chunk)
 {
     immutable jmpAmount = decode!int(chunk.bytecode.ptr + vm._ip + 1);
@@ -505,14 +505,14 @@ private void opJmpFalse(VirtualMachine vm, Chunk chunk)
         vm._ip += 1 + int.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opJmp(VirtualMachine vm, Chunk chunk)
 {
     immutable jmpAmount = decode!int(chunk.bytecode.ptr + vm._ip + 1);
     vm._ip += jmpAmount;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opGoto(VirtualMachine vm, Chunk chunk)
 {
     immutable address = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
@@ -524,7 +524,7 @@ private void opGoto(VirtualMachine vm, Chunk chunk)
     vm._ip = address;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opConcat(VirtualMachine vm, Chunk chunk)
 {
     immutable n = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
@@ -536,28 +536,28 @@ private void opConcat(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opBitNot(VirtualMachine vm, Chunk chunk)
 {
     vm._stack.array[$-1] = ~vm._stack.array[$-1];
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opNot(VirtualMachine vm, Chunk chunk)
 {
     vm._stack.array[$-1] = ScriptAny(!vm._stack.array[$-1]);
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opNegate(VirtualMachine vm, Chunk chunk)
 {
     vm._stack.array[$-1] = -vm._stack.array[$-1];
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opTypeof(VirtualMachine vm, Chunk chunk)
 {
     vm._stack.array[$-1] = ScriptAny(vm._stack.array[$-1].typeToString());
@@ -568,7 +568,7 @@ private string DEFINE_BIN_OP(string name, string op)()
 {
     import std.format: format;
     return format(q{
-pragma(inline)
+pragma(inline, true)
 private void %1$s(VirtualMachine vm, Chunk chunk)
 {
     auto operands = vm._stack.pop(2);
@@ -592,7 +592,7 @@ private string DEFINE_BIN_BOOL_OP(string name, string op)()
 {
     import std.format: format;
     return format(q{
-pragma(inline)
+pragma(inline, true)
 private void %1$s(VirtualMachine vm, Chunk chunk)
 {
     auto operands = vm._stack.pop(2);
@@ -615,7 +615,7 @@ mixin(DEFINE_BIN_OP!("opBitXor", "^"));
 
 mixin(DEFINE_BIN_BOOL_OP!("opAnd", "&&"));
 
-pragma(inline)
+pragma(inline, true)
 private void opOr(VirtualMachine vm, Chunk chunk)
 {
     auto operands = vm._stack.pop(2);
@@ -623,7 +623,7 @@ private void opOr(VirtualMachine vm, Chunk chunk)
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opTern(VirtualMachine vm, Chunk chunk)
 {
     auto operands = vm._stack.pop(3);
@@ -634,7 +634,7 @@ private void opTern(VirtualMachine vm, Chunk chunk)
     ++vm._ip;
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opReturn(VirtualMachine vm, Chunk chunk)
 {
     if(vm._stack.size < 1)
@@ -658,7 +658,7 @@ private void opReturn(VirtualMachine vm, Chunk chunk)
     vm._ip += 1 + uint.sizeof; // the size of call()    
 }
 
-pragma(inline)
+pragma(inline, true)
 private void opHalt(VirtualMachine vm, Chunk chunk)
 {
     vm._stopped = true;
@@ -728,6 +728,7 @@ class VirtualMachine
         _ops[OpCode.TERN] = &opTern;
         _ops[OpCode.RETURN] = &opReturn;
         _ops[OpCode.HALT] = &opHalt;
+        _stack.reserve(256);
     }
 
     /// get the value at top of stack, assumed to be return value at end of run
@@ -995,7 +996,6 @@ class VirtualMachine
     /// run a chunk of bytecode with a given const table
     void run(Chunk chunk)
     {
-
         _ip = 0;
         ubyte op;
         _stopped = false;

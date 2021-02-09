@@ -25,11 +25,19 @@ class Chunk
     /// get line associated with ip
     size_t getLineNumber(size_t ip)
     {
-        foreach(pair ; lines)
+        long index = 0;
+        while(index < cast(long)lines.length - 1)
         {
-            if(ip >= pair.ip)
-                return pair.lineNumber;
+            if(ip >= lines[index].ip && ip < lines[index+1].ip)
+                return lines[index].lineNumber;
+            ++index;
         }
+        // if we get to this point assume the error was on the last line if it exists
+        if(lines.length > 1)
+        {
+            return lines[$-1].lineNumber;
+        }
+        // else the line info is missing so just return 0
         return 0;
     }
 

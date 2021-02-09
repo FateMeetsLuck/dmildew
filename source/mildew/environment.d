@@ -285,6 +285,27 @@ public:
         return "Environment: " ~ _name;
     }
 
+    /// Returns the level of depth, 0-N for a variable location, or -1 if not found
+    int varDepth(string varName, out bool isConst)
+    {
+        int depth = 0;
+        auto env = this;
+        isConst = false;
+        while(env !is null)
+        {
+            if(varName in env._constTable)
+            {
+                isConst = true;
+                return depth;
+            }
+            if(varName in env._varTable)
+                return depth;
+            env = env._parent;
+            ++depth;
+        }
+        return -1;
+    }
+
 private:
 
     /// parent context. null if this is the global context

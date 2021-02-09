@@ -158,10 +158,11 @@ class LiteralNode : ExpressionNode
 
 class FunctionLiteralNode : ExpressionNode
 {
-    this(string[] args, StatementNode[] stmts)
+    this(string[] args, StatementNode[] stmts, string optional = "")
     {
         argList = args;
         statements = stmts;
+        optionalName = optional;
     }
 
     override Variant accept(IExpressionVisitor visitor)

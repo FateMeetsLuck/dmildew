@@ -1,7 +1,12 @@
+/**
+ * This module implements the compiler
+ */
 module mildew.compiler;
 
+debug import std.stdio;
 import std.variant;
 
+import mildew.environment;
 import mildew.exceptions;
 import mildew.lexer;
 import mildew.parser;
@@ -18,7 +23,10 @@ private enum BREAKLOOP_CODE = uint.max;
 private enum BREAKSWITCH_CODE = uint.max - 1;
 private enum CONTINUE_CODE = uint.max - 2;
 
-/// Compiles code into chunks
+/**
+ * Implements a bytecode compiler that can be used by mildew.vm.virtualmachine. This class is not thread safe and each thread
+ * must use its own Compiler instance. Only one chunk can be compiled at a time.
+ */
 class Compiler : INodeVisitor
 {
 public:
@@ -38,18 +46,21 @@ public:
     {
         import std.string: splitLines;
         _chunk = new Chunk();
-        _compDataStack.push(CompilationData.init);
+        _compDataStack.push(new CompilationData);
         auto lexer = Lexer(source);
         auto parser = Parser(lexer.tokenize());
         _chunk.source = splitLines(source);
         // for now just expressions
         auto block = parser.parseProgram();
         block.accept(this);
+        destroy(block);
         Chunk send = _chunk;
         _chunk = null; // ensure node functions cannot be used by outsiders at all
         _compDataStack.pop();
         return send;
     }
+
+// The visitNode methods are not intended for public use but are required to be public by D language constraints
 
     /// handle literal value node (easiest)
 	Variant visitLiteralNode(LiteralNode lnode)
@@ -68,7 +79,7 @@ public:
     Variant visitFunctionLiteralNode(FunctionLiteralNode flnode)
     {
         auto oldChunk = _chunk.bytecode; // @suppress(dscanner.suspicious.unmodified)
-        _compDataStack.push(CompilationData.init);
+        _compDataStack.push(new CompilationData);
         _chunk.bytecode = [];
         foreach(stmt ; flnode.statements)
             stmt.accept(this);
@@ -120,7 +131,7 @@ public:
         return Variant(null);
     }
 
-    /// TODO
+    /// TODO (may add class instruction or instructions to assign properties and prototypes)
 	Variant visitClassLiteralNode(ClassLiteralNode clnode)
     {
         throwUnimplemented(clnode);
@@ -294,7 +305,7 @@ public:
         return Variant(null);
     }
 
-    /// TODO
+    /// Handle function() calls
 	Variant visitFunctionCallNode(FunctionCallNode fcnode)
     {
         // if returnThis is set this is an easy new op
@@ -367,9 +378,10 @@ public:
         return Variant(null);
     }
     
-    /// TODO
+    /// Handle var declaration
     Variant visitVarDeclarationStatementNode(VarDeclarationStatementNode vdsnode)
     {
+        _chunk.addLine(_chunk.bytecode.length, vdsnode.line);
         foreach(expr ; vdsnode.varAccessOrAssignmentNodes)
         {
             string varName = "";
@@ -399,6 +411,9 @@ public:
                 _chunk.bytecode ~= OpCode.DECLCONST ~ encodeConst(varName);
             else
                 throw new Exception("Catastrophic parser fail: " ~ vdsnode.toString());
+
+            if(vdsnode.qualifier.text != "var")
+                _compDataStack.top.env.forceSetVarOrConst(varName, ScriptAny(true), vdsnode.qualifier.text == "const");
         }
         return Variant(null);
     }
@@ -406,18 +421,53 @@ public:
     /// handle {} braces
 	Variant visitBlockStatementNode(BlockStatementNode bsnode)
     {
-        ++_compDataStack.top.depthCounter;
-        _chunk.bytecode ~= OpCode.OPENSCOPE;
+        import std.conv: to;
+        _chunk.addLine(_chunk.bytecode.length, bsnode.line);
+        // if there are no vardeclarations at the top level the scope op can be omitted
+        bool omitScope = true;
+        foreach(stmt ; bsnode.statementNodes)
+        {
+            if(cast(VarDeclarationStatementNode)stmt)
+            {
+                omitScope = false;
+                break;
+            }
+        }
+        if(!omitScope)
+        {
+            ++_compDataStack.top.depthCounter;
+            _compDataStack.top.env = new Environment(_compDataStack.top.env, 
+                    to!string(_compDataStack.top.depthCounter));
+
+            _chunk.bytecode ~= OpCode.OPENSCOPE;
+        }
         foreach(stmt ; bsnode.statementNodes)
             stmt.accept(this);
-        _chunk.bytecode ~= OpCode.CLOSESCOPE;
-        --_compDataStack.top.depthCounter;
+        
+        if(!omitScope)
+        {
+            _chunk.bytecode ~= OpCode.CLOSESCOPE;
+
+            _compDataStack.top.env = _compDataStack.top.env.parent;
+            --_compDataStack.top.depthCounter;
+        }
         return Variant(null);
     }
 
     /// emit if statements
 	Variant visitIfStatementNode(IfStatementNode isnode)
     {
+        // first analysis, if the if or else blocks are a var declaration, auto surround with {}
+        // so that variables under if or else cannot escape
+        if(cast(VarDeclarationStatementNode)isnode.onTrueStatement)
+            isnode.onTrueStatement = new BlockStatementNode(isnode.onTrueStatement.line, [isnode.onTrueStatement]);
+        if(isnode.onFalseStatement)
+        {
+            if(cast(VarDeclarationStatementNode)isnode.onFalseStatement)
+                isnode.onFalseStatement = new BlockStatementNode(isnode.onFalseStatement.line, 
+                        [isnode.onFalseStatement]);
+        }
+        _chunk.addLine(_chunk.bytecode.length, isnode.line);
         isnode.conditionNode.accept(this);
         auto length = cast(int)_chunk.bytecode.length;
         auto jmpFalseToPatch = genJmpFalse();
@@ -440,20 +490,39 @@ public:
     /// TODO
 	Variant visitSwitchStatementNode(SwitchStatementNode ssnode)
     {
+        _chunk.addLine(_chunk.bytecode.length, ssnode.line);
         throwUnimplemented(ssnode);
         return Variant(null);
     }
 
-    /// TODO
+    /// Handle while loops
 	Variant visitWhileStatementNode(WhileStatementNode wsnode)
     {
-        throwUnimplemented(wsnode);
+        _chunk.addLine(_chunk.bytecode.length, wsnode.line);
+        ++_compDataStack.top.loopOrSwitchStack;
+        immutable length0 = _chunk.bytecode.length;
+        immutable continueLocation = length0;
+        wsnode.conditionNode.accept(this);
+        immutable length1 = _chunk.bytecode.length;
+        immutable jmpFalse = genJmpFalse();
+        wsnode.bodyNode.accept(this);
+        immutable length2 = _chunk.bytecode.length;
+        immutable jmp = genJmp();
+        immutable breakLocation = _chunk.bytecode.length;
+        --_compDataStack.top.loopOrSwitchStack;
+        *cast(int*)(_chunk.bytecode.ptr + jmp) = -cast(int)(length2 - length0);
+        *cast(int*)(_chunk.bytecode.ptr + jmpFalse) = cast(int)(_chunk.bytecode.length - length1);
+        // patch gotos
+        patchBreaksAndContinues(wsnode.label, breakLocation, continueLocation,
+                _compDataStack.top.depthCounter);
+        removePatches();
         return Variant(null);
     }
 
     /// TODO
 	Variant visitDoWhileStatementNode(DoWhileStatementNode dwsnode)
     {
+        _chunk.addLine(_chunk.bytecode.length, dwsnode.line);
         throwUnimplemented(dwsnode);
         return Variant(null);
     }
@@ -461,6 +530,7 @@ public:
     /// TODO
 	Variant visitForStatementNode(ForStatementNode fsnode)
     {
+        _chunk.addLine(_chunk.bytecode.length, fsnode.line);
         throwUnimplemented(fsnode);
         return Variant(null);
     }
@@ -468,6 +538,7 @@ public:
     /// TODO
 	Variant visitForOfStatementNode(ForOfStatementNode fosnode)
     {
+        _chunk.addLine(_chunk.bytecode.length, fosnode.line);
         throwUnimplemented(fosnode);
         return Variant(null);
     }
@@ -475,13 +546,18 @@ public:
     /// TODO
 	Variant visitBreakStatementNode(BreakStatementNode bsnode)
     {
-        throwUnimplemented(bsnode);
+        _chunk.addLine(_chunk.bytecode.length, bsnode.line);
+        immutable patchLocation = _chunk.bytecode.length + 1;
+        _chunk.bytecode ~= OpCode.GOTO ~ encode(uint.max) ~ cast(ubyte)0;
+        _compDataStack.top.breaksToPatch ~= BreakOrContinueToPatch(bsnode.label, patchLocation,
+                _compDataStack.top.depthCounter);
         return Variant(null);
     }
 
     /// TODO
 	Variant visitContinueStatementNode(ContinueStatementNode csnode)
     {
+        _chunk.addLine(_chunk.bytecode.length, csnode.line);
         throwUnimplemented(csnode);
         return Variant(null);
     }
@@ -489,6 +565,7 @@ public:
     /// Return statements
 	Variant visitReturnStatementNode(ReturnStatementNode rsnode)
     {
+        _chunk.addLine(_chunk.bytecode.length, rsnode.line);
         if(rsnode.expressionNode !is null)
             rsnode.expressionNode.accept(this);
         else
@@ -500,6 +577,7 @@ public:
     /// TODO
 	Variant visitFunctionDeclarationStatementNode(FunctionDeclarationStatementNode fdsnode)
     {
+        _chunk.addLine(_chunk.bytecode.length, fdsnode.line);
         throwUnimplemented(fdsnode);
         return Variant(null);
     }
@@ -507,6 +585,7 @@ public:
     /// TODO
 	Variant visitThrowStatementNode(ThrowStatementNode tsnode)
     {
+        _chunk.addLine(_chunk.bytecode.length, tsnode.line);
         throwUnimplemented(tsnode);
         return Variant(null);
     }
@@ -514,6 +593,7 @@ public:
     /// TODO
 	Variant visitTryCatchBlockStatementNode(TryCatchBlockStatementNode tcbsnode)
     {
+        _chunk.addLine(_chunk.bytecode.length, tcbsnode.line);
         throwUnimplemented(tcbsnode);
         return Variant(null);
     }
@@ -521,6 +601,7 @@ public:
     /// TODO
 	Variant visitDeleteStatementNode(DeleteStatementNode dsnode)
     {
+        _chunk.addLine(_chunk.bytecode.length, dsnode.line);
         throwUnimplemented(dsnode);
         return Variant(null);
     }
@@ -528,6 +609,7 @@ public:
     /// TODO
 	Variant visitClassDeclarationStatementNode(ClassDeclarationStatementNode cdsnode)
     {
+        _chunk.addLine(_chunk.bytecode.length, cdsnode.line);
         throwUnimplemented(cdsnode);
         return Variant(null);
     }
@@ -535,6 +617,7 @@ public:
     /// TODO
 	Variant visitSuperCallStatementNode(SuperCallStatementNode scsnode)
     {
+        _chunk.addLine(_chunk.bytecode.length, scsnode.line);
         throwUnimplemented(scsnode);
         return Variant(null);
     }
@@ -582,7 +665,6 @@ private:
         {
             fln.optionalName = leftExpr.toString();
         }
-        // TODO rewrite this as a reduction to (a = (a + b)) nodes
         if(auto van = cast(VarAccessNode)leftExpr)
         {
             rightExpr.accept(this);
@@ -630,16 +712,6 @@ private:
         }
     }
 
-    void throwUnimplemented(ExpressionNode expr)
-    {
-        throw new UnimplementedException("Unimplemented: " ~ expr.toString());
-    }
-
-    void throwUnimplemented(StatementNode stmt)
-    {
-        throw new UnimplementedException("Unimplemented: " ~ stmt.toString());
-    }
-
     bool nodeIsAssignable(ExpressionNode node)
     {
         if(cast(VarAccessNode)node)
@@ -651,13 +723,116 @@ private:
         return false;
     }
 
+    void patchBreaksAndContinues(string label, size_t breakGoto, size_t continueGoto, int depthCounter)
+    {
+        for(size_t i = 0; i < _compDataStack.top.breaksToPatch.length; ++i)
+        {
+            if(!_compDataStack.top.breaksToPatch[i].patched)
+            {
+                if(_compDataStack.top.breaksToPatch[i].labelName == label)
+                {
+                    *cast(uint*)(_chunk.bytecode.ptr + _compDataStack.top.breaksToPatch[i].gotoPatchParam) 
+                            = cast(uint)breakGoto;
+                    _chunk.bytecode[_compDataStack.top.breaksToPatch[i].gotoPatchParam + uint.sizeof] 
+                            = cast(ubyte)(_compDataStack.top.breaksToPatch[i].depth - depthCounter);
+                    _compDataStack.top.breaksToPatch[i].patched = true;
+                }
+            }
+        }
+
+        for(size_t i = 0; i < _compDataStack.top.continuesToPatch.length; ++i)
+        {
+            if(!_compDataStack.top.continuesToPatch[i].patched)
+            {
+                if(_compDataStack.top.continuesToPatch[i].labelName == label)
+                {
+                    *cast(uint*)(_chunk.bytecode.ptr + _compDataStack.top.continuesToPatch[i].gotoPatchParam) 
+                            = cast(uint)continueGoto;
+                    _chunk.bytecode[_compDataStack.top.continuesToPatch[i].gotoPatchParam + uint.sizeof] 
+                            = cast(ubyte)(_compDataStack.top.continuesToPatch[i].depth - depthCounter);
+                    _compDataStack.top.continuesToPatch[i].patched = true;
+                }
+            }
+        }
+    }
+
+    void removePatches()
+    {
+        if(_compDataStack.top.loopOrSwitchStack == 0)
+        {
+            bool unresolved = false;
+            if(_compDataStack.top.loopOrSwitchStack == 0)
+            {
+                foreach(brk ; _compDataStack.top.breaksToPatch)
+                {
+                    if(!brk.patched)
+                    {
+                        unresolved = true;
+                        break;
+                    }
+                }
+
+                foreach(cont ; _compDataStack.top.continuesToPatch)
+                {
+                    if(!cont.patched)
+                    {
+                        unresolved = true;
+                        break;
+                    }
+                }
+            }
+            if(unresolved)
+                throw new ScriptCompileException("Unresolvable break or continue statement", 
+                        Token.createInvalidToken(Position(0,0), "break/continue"));
+            _compDataStack.top.breaksToPatch = [];
+            _compDataStack.top.continuesToPatch = [];
+        }
+    }
+
+    void throwUnimplemented(ExpressionNode expr)
+    {
+        throw new UnimplementedException("Unimplemented: " ~ expr.toString());
+    }
+
+    void throwUnimplemented(StatementNode stmt)
+    {
+        throw new UnimplementedException("Unimplemented: " ~ stmt.toString());
+    }
+
     /// the chunk being compiled
     Chunk _chunk;
 
-    struct CompilationData
+    struct BreakOrContinueToPatch
     {
+        this(string lbl, size_t param, int d)
+        {
+            labelName = lbl;
+            gotoPatchParam = param;
+            depth = d;
+        }
+        string labelName;
+        size_t gotoPatchParam;
+        int depth;
+        bool patched = false;
+    }
+
+    class CompilationData
+    {
+        this()
+        {
+            env = new Environment(null, "<base>");
+        }
+
         /// environment depth counter
         int depthCounter;
+        /// uses the Environment class to handle variable resolution in the future
+        Environment env;
+        /// how many loops nested
+        int loopOrSwitchStack = 0;
+        /// list of breaks needing patched
+        BreakOrContinueToPatch[] breaksToPatch;
+        /// list of continues needing patched
+        BreakOrContinueToPatch[] continuesToPatch;
     }
 
     Stack!CompilationData _compDataStack;

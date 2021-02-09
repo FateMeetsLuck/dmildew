@@ -13,3 +13,33 @@ c1();
 c2();
 c2();
 c1();
+
+let foo = 9;
+{
+    let j = "j";
+    {
+        let bar = 55;
+        console.log(foo);
+        bar;
+        j;
+    }
+}
+
+/*let start = System.getCurrentMillis();
+let i = 0;
+while(i < 1000000) {
+    ++i;
+}
+let elapsed = System.getCurrentMillis() - start;
+console.log(`It took ${elapsed} ms to count to ${i}`);*/
+
+foo:
+while(true) {
+    bar: while(true) {
+        break bar;
+    }
+    break foo;
+}
+
+
+

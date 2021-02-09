@@ -7,7 +7,7 @@ module mildew.util.stack;
 struct Stack(T)
 {
 public:
-    /// push an item to the stack
+    /// push an item to the stack and return its position
     size_t push(T item)
     {
         _data ~= item;
@@ -44,6 +44,12 @@ public:
     }
     /// direct access to array
     auto array() { return _data; }
+
+    /// calls reserve on array
+    void reserve(size_t size)
+    {
+        _data.reserve(size);
+    }
 
     /// the top element by reference
     ref auto top() { return _data[$-1]; }

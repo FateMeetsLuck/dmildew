@@ -348,6 +348,18 @@ private:
             if(_currentToken.type == Token.Type.IDENTIFIER)
             {
                 label = _currentToken.text;
+                bool valid = false;
+                // label must exist on stack
+                for(size_t i = _labelStack.length; i > 0; --i)
+                {
+                    if(_labelStack[i-1] == label)
+                    {
+                        valid = true;
+                        break;
+                    }
+                }
+                if(!valid)
+                    throw new ScriptCompileException("Break label does not refer to valid label", _currentToken);
                 nextToken();
             }
             if(_currentToken.type != Token.Type.SEMICOLON)
@@ -365,6 +377,17 @@ private:
             if(_currentToken.type == Token.Type.IDENTIFIER)
             {
                 label = _currentToken.text;
+                bool valid = false;
+                for(size_t i = _labelStack.length; i > 0; --i)
+                {
+                    if(_labelStack[i-1] == label)
+                    {
+                        valid = true;
+                        break;
+                    }
+                }
+                if(!valid)
+                    throw new ScriptCompileException("Continue label does not refer to valid label", _currentToken);
                 nextToken();
             }
             if(_currentToken.type != Token.Type.SEMICOLON)
@@ -571,6 +594,7 @@ private:
         return left;
     }
     
+    // TODO optimize this to use indexing instead of string building.
     TemplateStringNode parseTemplateStringNode()
     {
         import mildew.lexer: Lexer;
@@ -848,6 +872,7 @@ private:
         if(_currentToken.type == Token.Type.LABEL)
         {
             label = _currentToken.text;
+            _labelStack ~= label;
             nextToken();
         }
         StatementNode statement;
@@ -870,6 +895,10 @@ private:
             ++_loopStack;
             statement = parseForStatement(label);
             --_loopStack;
+        }
+        if(label != "")
+        {
+            _labelStack = _labelStack[0..$-1];
         }
         return statement;
     }
@@ -1215,6 +1244,7 @@ private:
     size_t _tokenIndex = 0;
     Token _currentToken;
     int _loopStack = 0;
+    string[] _labelStack;
     int _switchStack = 0;
     ExpressionNode[] _baseClassStack; // in case we have nested class declarations
 }
