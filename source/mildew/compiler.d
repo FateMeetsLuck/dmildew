@@ -65,10 +65,17 @@ public:
     /// handle literal value node (easiest)
 	Variant visitLiteralNode(LiteralNode lnode)
     {
-        if(lnode.value == ScriptAny(1))
+        // want booleans to be booleans not 1
+        if(lnode.value.type == ScriptAny.Type.BOOLEAN)
+        {
+            _chunk.bytecode ~= OpCode.CONST ~ encodeConst(lnode.literalToken.text == "true" ? true : false);
+            return Variant(null);
+        }
+
+        if(lnode.value == ScriptAny(0))
+            _chunk.bytecode ~= OpCode.CONST_0;
+        else if(lnode.value == ScriptAny(1))
             _chunk.bytecode ~= OpCode.CONST_1;
-        else if(lnode.value == ScriptAny(-1))
-            _chunk.bytecode ~= OpCode.CONST_N1;
         else
             _chunk.bytecode ~= OpCode.CONST ~ encodeConst(lnode.value);
         return Variant(null);
@@ -519,11 +526,22 @@ public:
         return Variant(null);
     }
 
-    /// TODO
+    /// do-while loops
 	Variant visitDoWhileStatementNode(DoWhileStatementNode dwsnode)
     {
         _chunk.addLine(_chunk.bytecode.length, dwsnode.line);
-        throwUnimplemented(dwsnode);
+        ++_compDataStack.top.loopOrSwitchStack;
+        immutable continueLocation = _chunk.bytecode.length;
+        // first emit the body for the guaranteed once run
+        dwsnode.bodyNode.accept(this);
+        immutable breakLocation = _chunk.bytecode.length;
+        --_compDataStack.top.loopOrSwitchStack;
+        // patch the breaks or continues that may happen in the first run.
+        patchBreaksAndContinues(dwsnode.label, breakLocation, continueLocation, _compDataStack.top.depthCounter);
+        removePatches();
+        // reconstruct into while-loop and emit it
+        auto wsnode = new WhileStatementNode(dwsnode.line, dwsnode.conditionNode, dwsnode.bodyNode, dwsnode.label);
+        wsnode.accept(this);
         return Variant(null);
     }
 

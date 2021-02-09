@@ -259,12 +259,19 @@ public:
     auto opUnary(string op)()
     {
         // plus and minus can work on doubles or longs
-        static if(op == "+" || op == "-")
+        static if(op == "-")
         {
+            if(!isNumber)
+                return ScriptAny(-double.nan);
+            
             if(_type == Type.DOUBLE)
                 mixin("return ScriptAny(" ~ op ~ " toValue!double);");
             else
                 mixin("return ScriptAny(" ~ op ~ " toValue!long);");
+        }
+        else static if(op == "+")
+        {
+            return this; // no effect
         }
         // bit not only works on integers
         else static if(op == "~")

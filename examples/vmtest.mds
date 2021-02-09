@@ -41,5 +41,9 @@ while(true) {
     break foo;
 }
 
+fart: do {
+    console.log("Doing once");
+    break fart;
+} while(false);
 
 

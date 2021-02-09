@@ -17,6 +17,7 @@ enum OpCode : ubyte
 {
     NOP, // nop() -> ip += 1
     CONST, // const(uint) : load a const by index from the const table
+    CONST_0, // const0() : load long(0) on to stack
     CONST_1, // const1() : push 1 to the stack
     CONST_N1, // constN1() : push -1 to the stack
     PUSH, // push(int) : push a stack value, can start at -1
@@ -106,16 +107,16 @@ private void opConst(VirtualMachine vm, Chunk chunk)
 }
 
 pragma(inline, true)
-private void opConst1(VirtualMachine vm, Chunk chunk)
+private void opConst0(VirtualMachine vm, Chunk chunk)
 {
-    vm._stack.push(ScriptAny(1));
+    vm._stack.push(ScriptAny(0));
     ++vm._ip;
 }
 
 pragma(inline, true)
-private void opConstN1(VirtualMachine vm, Chunk chunk)
+private void opConst1(VirtualMachine vm, Chunk chunk)
 {
-    vm._stack.push(ScriptAny(-1));
+    vm._stack.push(ScriptAny(1));
     ++vm._ip;
 }
 
@@ -675,8 +676,8 @@ class VirtualMachine
         _globals = globalEnv;
         _ops[] = &opNop;
         _ops[OpCode.CONST] = &opConst;
+        _ops[OpCode.CONST_0] = &opConst0;
         _ops[OpCode.CONST_1] = &opConst1;
-        _ops[OpCode.CONST_N1] = &opConstN1;
         _ops[OpCode.PUSH] = &opPush;
         _ops[OpCode.POP] = &opPop;
         _ops[OpCode.POPN] = &opPopN;
@@ -755,8 +756,8 @@ class VirtualMachine
             case OpCode.CONST:
                 ip += 1 + uint.sizeof;
                 break;
+            case OpCode.CONST_0:
             case OpCode.CONST_1:
-            case OpCode.CONST_N1:
                 ++ip;
                 break;
             case OpCode.PUSH:
@@ -869,8 +870,8 @@ class VirtualMachine
             printInstructionWithConstID(ip, op, constID, chunk);
             break;
         }
+        case OpCode.CONST_0:
         case OpCode.CONST_1:
-        case OpCode.CONST_N1:
             writefln("%05d: %s", ip, op.to!string);
             break;
         case OpCode.PUSH: {
