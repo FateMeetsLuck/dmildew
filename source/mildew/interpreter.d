@@ -890,6 +890,7 @@ public:
         if(fosnode.label != "")
             _currentEnvironment.insertLabel(fosnode.label);
 
+        // FOR NOW no distinguish "of" and "in"
         if(vr.result.type == ScriptAny.Type.ARRAY)
         {
             auto arr = vr.result.toValue!(ScriptAny[]);

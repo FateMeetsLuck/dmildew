@@ -949,22 +949,23 @@ private:
         VarDeclarationStatementNode decl = null;
         if(_currentToken.type != Token.Type.SEMICOLON)
             decl = parseVarDeclarationStatement(false);
-        if(_currentToken.isKeyword("of") || _currentToken.isKeyword("in"))
+        if(_currentToken.isKeyword("in") || _currentToken.isKeyword("of"))
         {
+            immutable ofInToken = _currentToken;
             // first we need to validate the VarDeclarationStatementNode to make sure it only consists
             // of let or const and VarAccessNodes
             if(decl is null)
-                throw new ScriptCompileException("Invalid for of statement", _currentToken);
+                throw new ScriptCompileException("Invalid for in statement", _currentToken);
             Token qualifier;
             VarAccessNode[] vans;
             if(decl.qualifier.text != "const" && decl.qualifier.text != "let")
-                throw new ScriptCompileException("Global variable declaration invalid in for of statement",
+                throw new ScriptCompileException("Global variable declaration invalid in for in statement",
                     decl.qualifier);
             foreach(va ; decl.varAccessOrAssignmentNodes)
             {
                 auto valid = cast(VarAccessNode)va;
                 if(valid is null)
-                    throw new ScriptCompileException("Invalid variable declaration in for of statement", 
+                    throw new ScriptCompileException("Invalid variable declaration in for in statement", 
                         _currentToken);
                 vans ~= valid;
             }
@@ -974,7 +975,8 @@ private:
                 throw new ScriptCompileException("Expected ')' after array or object", _currentToken);
             nextToken();
             auto bodyStatement = parseStatement();
-            return new ForOfStatementNode(lineNumber, qualifier, vans, objToIterateExpr, bodyStatement, label);
+            return new ForOfStatementNode(lineNumber, qualifier, ofInToken, vans, objToIterateExpr, 
+                    bodyStatement, label);
         }
         else if(_currentToken.type == Token.Type.SEMICOLON)
         {

@@ -318,7 +318,14 @@ private ScriptAny native_Function_call(Environment c, ScriptAny* thisIsFn, Scrip
     {
         auto interpreter = c.interpreter;
         if(interpreter.usingVM)
-            throw new ScriptRuntimeException("VM implementation of call is incomplete");
+        {
+            if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
+                return interpreter.vm.runFunction(fn, thisToUse, args);
+            else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
+                return fn.nativeFunction()(c, &thisToUse, args, nfe);
+            else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
+                return fn.nativeDelegate()(c, &thisToUse, args, nfe);
+        }
         if(c !is null)
             return interpreter.callFunction(fn, thisToUse, args);
         else
@@ -361,7 +368,14 @@ private ScriptAny native_Function_apply(Environment c, ScriptAny* thisIsFn, Scri
     {
         auto interpreter = c.interpreter;
         if(interpreter.usingVM)
-            throw new ScriptRuntimeException("VM implementation of apply is incomplete");
+        {
+            if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
+                return interpreter.vm.runFunction(fn, thisToUse, args);
+            else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
+                return fn.nativeFunction()(c, &thisToUse, argList, nfe);
+            else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
+                return fn.nativeDelegate()(c, &thisToUse, argList, nfe);
+        }
         if(interpreter !is null)
             return interpreter.callFunction(fn, thisToUse, argList);
         else

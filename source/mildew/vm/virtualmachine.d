@@ -1227,6 +1227,7 @@ class VirtualMachine
         ubyte op;
         _stopped = false;
         _exc = null;
+        _currentConstTable = chunk.constTable;
         while(_ip < chunk.bytecode.length && !_stopped)
         {
             op = chunk.bytecode[_ip];
@@ -1237,7 +1238,43 @@ class VirtualMachine
         // if something is on the stack, that's the return value
         if(_stack.size > 0)
             return _stack.pop();
+        _currentConstTable = null;
         return ScriptAny.UNDEFINED;
+    }
+
+    /// For calling script functions with call or apply.
+    package(mildew) ScriptAny runFunction(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args)
+    {
+        auto chunk = new Chunk();
+        chunk.constTable = _currentConstTable;
+        chunk.bytecode = func.compiled;
+        ScriptAny result;
+        writeln("Pushing call stack item");
+        auto oldTryData = _tryData; // @suppress(dscanner.suspicious.unmodified)
+        _tryData = [];
+        immutable oldIP = _ip;
+        auto oldEnv = _environment; // @suppress(dscanner.suspicious.unmodified)
+        _environment = new Environment(func.closure);
+        _environment.forceSetVarOrConst("this", thisObj, false);
+        for(size_t i = 0; i < func.argNames.length; ++i)
+        {
+            if(i >= args.length)
+                _environment.forceSetVarOrConst(func.argNames[i], ScriptAny.UNDEFINED, false);
+            else
+                _environment.forceSetVarOrConst(func.argNames[i], args[i], false);
+        }
+        try 
+        {
+            result = run(chunk);
+        } 
+        finally 
+        {
+            writeln("Popping call stack item");
+            _environment = oldEnv;
+            _ip = oldIP;
+            _tryData = oldTryData;
+        }
+        return result;
     }
 
 private:
@@ -1268,6 +1305,7 @@ private:
 
     Stack!CallData _callStack;
     Environment _environment;
+    ConstTable _currentConstTable; // for running functions from call and apply
     ScriptRuntimeException _exc; // exception flag
     Environment _globals;
     size_t _ip;

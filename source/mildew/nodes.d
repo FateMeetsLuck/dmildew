@@ -737,10 +737,12 @@ class ForStatementNode : StatementNode
 // for of can't do let {a,b} but it can do let a,b and be used the same as for in in JS
 class ForOfStatementNode : StatementNode
 {
-    this(size_t lineNo, Token qual, VarAccessNode[] vans, ExpressionNode obj, StatementNode bnode, string lbl="")
+    this(size_t lineNo, Token qual, Token ofIn, VarAccessNode[] vans, ExpressionNode obj, 
+         StatementNode bnode, string lbl="")
     {
         super(lineNo);
         qualifierToken = qual;
+        ofInToken = ofIn;
         varAccessNodes = vans;
         objectToIterateNode = obj;
         bodyNode = bnode;
@@ -768,6 +770,7 @@ class ForOfStatementNode : StatementNode
     }
 
     Token qualifierToken;
+    Token ofInToken;
     VarAccessNode[] varAccessNodes;
     ExpressionNode objectToIterateNode;
     StatementNode bodyNode;

@@ -32,16 +32,7 @@ console.log(`It took ${elapsed} ms to count to a million`);*/
 
 // return 69;
 
-let i = 9;
-switch(i) {
-    case 1:
-        console.log("It is 1");
-        break;
-    case 9:
-        console.log("It is 9");
-        break;
-    default:
-        console.log("It is nothing");
+function iterator(obj) {
+    
 }
-
 

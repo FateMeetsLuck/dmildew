@@ -43,6 +43,7 @@ public:
     // methods to bind
 
 package:
+    // TODO catch utf exceptions
     wchar charAt(size_t index)
     {
         if(index >= getWString.length)

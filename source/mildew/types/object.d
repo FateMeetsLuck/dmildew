@@ -225,6 +225,8 @@ private:
     {
         immutable indentation = "    ";
         auto result = "{";
+        size_t counter = 0;
+        immutable keyLength = _dictionary.keys.length;
         foreach(k, v ; _dictionary)
         {
             for(int i = 0; i < indent; ++i)
@@ -239,7 +241,9 @@ private:
             }
             else
                 result ~= v.toString();
-            result ~= ",";
+            if(counter < keyLength - 1)
+                result ~= ", ";
+            ++counter;
         }
         // for(int i = 0; i < indent; ++i)
         //    result ~= indentation;
