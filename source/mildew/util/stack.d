@@ -38,10 +38,17 @@ public:
         return _data[$-1];
     }
     /// number of stack elements
-    auto size()
+    auto size() const
     {
         return _data.length;
     }
+
+    /// set the size directly
+    auto size(size_t sz)
+    {
+        return _data.length = sz;
+    }
+
     /// direct access to array
     auto array() { return _data; }
 

@@ -899,12 +899,13 @@ class ThrowStatementNode : StatementNode
 
 class TryCatchBlockStatementNode : StatementNode
 {
-    this(size_t lineNo, StatementNode tryBlock, string name, StatementNode catchBlock)
+    this(size_t lineNo, StatementNode tryBlock, string name, StatementNode catchBlock=null, StatementNode fin=null)
     {
         super(lineNo);
         tryBlockNode = tryBlock;
         exceptionName = name;
         catchBlockNode = catchBlock;
+        finallyBlockNode = fin;
     }
 
 	override Variant accept(IStatementVisitor visitor)
@@ -914,13 +915,18 @@ class TryCatchBlockStatementNode : StatementNode
 
     override string toString() const
     {
-        return "try " ~ tryBlockNode.toString ~ " catch(" ~ exceptionName ~ ")"
-            ~ catchBlockNode.toString;
+        string output = "try " ~ tryBlockNode.toString();
+        if(catchBlockNode)
+            output ~= " catch(" ~ exceptionName ~ ")" ~ catchBlockNode.toString();
+        if(finallyBlockNode)
+            output ~= " finally " ~ finallyBlockNode.toString();
+        return output;
     }
 
     StatementNode tryBlockNode;
     string exceptionName;
     StatementNode catchBlockNode;
+    StatementNode finallyBlockNode;
 }
 
 class DeleteStatementNode : StatementNode

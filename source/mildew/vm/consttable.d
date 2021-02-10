@@ -36,6 +36,19 @@ public:
         return cast(immutable)_constants[index];
     }
 
+    /// foreach over const table
+    int opApply(scope int delegate(ref size_t index, ref ScriptAny value) dg)
+    {
+        int result = 0;
+        foreach (index, item; _constants)
+        {
+            result = dg(index, item);
+            if (result)
+                break;
+        }
+        return result;
+    }
+
 private:
     ScriptAny[] _constants;
     size_t[ScriptAny] _lookup;

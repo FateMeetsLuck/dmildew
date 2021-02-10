@@ -3,4 +3,19 @@ try {
 } catch(e) {
     console.error(`Caught exception: ${e}`);
 }
-// As of Dec 30 00:45 2020 this program produces the correct output
+
+try {
+    let foo = [1, 2];
+    console.log(foo[2]);
+} catch(e) {
+    console.error(e);
+}
+
+try {
+    throw "it back";
+    console.log("Didn't throw");
+} finally {
+    console.log("Always do this");
+}
+
+// As of 2/10/2021 9:59 This program runs as intended in both VM and interpreted mode.

@@ -4,6 +4,7 @@
 module mildew.compiler;
 
 debug import std.stdio;
+import std.typecons;
 import std.variant;
 
 import mildew.exceptions;
@@ -143,7 +144,7 @@ public:
             _chunk.bytecode ~= OpCode.CONST ~ encodeConst(olnode.keys[i]);
             olnode.valueNodes[i].accept(this);            
         }
-        _chunk.bytecode ~= OpCode.OBJECT ~ encode(cast(uint)(olnode.keys.length * 2));
+        _chunk.bytecode ~= OpCode.OBJECT ~ encode(cast(uint)olnode.keys.length);
         return Variant(null);
     }
 
@@ -542,16 +543,12 @@ public:
         immutable unpatchedSwitchParam = genSwitchStatement();
         bool patched = false;
         // generate each statement, patching along the way
+        ++_compDataStack.top.depthCounter;
+        _stackVariables.push(VarTable.init);
+        _chunk.bytecode ~= OpCode.OPENSCOPE;
         foreach(stmt ; ssnode.switchBody.statementNodes)
         {
             uint patchData = cast(uint)_chunk.bytecode.length;
-            /*if(ssnode.switchBody.jumpTable.values.contains(statementCounter))
-            {
-                // immutable ptr = ssnode.switchBody.jumpTable[reverseJmpTbl[statementCounter]];
-                auto val = reverseJmpTbl[statementCounter];
-                immutable ptr = unpatchedJumpTbl[val];
-                _chunk.bytecode[ptr .. ptr + 4] = encodeConst(patchData)[0..4];
-            }*/
             foreach(k, v ; ssnode.switchBody.jumpTable)
             {
                 if(v == statementCounter)
@@ -569,6 +566,9 @@ public:
             stmt.accept(this);
             ++statementCounter;
         }
+        _chunk.bytecode ~= OpCode.CLOSESCOPE;
+        _stackVariables.pop();
+        --_compDataStack.top.depthCounter;
         immutable breakLocation = _chunk.bytecode.length;
         if(!patched)
         {
@@ -691,7 +691,7 @@ public:
 	Variant visitReturnStatementNode(ReturnStatementNode rsnode)
     {
         _debugInfoStack.top.addLine(_chunk.bytecode.length, rsnode.line);
-        // should handle escaping for-loop stack vars
+        // TODO should handle escaping for-loop stack vars
         if(rsnode.expressionNode !is null)
             rsnode.expressionNode.accept(this);
         else
@@ -721,19 +721,57 @@ public:
         return Variant(null);
     }
 
-    /// TODO
+    /// Throw statement
 	Variant visitThrowStatementNode(ThrowStatementNode tsnode)
     {
         _debugInfoStack.top.addLine(_chunk.bytecode.length, tsnode.line);
-        throwUnimplemented(tsnode);
+        tsnode.expressionNode.accept(this);
+        _chunk.bytecode ~= OpCode.THROW;
         return Variant(null);
     }
 
-    /// TODO
+    /// Try catch
 	Variant visitTryCatchBlockStatementNode(TryCatchBlockStatementNode tcbsnode)
     {
         _debugInfoStack.top.addLine(_chunk.bytecode.length, tcbsnode.line);
-        throwUnimplemented(tcbsnode);
+        // emit try block
+        immutable tryToPatch = genTry();
+        tcbsnode.tryBlockNode.accept(this);
+        _chunk.bytecode ~= OpCode.ENDTRY;
+        immutable length0 = cast(int)_chunk.bytecode.length;
+        immutable jmpToPatch = genJmp();
+        *cast(uint*)(_chunk.bytecode.ptr + tryToPatch) = cast(uint)_chunk.bytecode.length;
+        // emit catch block
+        immutable omitScope = tcbsnode.exceptionName == ""? true: false;
+        if(!omitScope)
+        {
+            ++_compDataStack.top.depthCounter;
+            _stackVariables.push(VarTable.init);
+            _chunk.bytecode ~= OpCode.OPENSCOPE;
+        }
+        if(tcbsnode.catchBlockNode)
+        {
+            _chunk.bytecode ~= OpCode.LOADEXC;
+            if(!omitScope)
+                _chunk.bytecode ~= OpCode.DECLLET ~ encodeConst(tcbsnode.exceptionName);
+            else
+                _chunk.bytecode ~= OpCode.POP;
+            tcbsnode.catchBlockNode.accept(this);
+        }
+        if(!omitScope)
+        {
+            --_compDataStack.top.depthCounter;
+            _stackVariables.pop();
+            _chunk.bytecode ~= OpCode.CLOSESCOPE;
+        }
+        *cast(int*)(_chunk.bytecode.ptr + jmpToPatch) = cast(int)_chunk.bytecode.length - length0;
+        // emit finally block
+        if(tcbsnode.finallyBlockNode)
+        {
+            tcbsnode.finallyBlockNode.accept(this);
+            if(tcbsnode.catchBlockNode is null)
+                _chunk.bytecode ~= OpCode.RETHROW;
+        }
         return Variant(null);
     }
 
@@ -773,6 +811,7 @@ public:
 private:
     static const int UNPATCHED_JMP = 262_561_909;
     static const uint UNPATCHED_JMPENTRY = 3_735_890_861;
+    static const uint UNPATCHED_TRY_GOTO = uint.max;
 
     size_t addStackVar(string name, bool isConst)
     {
@@ -819,7 +858,6 @@ private:
         return _chunk.bytecode.length - int.sizeof;
     }
 
-
     /// The return value MUST BE USED
     size_t genJmpTableEntry(ScriptAny value)
     {
@@ -829,6 +867,13 @@ private:
         _chunk.bytecode ~= OpCode.ARRAY ~ encode!uint(2);
         writeln();
         return constEntry;
+    }
+
+    /// The return value MUST BE USED
+    size_t genTry()
+    {
+        _chunk.bytecode ~= OpCode.TRY ~ encode!uint(uint.max);
+        return _chunk.bytecode.length - uint.sizeof;
     }
 
     void handleAssignment(ExpressionNode leftExpr, Token opToken, ExpressionNode rightExpr)
@@ -1138,11 +1183,8 @@ unittest
 {
     import mildew.environment: Environment;
     auto compiler = new Compiler();
-    auto chunk = compiler.compile("5 == 5 ? 'ass' : 'titties';");
+    // auto chunk = compiler.compile("5 == 5 ? 'ass' : 'titties';");
     auto vm = new VirtualMachine(new Environment(null, "<global>"));
-    vm.printChunk(chunk);
-    vm.run(chunk);
-    ScriptAny foo = new ScriptFunction("a", ["x", "y", "z"], cast(ubyte[])"titties yeah", false);
-    ScriptAny bar = new ScriptFunction("a", ["x", "y", "z"], cast(ubyte[])"titties yeah", false);
-    assert(foo == bar);
+    // vm.printChunk(chunk);
+    // vm.run(chunk);
 }

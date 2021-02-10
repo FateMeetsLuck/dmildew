@@ -316,7 +316,7 @@ public:
         "break", "continue", "return", 
         "function", "class", "super", "extends",
         "new", "delete", "typeof", "instanceof",
-        "throw", "try", "catch"
+        "throw", "try", "catch", "finally"
     );
 
     /// AA of look up for escape chars based on character after \

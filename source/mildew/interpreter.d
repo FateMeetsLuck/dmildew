@@ -98,7 +98,7 @@ public:
         else
         {
             auto chunk = _compiler.compile(code);
-            _vm.printChunk(chunk);
+            debug _vm.printChunk(chunk, true);
 
             return _vm.run(chunk);
         }
@@ -1090,7 +1090,7 @@ public:
 	{
 		auto vr = tcbsnode.tryBlockNode.accept(this).get!VisitResult;
         // if there was an exception we need to start a new environment and set it as a local variable
-        if(vr.exception !is null)
+        if(vr.exception !is null && tcbsnode.catchBlockNode !is null)
         {
             auto oldEnvironment = _currentEnvironment; // @suppress(dscanner.suspicious.unmodified)
             _currentEnvironment = new Environment(_currentEnvironment, "<catch>");
@@ -1102,6 +1102,12 @@ public:
             // if another exception is thrown in the catch block, it will propagate through this return value
             vr = tcbsnode.catchBlockNode.accept(this).get!VisitResult;
             _currentEnvironment = oldEnvironment;
+        }
+        if(tcbsnode.finallyBlockNode)
+        {
+            auto finVR = tcbsnode.finallyBlockNode.accept(this).get!VisitResult;
+            if(finVR.exception)
+                return Variant(finVR);
         }
         return Variant(vr);
 	}

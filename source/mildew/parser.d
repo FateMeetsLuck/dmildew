@@ -1051,23 +1051,37 @@ private:
     TryCatchBlockStatementNode parseTryCatchBlockStatement()
     {
         immutable lineNumber = _currentToken.position.line;
+        auto tryToken = _currentToken;
         nextToken(); // eat the 'try'
         auto tryBlock = parseStatement();
-        if(!_currentToken.isKeyword("catch"))
-            throw new ScriptCompileException("Catch block required after try block", _currentToken);
-        nextToken(); // eat the catch
-        if(_currentToken.type != Token.Type.LPAREN)
-            throw new ScriptCompileException("Missing '(' after catch", _currentToken);
-        nextToken(); // eat the '('
-        if(_currentToken.type != Token.Type.IDENTIFIER)
-            throw new ScriptCompileException("Name of exception required in catch block", _currentToken);
-        auto name = _currentToken.text;
-        nextToken();
-        if(_currentToken.type != Token.Type.RPAREN)
-            throw new ScriptCompileException("Missing ')' after exception name", _currentToken);
-        nextToken(); // eat the ')'
-        auto catchBlock = parseStatement();
-        return new TryCatchBlockStatementNode(lineNumber, tryBlock, name, catchBlock);
+        StatementNode catchBlock = null;
+        StatementNode finallyBlock = null;
+        auto name = "";
+        if(_currentToken.isKeyword("catch"))
+        {
+            nextToken(); // eat the catch
+            if(_currentToken.type == Token.Type.LPAREN)
+            {
+                nextToken(); // eat (
+                if(_currentToken.type != Token.Type.IDENTIFIER)
+                    throw new ScriptCompileException("Name of exception required after '('", _currentToken);
+                name = _currentToken.text;
+                nextToken();
+                if(_currentToken.type != Token.Type.RPAREN)
+                    throw new ScriptCompileException("')' required after exception name", _currentToken);
+                nextToken();
+            }
+            catchBlock = parseStatement();
+        }
+        if(_currentToken.isKeyword("finally"))
+        {
+            nextToken();
+            finallyBlock = parseStatement();
+        }
+        // can't be missing both catch and finally
+        if(catchBlock is null && finallyBlock is null)
+            throw new ScriptCompileException("Try-catch blocks must have catch and/or finally block", tryToken);
+        return new TryCatchBlockStatementNode(lineNumber, tryBlock, name, catchBlock, finallyBlock);
     }
 
     ObjectLiteralNode parseObjectLiteral()

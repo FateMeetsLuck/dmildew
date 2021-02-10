@@ -1,16 +1,7 @@
-class Base {
-    m1() {
-        console.log("Calling base");
-    }
+try {
+    throw "ass";
+} catch(err) {
+    console.error(`Error: ${err}`);
+} finally {
+    console.log("Oh well");
 }
-
-class Derived extends Base {
-    m1() {
-        Base.prototype.m1.call(this);
-        console.log("Calling derived");
-    }   
-}
-
-var d = new Derived();
-d.m1();
-// As of Dec 30 00:56 2020 This program produces the correct output

@@ -7,7 +7,8 @@ module mildew.types.string;
 import mildew.types.object;
 
 /**
- * Encapsulates a UTF-16 string.
+ * Encapsulates a string. It is stored internally as UTF-8 but is cast to UTF-16 for the
+ * methods that access individual array indices. TODO: code point iteration
  */
 class ScriptString : ScriptObject
 {
@@ -20,7 +21,7 @@ public:
     {
         import mildew.types.bindings: getStringPrototype;
         super("string", getStringPrototype, null);
-        _wstring = str.to!wstring;
+        _string = str;
     }
 
     /**
@@ -28,15 +29,15 @@ public:
      */
     override string toString() const
     {
-        return _wstring.to!string;
+        return _string;
     }
 
     /**
-     * Gets the internally stored UTF-16 string
+     * Gets the wstring UTF-16 representation
      */
     wstring getWString() const
     {
-        return _wstring;
+        return _string.to!wstring;
     }
 
     // methods to bind
@@ -44,18 +45,18 @@ public:
 package:
     wchar charAt(size_t index)
     {
-        if(index >= _wstring.length)
+        if(index >= getWString.length)
             return '\0';
-        return _wstring[index];
+        return getWString[index];
     }
 
     ushort charCodeAt(size_t index)
     {
-        if(index >= _wstring.length)
+        if(index >= getWString.length)
             return 0;
-        return cast(ushort)(_wstring[index]);
+        return cast(ushort)(getWString[index]);
     }
 
 private:
-    wstring _wstring;
+    string _string;
 }
