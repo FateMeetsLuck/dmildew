@@ -43,6 +43,7 @@ enum OpCode : ubyte
     CALL, // call(uint) : stack should be this, func, arg1, arg2, arg3 and arg would be 3
     JMPFALSE, // jmpfalse(int) : relative jump
     JMP,  // jmp(int) -> : relative jump
+    SWITCH, // switch(uint) -> arg=abs jmp, stack[-2] jmp table stack[-1] value to test
     GOTO, // goto(uint, ubyte) : absolute ip. second param is number of scopes to subtract
     
     // special ops
@@ -547,6 +548,31 @@ private void opJmp(VirtualMachine vm, Chunk chunk)
 }
 
 pragma(inline, true)
+private void opSwitch(VirtualMachine vm, Chunk chunk)
+{
+    immutable relAbsJmp = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
+    auto valueToTest = vm._stack.pop();
+    auto jumpTableArray = vm._stack.pop();
+    // build the jump table out of the entries
+    if(jumpTableArray.type != ScriptAny.Type.ARRAY)
+        throw new VMException("Invalid jump table", vm._ip, OpCode.SWITCH);
+    int[ScriptAny] jmpTable;
+    foreach(entry ; jumpTableArray.toValue!(ScriptAny[]))
+    {
+        if(entry.type != ScriptAny.Type.ARRAY)
+            throw new VMException("Invalid jump table entry", vm._ip, OpCode.SWITCH);
+        auto entryArray = entry.toValue!(ScriptAny[]);
+        if(entryArray.length < 2)
+            throw new VMException("Invalid jump table entry size", vm._ip, OpCode.SWITCH);
+        jmpTable[entryArray[0]] = entryArray[1].toValue!int;
+    }
+    if(valueToTest in jmpTable)
+        vm._ip = jmpTable[valueToTest];
+    else
+        vm._ip = relAbsJmp;
+}
+
+pragma(inline, true)
 private void opGoto(VirtualMachine vm, Chunk chunk)
 {
     immutable address = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
@@ -736,6 +762,7 @@ class VirtualMachine
         _ops[OpCode.CALL] = &opCall;
         _ops[OpCode.JMPFALSE] = &opJmpFalse;
         _ops[OpCode.JMP] = &opJmp;
+        _ops[OpCode.SWITCH] = &opSwitch;
         _ops[OpCode.GOTO] = &opGoto;
         _ops[OpCode.CONCAT] = &opConcat;
         _ops[OpCode.BITNOT] = &opBitNot;
@@ -844,6 +871,9 @@ class VirtualMachine
             case OpCode.JMPFALSE:
             case OpCode.JMP:
                 ip += 1 + int.sizeof;
+                break;
+            case OpCode.SWITCH:
+                ip += 1 + uint.sizeof;
                 break;
             case OpCode.GOTO:
                 ip += 1 + uint.sizeof + ubyte.sizeof;
@@ -978,6 +1008,11 @@ class VirtualMachine
         case OpCode.JMP: {
             immutable jump = decode!int(chunk.bytecode.ptr + ip + 1);
             writefln("%05d: %s jump=%s", ip, op.opCodeToString, jump);
+            break;
+        }
+        case OpCode.SWITCH: {
+            immutable def = decode!uint(chunk.bytecode.ptr + ip + 1);
+            writefln("%05d: %s default=%s", ip, op.opCodeToString, def);
             break;
         }
         case OpCode.GOTO: {

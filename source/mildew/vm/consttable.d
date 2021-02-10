@@ -30,6 +30,9 @@ public:
     /// get a specific constant
     ScriptAny get(size_t index) const
     {
+        import std.format: format;
+        if(index >= _constants.length)
+            throw new Exception(format("index %s is greater than %s", index, _constants.length));
         return cast(immutable)_constants[index];
     }
 

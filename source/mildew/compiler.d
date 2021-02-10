@@ -57,10 +57,6 @@ public:
         destroy(block);
         Chunk send = _chunk;
         _chunk.debugMap[_chunk.bytecode.idup] = _debugInfoStack.pop();
-        foreach(k, v ; _chunk.debugMap)
-        {
-            writefln("%x(%s): %s", k.ptr, v.name, v);
-        }
         _chunk = null; // ensure node functions cannot be used by outsiders at all
         _compDataStack.pop();
         _currentSource = null;
@@ -525,11 +521,65 @@ public:
         return Variant(null);
     }
 
-    /// TODO
+    /// Switch statements
 	Variant visitSwitchStatementNode(SwitchStatementNode ssnode)
     {
         _debugInfoStack.top.addLine(_chunk.bytecode.length, ssnode.line);
-        throwUnimplemented(ssnode);
+
+        size_t[ScriptAny] unpatchedJumpTbl;
+        size_t statementCounter = 0;        
+        
+        ++_compDataStack.top.loopOrSwitchStack;
+        // generate unpatched jump array
+        foreach(key, value ; ssnode.switchBody.jumpTable)
+        {
+            unpatchedJumpTbl[key] = genJmpTableEntry(key);
+        }
+        _chunk.bytecode ~= OpCode.ARRAY ~ encode!uint(cast(uint)ssnode.switchBody.jumpTable.length);
+        // generate expression to test
+        ssnode.expressionNode.accept(this);
+        // generate switch statement
+        immutable unpatchedSwitchParam = genSwitchStatement();
+        bool patched = false;
+        // generate each statement, patching along the way
+        foreach(stmt ; ssnode.switchBody.statementNodes)
+        {
+            uint patchData = cast(uint)_chunk.bytecode.length;
+            /*if(ssnode.switchBody.jumpTable.values.contains(statementCounter))
+            {
+                // immutable ptr = ssnode.switchBody.jumpTable[reverseJmpTbl[statementCounter]];
+                auto val = reverseJmpTbl[statementCounter];
+                immutable ptr = unpatchedJumpTbl[val];
+                _chunk.bytecode[ptr .. ptr + 4] = encodeConst(patchData)[0..4];
+            }*/
+            foreach(k, v ; ssnode.switchBody.jumpTable)
+            {
+                if(v == statementCounter)
+                {
+                    immutable ptr = unpatchedJumpTbl[k];
+                    _chunk.bytecode[ptr .. ptr + 4] = encodeConst(patchData)[0..4];
+                }
+            }
+            // could also be default in which case we patch the switch
+            if(statementCounter == ssnode.switchBody.defaultStatementID)
+            {
+                *cast(uint*)(_chunk.bytecode.ptr + unpatchedSwitchParam) = patchData;
+                patched = true;
+            }
+            stmt.accept(this);
+            ++statementCounter;
+        }
+        immutable breakLocation = _chunk.bytecode.length;
+        if(!patched)
+        {
+            *cast(uint*)(_chunk.bytecode.ptr + unpatchedSwitchParam) = cast(uint)breakLocation;
+        }
+        --_compDataStack.top.loopOrSwitchStack;
+
+        patchBreaksAndContinues("", breakLocation, breakLocation, _compDataStack.top.depthCounter, 
+                _compDataStack.top.loopOrSwitchStack);
+        removePatches();
+
         return Variant(null);
     }
 
@@ -721,7 +771,8 @@ public:
     }
 
 private:
-    enum UNPATCHED_JMP = 262_561_909;
+    static const int UNPATCHED_JMP = 262_561_909;
+    static const uint UNPATCHED_JMPENTRY = 3_735_890_861;
 
     size_t addStackVar(string name, bool isConst)
     {
@@ -747,10 +798,11 @@ private:
     }
 
     /// The return value MUST BE USED
-    size_t genJmpFalse()
+    size_t genSwitchStatement()
     {
-        _chunk.bytecode ~= OpCode.JMPFALSE ~ encode!int(UNPATCHED_JMP);
-        return _chunk.bytecode.length - int.sizeof;
+        immutable switchParam = _chunk.bytecode.length + 1;
+        _chunk.bytecode ~= OpCode.SWITCH ~ encode!uint(UNPATCHED_JMPENTRY);
+        return switchParam;
     }
 
     /// The return value MUST BE USED
@@ -758,6 +810,25 @@ private:
     {
         _chunk.bytecode ~= OpCode.JMP ~ encode!int(UNPATCHED_JMP);
         return _chunk.bytecode.length - int.sizeof;
+    }
+
+    /// The return value MUST BE USED
+    size_t genJmpFalse()
+    {
+        _chunk.bytecode ~= OpCode.JMPFALSE ~ encode!int(UNPATCHED_JMP);
+        return _chunk.bytecode.length - int.sizeof;
+    }
+
+
+    /// The return value MUST BE USED
+    size_t genJmpTableEntry(ScriptAny value)
+    {
+        _chunk.bytecode ~= OpCode.CONST ~ encodeConst(value);
+        immutable constEntry = _chunk.bytecode.length + 1;
+        _chunk.bytecode ~= OpCode.CONST ~ encode!uint(UNPATCHED_JMPENTRY);
+        _chunk.bytecode ~= OpCode.ARRAY ~ encode!uint(2);
+        writeln();
+        return constEntry;
     }
 
     void handleAssignment(ExpressionNode leftExpr, Token opToken, ExpressionNode rightExpr)
