@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/run/dmildew_run",
-            "args": [],
+            "args": ["--usevm", "./examples/vmtest.mds"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

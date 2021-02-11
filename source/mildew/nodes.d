@@ -934,9 +934,10 @@ class TryCatchBlockStatementNode : StatementNode
 
 class DeleteStatementNode : StatementNode
 {
-    this(size_t lineNo, ExpressionNode accessNode)
+    this(size_t lineNo, Token deleteTok, ExpressionNode accessNode)
     {
         super(lineNo);
+        deleteToken = deleteTok;
         memberAccessOrArrayIndexNode = accessNode;
     }
 
@@ -950,6 +951,7 @@ class DeleteStatementNode : StatementNode
         return "delete " ~ memberAccessOrArrayIndexNode.toString ~ ";";
     }
 
+    Token deleteToken;
     ExpressionNode memberAccessOrArrayIndexNode;
 }
 

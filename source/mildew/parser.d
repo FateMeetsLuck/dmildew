@@ -426,12 +426,13 @@ private:
         }
         else if(_currentToken.isKeyword("delete"))
         {
+            immutable delToken = _currentToken;
             nextToken();
             auto tok = _currentToken;
             auto expression = parseExpression();
             if(cast(MemberAccessNode)expression is null && cast(ArrayIndexNode)expression is null)
                 throw new ScriptCompileException("Invalid operand for delete operation", tok);
-            statement = new DeleteStatementNode(lineNumber, expression);
+            statement = new DeleteStatementNode(lineNumber, delToken, expression);
         }
         else if(_currentToken.isKeyword("class"))
         {

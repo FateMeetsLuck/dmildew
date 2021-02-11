@@ -841,11 +841,26 @@ public:
         return Variant(null);
     }
 
-    /// TODO
+    /// delete statement. can be used on ArrayIndexNode or MemberAccessNode
 	Variant visitDeleteStatementNode(DeleteStatementNode dsnode)
     {
         _debugInfoStack.top.addLine(_chunk.bytecode.length, dsnode.line);
-        throwUnimplemented(dsnode);
+        if(auto ain = cast(ArrayIndexNode)dsnode.memberAccessOrArrayIndexNode)
+        {
+            ain.objectNode.accept(this);
+            ain.indexValueNode.accept(this);
+        }
+        else if(auto man = cast(MemberAccessNode)dsnode.memberAccessOrArrayIndexNode)
+        {
+            man.objectNode.accept(this);
+            auto van = cast(VarAccessNode)man.memberNode;
+            if(van is null)
+                throw new Exception("Parser failure in delete statement");
+            _chunk.bytecode ~= OpCode.CONST ~ encodeConst(van.varToken.text);
+        }
+        else
+            throw new ScriptCompileException("Invalid operand to delete", dsnode.deleteToken);
+        _chunk.bytecode ~= OpCode.DEL;
         return Variant(null);
     }
 
@@ -869,6 +884,8 @@ public:
 	Variant visitExpressionStatementNode(ExpressionStatementNode esnode)
     {
         _debugInfoStack.top.addLine(_chunk.bytecode.length, esnode.line);
+        if(esnode.expressionNode is null)
+            return Variant(null);
         esnode.expressionNode.accept(this);
         _chunk.bytecode ~= OpCode.POP;
         return Variant(null);

@@ -31,6 +31,7 @@ enum OpCode : ubyte
     ARRAY, // array(uint) : pops n items to create array and pushes to top
     OBJECT, // array(uint) : create an object from key-value pairs starting with stack[-n] so n must be even
     ITER, // pushes a function that returns {value:..., done:bool} performed on pop()
+    DEL, // delete member stack[-1]:string from object stack[2]. pops 2
     NEW, // similar to call(uint) except only func, arg1, arg2, etc.
     THIS, // pushes local "this" or undefined if not found
     OPENSCOPE, // openscope() : open an environment scope
@@ -354,6 +355,20 @@ private int opIter(VirtualMachine vm, Chunk chunk)
                 return ScriptAny(retVal);
         })));
     }
+    ++vm._ip;
+    return 0;
+}
+
+pragma(inline, true)
+private int opDel(VirtualMachine vm, Chunk chunk)
+{
+    auto memberToDelete = vm._stack.pop().toString();
+    auto objToDelete = vm._stack.pop();
+    auto obj = objToDelete.toValue!ScriptObject;
+    if(obj is null)
+        return throwRuntimeError("Cannot delete member of non-object " ~ objToDelete.toString,
+            vm, chunk);
+    obj.dictionary.remove(memberToDelete);
     ++vm._ip;
     return 0;
 }
@@ -954,6 +969,7 @@ class VirtualMachine
         _ops[OpCode.ARRAY] = &opArray;
         _ops[OpCode.OBJECT] = &opObject;
         _ops[OpCode.ITER] = &opIter;
+        _ops[OpCode.DEL] = &opDel;
         _ops[OpCode.NEW] = &opNew;
         _ops[OpCode.THIS] = &opThis;
         _ops[OpCode.OPENSCOPE] = &opOpenScope;
@@ -1074,6 +1090,7 @@ class VirtualMachine
                 ip += 1 + uint.sizeof;
                 break;
             case OpCode.ITER:
+            case OpCode.DEL:
                 ++ip;
                 break;
             case OpCode.NEW:
@@ -1218,6 +1235,7 @@ class VirtualMachine
             break;
         }
         case OpCode.ITER:
+        case OpCode.DEL:
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.NEW: {

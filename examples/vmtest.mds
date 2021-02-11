@@ -1,39 +1,4 @@
-/*let makeClosure = function(name) {
-    let i = 0;
-    return function() {
-        i = i + 1;
-        console.log(`${name} ${i}`);
-    };
-};
-
-let c1 = makeClosure("foo");
-let c2 = makeClosure("bar");
-
-c1();
-c2();
-c2();
-c1();
-
-let foo = 9;
-{
-    let j = "j";
-    {
-        let bar = 55;
-        console.log(foo);
-        bar;
-        j;
-    }
-}*/
-
-/*let start = System.getCurrentMillis();
-for(let i = 0; i < 1000000; ++i) {}
-let elapsed = System.getCurrentMillis() - start;
-console.log(`It took ${elapsed} ms to count to a million`);*/
-
-// return 69;
-
-let string = "All 👮 are 🐖";
-for(let char in string)
-    console.log(char);
-
-
+let test = { a: "ass" };
+console.log(`test.a=${test.a}`);
+delete test["a"];
+console.log(`test.a=${test.a}`);
