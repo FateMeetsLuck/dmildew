@@ -580,9 +580,17 @@ private int opObjGet(VirtualMachine vm, Chunk chunk)
         auto index = field.toString();
         if(!objToAccess.isObject)
             return throwRuntimeError("Unable to access members of non-object " ~ objToAccess.toString(), vm, chunk);
-        // TODO check getters and run them if found
-        // for now just access fields
-        vm._stack.push(objToAccess[index]);
+        auto obj = objToAccess.toValue!ScriptObject; // @suppress(dscanner.suspicious.unmodified)
+        auto getter = index in obj.getters;
+        if(getter)
+        {
+            writeln("Calling a getter");
+            vm._stack.push(vm.runFunction(*getter, objToAccess, []));
+            if(vm._exc)
+                throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
+        }
+        else
+            vm._stack.push(objToAccess[index]);
     }
     ++vm._ip;
     return 0;
@@ -618,9 +626,27 @@ private int opObjSet(VirtualMachine vm, Chunk chunk)
         auto index = fieldToAssign.toValue!string;
         if(!objToAccess.isObject)
             return throwRuntimeError("Unable to assign member of non-object " ~ objToAccess.toString(), vm, chunk);
-        // TODO check setters, and in cases where there is a setter but no getter, undefined will be pushed
-        objToAccess[index] = value;
-        vm._stack.push(value);
+        auto obj = objToAccess.toValue!ScriptObject; // @suppress(dscanner.suspicious.unmodified)
+        auto setter = index in obj.setters;
+        if(setter)
+        {
+            vm.runFunction(*setter, objToAccess, [value]);
+            if(vm._exc)
+                throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
+            // if getter push that or else undefined
+            auto getter = index in obj.getters;
+            if(getter)
+                vm._stack.push(vm.runFunction(*getter, objToAccess, []));
+            else
+                vm._stack.push(ScriptAny.UNDEFINED);
+            if(vm._exc)
+                throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
+        }
+        else
+        {
+            objToAccess[index] = value;
+            vm._stack.push(value);
+        }
     }
     ++vm._ip;
     return 0;
@@ -658,6 +684,9 @@ private int opCall(VirtualMachine vm, Chunk chunk)
             else
                 vm._environment.forceSetVarOrConst(func.argNames[i], args[i], false);
         }
+        // check exc in case exception was thrown during call or apply
+        if(vm._exc)
+            throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
         return 0;
     }
     else if(func.type == ScriptFunction.Type.NATIVE_FUNCTION)
@@ -1351,9 +1380,9 @@ class VirtualMachine
         while(_ip < chunk.bytecode.length && !_stopped)
         {
             op = chunk.bytecode[_ip];
-            // debug printInstruction(_ip, chunk);
+            debug printInstruction(_ip, chunk);
             _ops[op](this, chunk);
-            // debug writefln("Stack: %s", _stack.array);
+            debug writefln("Stack: %s", _stack.array);
         }
         // if something is on the stack, that's the return value
         if(_stack.size > 0)
@@ -1362,37 +1391,69 @@ class VirtualMachine
         return ScriptAny.UNDEFINED;
     }
 
-    /// For calling script functions with call or apply.
+    /// For calling script functions with call or apply. Ugly hackish function that needs
+    /// to be reworked.
     package(mildew) ScriptAny runFunction(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args)
     {
-        auto chunk = new Chunk();
-        chunk.constTable = _currentConstTable;
-        chunk.bytecode = func.compiled;
         ScriptAny result;
-        writeln("Pushing call stack item");
-        auto oldTryData = _tryData; // @suppress(dscanner.suspicious.unmodified)
-        _tryData = [];
-        immutable oldIP = _ip;
-        auto oldEnv = _environment; // @suppress(dscanner.suspicious.unmodified)
-        _environment = new Environment(func.closure);
-        _environment.forceSetVarOrConst("this", thisObj, false);
-        for(size_t i = 0; i < func.argNames.length; ++i)
+        NativeFunctionError nfe;
+        if(func.type == ScriptFunction.Type.SCRIPT_FUNCTION)
         {
-            if(i >= args.length)
-                _environment.forceSetVarOrConst(func.argNames[i], ScriptAny.UNDEFINED, false);
-            else
-                _environment.forceSetVarOrConst(func.argNames[i], args[i], false);
+            auto chunk = new Chunk();
+            chunk.constTable = _currentConstTable;
+            chunk.bytecode = func.compiled;
+            auto oldTryData = _tryData; // @suppress(dscanner.suspicious.unmodified)
+            _tryData = [];
+            immutable oldIP = _ip;
+            auto oldEnv = _environment; // @suppress(dscanner.suspicious.unmodified)
+            _environment = new Environment(func.closure);
+            _environment.forceSetVarOrConst("this", thisObj, false);
+            for(size_t i = 0; i < func.argNames.length; ++i)
+            {
+                if(i >= args.length)
+                    _environment.forceSetVarOrConst(func.argNames[i], ScriptAny.UNDEFINED, false);
+                else
+                    _environment.forceSetVarOrConst(func.argNames[i], args[i], false);
+            }
+            try 
+            {
+                result = run(chunk);
+            }
+            catch(ScriptRuntimeException ex)
+            {
+                _exc = ex;
+            }
+            finally 
+            {
+                _environment = oldEnv;
+                _ip = oldIP;
+                _tryData = oldTryData;
+            }
+            return result;
         }
-        try 
+        else if(func.type == ScriptFunction.Type.NATIVE_FUNCTION)
         {
-            result = run(chunk);
-        } 
-        finally 
+            auto nf = func.nativeFunction;
+            result = nf(_environment, &thisObj, args, nfe);
+        }
+        else if(func.type == ScriptFunction.Type.NATIVE_DELEGATE)
         {
-            writeln("Popping call stack item");
-            _environment = oldEnv;
-            _ip = oldIP;
-            _tryData = oldTryData;
+            auto nd = func.nativeDelegate;
+            result = nd(_environment, &thisObj, args, nfe);
+        }
+        final switch(nfe)
+        {
+        case NativeFunctionError.NO_ERROR:
+            break;
+        case NativeFunctionError.RETURN_VALUE_IS_EXCEPTION:
+            _exc = new ScriptRuntimeException(result.toString);
+            break;
+        case NativeFunctionError.WRONG_NUMBER_OF_ARGS:
+            _exc = new ScriptRuntimeException("Wrong number of args to native function");
+            break;
+        case NativeFunctionError.WRONG_TYPE_OF_ARG:
+            _exc = new ScriptRuntimeException("Wrong type of args to native function");
+            break;
         }
         return result;
     }
@@ -1465,32 +1526,32 @@ unittest
         return encode(chunk.constTable.addValueUint(ScriptAny(value)));
     }
 
-    ScriptAny native_testFunc(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+    ScriptAny native_tpropGet(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
     {
-        writefln("The type of this is %s", thisObj.typeToString);
-        for(size_t i = 0; i < args.length; ++i)
-        {
-            writefln("The type of arg #%s is %s", i, args[i].typeToString);
-        }
+        writeln("in native_tpropGet");
         return ScriptAny(1000);
     }
 
+    ScriptAny native_tpropSet(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+    {
+        writeln("Setting value to " ~ args[0].toString);
+        return ScriptAny.UNDEFINED;
+    }
+
     /*
-0: this
-1: const "foo"
-6: const 123
-11: const "eight"
-16: array 3
-21: iter
-22: call 0
+
     */
-    chunk.bytecode ~= OpCode.THIS;
-    chunk.bytecode ~= OpCode.CONST ~ getConst("foo");
-    chunk.bytecode ~= OpCode.CONST ~ getConst(123);
-    chunk.bytecode ~= OpCode.CONST ~ getConst("eight");
-    chunk.bytecode ~= OpCode.ARRAY ~ encode!uint(3);
-    chunk.bytecode ~= OpCode.ITER;
-    chunk.bytecode ~= OpCode.CALL ~ encode!uint(0);
+    auto testObj = new ScriptObject("test", null, null);
+    testObj.addGetterProperty("tprop", new ScriptFunction("tpropGet", &native_tpropGet));
+    testObj.addSetterProperty("tprop", new ScriptFunction("tpropSet", &native_tpropSet));
+
+    chunk.bytecode ~= OpCode.CONST ~ getConst(testObj);
+    chunk.bytecode ~= OpCode.CONST ~ getConst("tprop");
+    chunk.bytecode ~= OpCode.OBJGET;
+    chunk.bytecode ~= OpCode.CONST ~ getConst(testObj);
+    chunk.bytecode ~= OpCode.CONST ~ getConst("tprop");
+    chunk.bytecode ~= OpCode.CONST_1;
+    chunk.bytecode ~= OpCode.OBJSET;
     
     vm.printChunk(chunk);
     vm.run(chunk);

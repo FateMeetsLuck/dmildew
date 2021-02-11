@@ -1,7 +1,13 @@
-try {
-    throw "ass";
-} catch(err) {
-    console.error(`Error: ${err}`);
-} finally {
-    console.log("Oh well");
+class Foo {
+    doSomething() {
+        console.log("a Foo is doing something");
+    }
 }
+
+class Bar extends Foo {
+
+}
+
+let bar = new Bar;
+console.log(bar.__proto__.constructor.__proto__.prototype.doSomething);
+// the super expression should translate to "this.__proto__.constructor.__proto__.prototype"

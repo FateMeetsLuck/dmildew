@@ -756,22 +756,22 @@ private:
             {
                 if(ptype == PropertyType.NONE)
                 {
-                    methods ~= new FunctionLiteralNode(argNames, statements);
+                    methods ~= new FunctionLiteralNode(argNames, statements, currentMethodName);
                     methodNames ~= currentMethodName;
                 }
                 else if(ptype == PropertyType.GET)
                 {
-                    getMethods ~= new FunctionLiteralNode(argNames, statements);
+                    getMethods ~= new FunctionLiteralNode(argNames, statements, currentMethodName);
                     getMethodNames ~= currentMethodName;                    
                 }
                 else if(ptype == PropertyType.SET)
                 {
-                    setMethods ~= new FunctionLiteralNode(argNames, statements);
+                    setMethods ~= new FunctionLiteralNode(argNames, statements, currentMethodName);
                     setMethodNames ~= currentMethodName;                    
                 }
                 else if(ptype == PropertyType.STATIC)
                 {
-                    staticMethods ~= new FunctionLiteralNode(argNames, statements);
+                    staticMethods ~= new FunctionLiteralNode(argNames, statements, currentMethodName);
                     staticMethodNames ~= currentMethodName;
                 }
             }

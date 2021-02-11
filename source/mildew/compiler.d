@@ -948,7 +948,6 @@ private:
         immutable constEntry = _chunk.bytecode.length + 1;
         _chunk.bytecode ~= OpCode.CONST ~ encode!uint(UNPATCHED_JMPENTRY);
         _chunk.bytecode ~= OpCode.ARRAY ~ encode!uint(2);
-        writeln();
         return constEntry;
     }
 
