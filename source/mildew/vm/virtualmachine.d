@@ -1,5 +1,6 @@
 module mildew.vm.virtualmachine;
 
+import std.concurrency;
 import std.conv: to;
 import std.stdio;
 import std.string;
@@ -29,6 +30,7 @@ enum OpCode : ubyte
     STACK_1, // stack1() : add one undefined to stack
     ARRAY, // array(uint) : pops n items to create array and pushes to top
     OBJECT, // array(uint) : create an object from key-value pairs starting with stack[-n] so n must be even
+    ITER, // pushes a function that returns {value:..., done:bool} performed on pop()
     NEW, // similar to call(uint) except only func, arg1, arg2, etc.
     THIS, // pushes local "this" or undefined if not found
     OPENSCOPE, // openscope() : open an environment scope
@@ -260,6 +262,99 @@ private int opObject(VirtualMachine vm, Chunk chunk)
         obj[pairList[i].toString()] = pairList[i+1];
     vm._stack.push(ScriptAny(obj));
     vm._ip += 1 + uint.sizeof;
+    return 0;
+}
+
+pragma(inline, true)
+private int opIter(VirtualMachine vm, Chunk chunk)
+{
+    auto objToIterate = vm._stack.pop();
+    // can be a string, array, or object
+    // FUTURE: a Generator returned by a Generator function
+    if(!(objToIterate.isObject))
+        return throwRuntimeError("Cannot iterate over non-object " ~ objToIterate.toString, vm, chunk);
+    if(objToIterate.type == ScriptAny.Type.STRING)
+    {
+        immutable elements = objToIterate.toValue!string;
+        auto generator = new Generator!(Tuple!(size_t,dstring))({
+            size_t indexCounter = 0;
+            foreach(dchar ele ; elements)
+            {
+                ++indexCounter;
+                yield(tuple(indexCounter-1,ele.to!dstring));
+            }
+        });
+        vm._stack.push(ScriptAny(new ScriptFunction("next", 
+            delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError){
+                auto retVal = new ScriptObject("iteration", null, null);
+                if(generator.empty)
+                {
+                    retVal.assignField("done", ScriptAny(true));
+                }
+                else 
+                {
+                    auto result = generator.front();
+                    retVal.assignField("key", ScriptAny(result[0]));
+                    retVal.assignField("value", ScriptAny(result[1]));
+                    generator.popFront();
+                }
+                return ScriptAny(retVal);
+            }, 
+            false)));
+    }
+    else if(objToIterate.type == ScriptAny.Type.ARRAY)
+    {
+        auto elements = objToIterate.toValue!(ScriptAny[]); // @suppress(dscanner.suspicious.unmodified)
+        auto generator = new Generator!(Tuple!(size_t, ScriptAny))({
+            size_t indexCounter = 0;
+            foreach(item ; elements)
+            {
+                ++indexCounter;
+                yield(tuple(indexCounter-1, item));
+            }
+        });
+        vm._stack.push(ScriptAny(new ScriptFunction("next",
+            delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError) {
+                auto retVal = new ScriptObject("iteration", null, null);
+                if(generator.empty)
+                {
+                    retVal.assignField("done", ScriptAny(true));
+                }
+                else 
+                {
+                    auto result = generator.front();
+                    retVal.assignField("key", ScriptAny(result[0]));
+                    retVal.assignField("value", ScriptAny(result[1]));
+                    generator.popFront();
+                }
+                return ScriptAny(retVal);
+            })));
+    }
+    else if(objToIterate.isObject)
+    {
+        auto obj = objToIterate.toValue!ScriptObject;
+        auto generator = new Generator!(Tuple!(string, ScriptAny))({
+            foreach(k, v ; obj.dictionary)
+                yield(tuple(k,v));
+        });
+        vm._stack.push(ScriptAny(new ScriptFunction("next", 
+            delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError){
+                auto retVal = new ScriptObject("iteration", null, null);
+                if(generator.empty)
+                {
+                    retVal.assignField("done", ScriptAny(true));
+                }
+                else
+                {
+                    auto result = generator.front();
+                    retVal.assignField("key", ScriptAny(result[0]));
+                    retVal.assignField("value", result[1]);
+                    generator.popFront();
+                }
+                return ScriptAny(retVal);
+        })));
+    }
+    ++vm._ip;
     return 0;
 }
 
@@ -858,6 +953,7 @@ class VirtualMachine
         _ops[OpCode.STACK_1] = &opStack1;
         _ops[OpCode.ARRAY] = &opArray;
         _ops[OpCode.OBJECT] = &opObject;
+        _ops[OpCode.ITER] = &opIter;
         _ops[OpCode.NEW] = &opNew;
         _ops[OpCode.THIS] = &opThis;
         _ops[OpCode.OPENSCOPE] = &opOpenScope;
@@ -976,6 +1072,9 @@ class VirtualMachine
                 break;
             case OpCode.OBJECT:
                 ip += 1 + uint.sizeof;
+                break;
+            case OpCode.ITER:
+                ++ip;
                 break;
             case OpCode.NEW:
                 ip += 1 + uint.sizeof;
@@ -1118,6 +1217,9 @@ class VirtualMachine
             writefln("%05d: %s n=%s", ip, op.opCodeToString, n);
             break;
         }
+        case OpCode.ITER:
+            writefln("%05d: %s", ip, op.opCodeToString);
+            break;
         case OpCode.NEW: {
             immutable args = decode!uint(chunk.bytecode.ptr + ip + 1);
             writefln("%05d: %s args=%s", ip, op.opCodeToString, args);
@@ -1231,9 +1333,9 @@ class VirtualMachine
         while(_ip < chunk.bytecode.length && !_stopped)
         {
             op = chunk.bytecode[_ip];
-            debug printInstruction(_ip, chunk);
+            // debug printInstruction(_ip, chunk);
             _ops[op](this, chunk);
-            debug writefln("Stack: %s", _stack.array);
+            // debug writefln("Stack: %s", _stack.array);
         }
         // if something is on the stack, that's the return value
         if(_stack.size > 0)
@@ -1356,31 +1458,22 @@ unittest
     }
 
     /*
-    0: try 17
-    5: const 9
-    10: throw
-    11: endtry
-    12: jmp 31-12
-    17: openscope
-    18: loadexc
-    19: decllet "err"
-    24: getvar "err"
-    29: pop
-    30: closescope
-    31: 
+0: this
+1: const "foo"
+6: const 123
+11: const "eight"
+16: array 3
+21: iter
+22: call 0
     */
-
-    chunk.bytecode ~= OpCode.TRY ~ encode!uint(17);
-    chunk.bytecode ~= OpCode.CONST ~ getConst(17);
-    chunk.bytecode ~= OpCode.THROW;
-    chunk.bytecode ~= OpCode.ENDTRY;
-    chunk.bytecode ~= OpCode.JMP ~ encode!int(31 - 12);
-    chunk.bytecode ~= OpCode.OPENSCOPE;
-    chunk.bytecode ~= OpCode.LOADEXC;
-    chunk.bytecode ~= OpCode.DECLLET ~ getConst("err");
-    chunk.bytecode ~= OpCode.GETVAR ~ getConst("err");
-    chunk.bytecode ~= OpCode.POP;
-    chunk.bytecode ~= OpCode.CLOSESCOPE;
+    chunk.bytecode ~= OpCode.THIS;
+    chunk.bytecode ~= OpCode.CONST ~ getConst("foo");
+    chunk.bytecode ~= OpCode.CONST ~ getConst(123);
+    chunk.bytecode ~= OpCode.CONST ~ getConst("eight");
+    chunk.bytecode ~= OpCode.ARRAY ~ encode!uint(3);
+    chunk.bytecode ~= OpCode.ITER;
+    chunk.bytecode ~= OpCode.CALL ~ encode!uint(0);
+    
     vm.printChunk(chunk);
     vm.run(chunk);
 }

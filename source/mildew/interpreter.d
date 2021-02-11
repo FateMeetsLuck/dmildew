@@ -879,7 +879,7 @@ public:
         return Variant(vr);
 	}
 	
-    /// handles for-of (and for-in) loops
+    /// handles for-of (and for-in) loops. TODO rewrite with iterators and implement string
 	Variant visitForOfStatementNode(ForOfStatementNode fosnode)
 	{
 		auto vr = fosnode.objectToIterateNode.accept(this).get!VisitResult;

@@ -749,7 +749,7 @@ private:
                         throw new ScriptCompileException("Derived class constructors must have one super call", 
                                 classToken);
                 }
-                constructor = new FunctionLiteralNode(argNames, statements);
+                constructor = new FunctionLiteralNode(argNames, statements, className);
             }
             else // it's a normal method or getter/setter
             {
@@ -961,6 +961,7 @@ private:
             if(decl.qualifier.text != "const" && decl.qualifier.text != "let")
                 throw new ScriptCompileException("Global variable declaration invalid in for in statement",
                     decl.qualifier);
+            int vanCount = 0;
             foreach(va ; decl.varAccessOrAssignmentNodes)
             {
                 auto valid = cast(VarAccessNode)va;
@@ -968,7 +969,11 @@ private:
                     throw new ScriptCompileException("Invalid variable declaration in for in statement", 
                         _currentToken);
                 vans ~= valid;
+                ++vanCount;
             }
+            if(vanCount > 2)
+                throw new ScriptCompileException("For in loops may only have one or two variable declarations", 
+                        _currentToken);
             nextToken();
             auto objToIterateExpr = parseExpression();
             if(_currentToken.type != Token.Type.RPAREN)

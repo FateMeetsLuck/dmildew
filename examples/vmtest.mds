@@ -32,7 +32,8 @@ console.log(`It took ${elapsed} ms to count to a million`);*/
 
 // return 69;
 
-function iterator(obj) {
-    
-}
+let string = "All 👮 are 🐖";
+for(let char in string)
+    console.log(char);
+
 

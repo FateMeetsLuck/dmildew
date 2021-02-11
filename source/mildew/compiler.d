@@ -418,6 +418,11 @@ public:
                 // if the right hand side is a function literal, we can rename it
                 if(auto flnode = cast(FunctionLiteralNode)bopnode.rightNode)
                     flnode.optionalName = bopnode.leftNode.toString();
+                else if(auto clsnode = cast(ClassLiteralNode)bopnode.rightNode)
+                {
+                    clsnode.classDefinition.constructor.optionalName = bopnode.leftNode.toString();
+                    clsnode.classDefinition.className = bopnode.leftNode.toString();
+                }
                 auto van = cast(VarAccessNode)bopnode.leftNode;
                 bopnode.rightNode.accept(this); // push value to stack
                 varName = van.varToken.text;
@@ -493,10 +498,9 @@ public:
 	Variant visitIfStatementNode(IfStatementNode isnode)
     {
         _debugInfoStack.top.addLine(_chunk.bytecode.length, isnode.line);
-        // first analysis, if the if or else blocks are a var declaration, auto surround with {}
-        // so that variables under if or else cannot escape
-        if(cast(VarDeclarationStatementNode)isnode.onTrueStatement)
-            isnode.onTrueStatement = new BlockStatementNode(isnode.onTrueStatement.line, [isnode.onTrueStatement]);
+        isnode.onTrueStatement = new BlockStatementNode(isnode.onTrueStatement.line, [isnode.onTrueStatement]);
+        if(isnode.onFalseStatement)
+            isnode.onFalseStatement = new BlockStatementNode(isnode.onFalseStatement.line, [isnode.onFalseStatement]);
         if(isnode.onFalseStatement)
         {
             if(cast(VarDeclarationStatementNode)isnode.onFalseStatement)
@@ -661,7 +665,69 @@ public:
 	Variant visitForOfStatementNode(ForOfStatementNode fosnode)
     {
         _debugInfoStack.top.addLine(_chunk.bytecode.length, fosnode.line);
-        throwUnimplemented(fosnode);
+        string[] varNames;
+        foreach(van ; fosnode.varAccessNodes)
+            varNames ~= van.varToken.text;
+        fosnode.objectToIterateNode.accept(this);
+        _chunk.bytecode ~= OpCode.ITER;
+        ++_stackVarCounter;
+        _chunk.bytecode ~= OpCode.STACK_1;
+        _chunk.bytecode ~= OpCode.PUSH ~ encode!int(-2);
+        _chunk.bytecode ~= OpCode.CALL ~ encode!uint(0);
+        _chunk.bytecode ~= OpCode.PUSH ~ encode!int(-1);
+        ++_stackVarCounter;
+        _chunk.bytecode ~= OpCode.CONST ~ encodeConst("done");
+        _chunk.bytecode ~= OpCode.OBJGET;
+        _chunk.bytecode ~= OpCode.NOT;
+        immutable loop = _chunk.bytecode.length;
+        immutable jmpFalse = genJmpFalse();
+        _chunk.bytecode ~= OpCode.OPENSCOPE;
+        if(varNames.length == 1)
+        {
+            _chunk.bytecode ~= OpCode.PUSH ~ encode!int(-1);
+            _chunk.bytecode ~= OpCode.CONST ~ encodeConst("value");
+            _chunk.bytecode ~= OpCode.OBJGET;
+            _chunk.bytecode ~= (fosnode.qualifierToken.text == "let" ? OpCode.DECLLET : OpCode.DECLCONST)
+                ~ encodeConst(varNames[0]);
+        }
+        else if(varNames.length == 2)
+        {
+            _chunk.bytecode ~= OpCode.PUSH ~ encode!int(-1);
+            _chunk.bytecode ~= OpCode.CONST ~ encodeConst("key");
+            _chunk.bytecode ~= OpCode.OBJGET;
+            _chunk.bytecode ~= (fosnode.qualifierToken.text == "let" ? OpCode.DECLLET : OpCode.DECLCONST)
+                ~ encodeConst(varNames[0]);
+            _chunk.bytecode ~= OpCode.PUSH ~ encode!int(-1);
+            _chunk.bytecode ~= OpCode.CONST ~ encodeConst("value");
+            _chunk.bytecode ~= OpCode.OBJGET;
+            _chunk.bytecode ~= (fosnode.qualifierToken.text == "let" ? OpCode.DECLLET : OpCode.DECLCONST)
+                ~ encodeConst(varNames[1]);
+        }
+        ++_compDataStack.top.loopOrSwitchStack;
+        fosnode.bodyNode.accept(this);
+        --_compDataStack.top.loopOrSwitchStack;
+        immutable continueLocation = _chunk.bytecode.length;
+        _chunk.bytecode ~= OpCode.POP;
+        _chunk.bytecode ~= OpCode.STACK_1;
+        _chunk.bytecode ~= OpCode.PUSH ~ encode!int(-2);
+        _chunk.bytecode ~= OpCode.CALL ~ encode!uint(0);
+        _chunk.bytecode ~= OpCode.PUSH ~ encode!int(-1);
+        _chunk.bytecode ~= OpCode.CONST ~ encodeConst("done");
+        _chunk.bytecode ~= OpCode.OBJGET;
+        _chunk.bytecode ~= OpCode.NOT;
+        _chunk.bytecode ~= OpCode.CLOSESCOPE;
+        immutable loopAgain = _chunk.bytecode.length;
+        immutable jmp = genJmp();
+        *cast(int*)(_chunk.bytecode.ptr + jmp) = -cast(int)(loopAgain - loop);
+        immutable breakLocation = _chunk.bytecode.length;
+        _chunk.bytecode ~= OpCode.CLOSESCOPE;
+        immutable endLoop = _chunk.bytecode.length;
+        _chunk.bytecode ~= OpCode.POPN ~ encode!uint(2);
+        _stackVarCounter -= 2;
+        *cast(int*)(_chunk.bytecode.ptr + jmpFalse) = cast(int)(endLoop - loop);
+        patchBreaksAndContinues(fosnode.label, breakLocation, continueLocation, 
+                _compDataStack.top.depthCounter, _compDataStack.top.loopOrSwitchStack);
+        removePatches();
         return Variant(null);
     }
 
