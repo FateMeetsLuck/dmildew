@@ -1,3 +1,8 @@
+/*
+Closures work similarly to Lua and JavaScript. The functions receive a reference to the outer context in
+which they are declared, and this works for classes as well.
+*/
+
 function makeCounter(name) {
 	let i = 0;
 	let count = function() {

@@ -84,6 +84,19 @@ public:
     {
         if(name == "__proto__")
             return ScriptAny(_prototype);
+        if(name == "__super__")
+        {
+            //the super non-constructor expression should translate to "this.__proto__.constructor.__proto__.prototype"
+            if(_prototype && _prototype["constructor"])
+            {
+                // .__proto__.constructor
+                auto protoCtor = _prototype["constructor"].toValue!ScriptObject;
+                if(protoCtor && protoCtor._prototype)
+                {
+                    return protoCtor._prototype["prototype"];
+                }
+            }
+        }
         if(name in _dictionary)
             return _dictionary[name];
         if(_prototype !is null)
@@ -107,6 +120,10 @@ public:
         if(name == "__proto__")
         {
             _prototype = value.toValue!ScriptObject;
+        }
+        else if(name == "__super__")
+        {
+            return value; // this can't be assigned directly
         }
         else
         {

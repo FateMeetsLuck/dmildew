@@ -1,13 +1,27 @@
 class Foo {
     doSomething() {
-        console.log("a Foo is doing something");
+        console.log("a Foo is doing something on " + this);
+    }
+    get someProp() {
+        return 1000;
     }
 }
 
 class Bar extends Foo {
-
+    constructor() {
+        super();
+        this.a = 22;
+    }
+    doSuper() {
+        super.doSomething();
+        console.log(super.someProp);
+    }
 }
 
 let bar = new Bar;
 console.log(bar.__proto__.constructor.__proto__.prototype.doSomething);
-// the super non-constructor expression should translate to "this.__proto__.constructor.__proto__.prototype"
+//  the super non-constructor expression should translate to "this.__proto__.constructor.__proto__.prototype"
+console.log(bar.__super__.doSomething);
+
+bar.doSuper();
+

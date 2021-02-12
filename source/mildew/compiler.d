@@ -416,26 +416,49 @@ public:
             // if a member access then the "this" must be set to left hand side
             if(auto man = cast(MemberAccessNode)fcnode.functionToCall)
             {
-                man.objectNode.accept(this); // first put object on stack
-                _chunk.bytecode ~= OpCode.PUSH ~ encode!int(-1); // push it again
-                auto van = cast(VarAccessNode)man.memberNode;
-                if(van is null)
-                    throw new ScriptCompileException("Invalid `.` operand", man.dotToken);
-                _chunk.bytecode ~= OpCode.CONST ~ encodeConst(van.varToken.text);
-                _chunk.bytecode ~= OpCode.OBJGET; // this places obj as this and the func on stack
+                if(!cast(SuperNode)man.objectNode)
+                {
+                    man.objectNode.accept(this); // first put object on stack
+                    _chunk.bytecode ~= OpCode.PUSH ~ encode!int(-1); // push it again
+                    auto van = cast(VarAccessNode)man.memberNode;
+                    if(van is null)
+                        throw new ScriptCompileException("Invalid `.` operand", man.dotToken);
+                    _chunk.bytecode ~= OpCode.CONST ~ encodeConst(van.varToken.text);
+                    _chunk.bytecode ~= OpCode.OBJGET; // this places obj as this and the func on stack
+                }
+                else
+                {
+                    _chunk.bytecode ~= OpCode.THIS;
+                    fcnode.functionToCall.accept(this);
+                }
             } // else if an array access same concept
             else if(auto ain = cast(ArrayIndexNode)fcnode.functionToCall)
             {
-                ain.objectNode.accept(this);
-                _chunk.bytecode ~= OpCode.PUSH ~ encode!int(-1); // push it again
-                ain.indexValueNode.accept(this);
-                _chunk.bytecode ~= OpCode.OBJGET; // now the array and function are on stack
+                if(!cast(SuperNode)ain.objectNode)
+                {
+                    ain.objectNode.accept(this);
+                    _chunk.bytecode ~= OpCode.PUSH ~ encode!int(-1); // push it again
+                    ain.indexValueNode.accept(this);
+                    _chunk.bytecode ~= OpCode.OBJGET; // now the array and function are on stack
+                }
+                else
+                {
+                    _chunk.bytecode ~= OpCode.THIS;
+                    fcnode.functionToCall.accept(this);
+                }
             }
             else // either a variable or literal function, pull this and function
             {
                 _chunk.bytecode ~= OpCode.THIS;
                 fcnode.functionToCall.accept(this);
+                if(cast(SuperNode)fcnode.functionToCall)
+                {
+                    // could be a super() constructor call
+                    _chunk.bytecode ~= OpCode.CONST ~ encodeConst("constructor");
+                    _chunk.bytecode ~= OpCode.OBJGET;
+                }
             }
+            debug writefln("function call %s: args=%s", fcnode.toString, fcnode.expressionArgs.length);
             foreach(argExpr ; fcnode.expressionArgs)
                 argExpr.accept(this);
             _chunk.bytecode ~= OpCode.CALL ~ encode!uint(cast(uint)fcnode.expressionArgs.length);
@@ -469,6 +492,15 @@ public:
 	Variant visitNewExpressionNode(NewExpressionNode nenode)
     {
         nenode.functionCallExpression.accept(this);
+        return Variant(null);
+    }
+
+    /// this should only be directly visited when used by itself
+    Variant visitSuperNode(SuperNode snode)
+    {
+        _chunk.bytecode ~= OpCode.THIS;
+        _chunk.bytecode ~= OpCode.CONST ~ encodeConst("__super__");
+        _chunk.bytecode ~= OpCode.OBJGET;
         return Variant(null);
     }
     
@@ -948,7 +980,7 @@ public:
     }
 
     /// This type of node is only a call to a base class constructor
-	Variant visitSuperCallStatementNode(SuperCallStatementNode scsnode)
+	/*Variant visitSuperCallStatementNode(SuperCallStatementNode scsnode)
     {
         _debugInfoStack.top.addLine(_chunk.bytecode.length, scsnode.line);
         _chunk.bytecode ~= OpCode.THIS;
@@ -959,7 +991,7 @@ public:
             arg.accept(this);
         _chunk.bytecode ~= OpCode.CALL ~ encode!uint(cast(uint)scsnode.argExpressionNodes.length);
         return Variant(null);
-    }
+    }*/
 
     /// handle expression statements
 	Variant visitExpressionStatementNode(ExpressionStatementNode esnode)

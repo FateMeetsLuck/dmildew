@@ -1,3 +1,7 @@
+/*
+Classes can be expressed as anonymous class expressions. The compiler will set the class's name to the left hand
+side of the assignment operation.
+*/
 var Foo = class {
     constructor(a, b) {
         this.a = a;

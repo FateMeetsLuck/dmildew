@@ -1,3 +1,7 @@
+/*
+ScriptRuntimeException can be caught and thrown by the script. For example, accessing an undeclared variable is a 
+runtime error. However, compiler exceptions cannot be caught.
+ */
 try {
     foo = 22;
 } catch(e) {

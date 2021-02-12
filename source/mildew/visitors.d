@@ -27,6 +27,7 @@ interface IExpressionVisitor
 	Variant visitArrayIndexNode(ArrayIndexNode ainode);
 	Variant visitMemberAccessNode(MemberAccessNode manode);
 	Variant visitNewExpressionNode(NewExpressionNode nenode);
+    Variant visitSuperNode(SuperNode snode);
 }
 
 interface IStatementVisitor 
@@ -47,7 +48,6 @@ interface IStatementVisitor
 	Variant visitTryCatchBlockStatementNode(TryCatchBlockStatementNode tcbsnode);
 	Variant visitDeleteStatementNode(DeleteStatementNode dsnode);
 	Variant visitClassDeclarationStatementNode(ClassDeclarationStatementNode cdsnode);
-	Variant visitSuperCallStatementNode(SuperCallStatementNode scsnode);
 	Variant visitExpressionStatementNode(ExpressionStatementNode esnode);
 }
 

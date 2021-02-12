@@ -458,12 +458,17 @@ public:
             vr.result = *ptr;
         return Variant(vr);
 	}
-	
+
     /// handles function calls
 	Variant visitFunctionCallNode(FunctionCallNode fcnode)
 	{
         ScriptAny thisObj;
         auto vr = fcnode.functionToCall.accept(this).get!VisitResult;
+
+        if(cast(SuperNode)fcnode.functionToCall)
+        {
+            vr.result = vr.result["constructor"];
+        }
 
         if(vr.exception !is null)
             return Variant(vr);
@@ -471,17 +476,25 @@ public:
         // if not a new expression pull this
         if(!fcnode.returnThis)
         {
-            // the "this" is the left hand of dot operation
-            if(vr.accessType == VisitResult.AccessType.OBJECT_ACCESS 
-                || vr.accessType == VisitResult.AccessType.ARRAY_ACCESS)
+            if(vr.accessType == VisitResult.AccessType.OBJECT_ACCESS)
             {
-                thisObj = vr.objectToAccess;
+                auto man = cast(MemberAccessNode)fcnode.functionToCall;
+                if(cast(SuperNode)man.objectNode)
+                    thisObj = getLocalThis();
+                else
+                    thisObj = vr.objectToAccess;
             }
-            // or it is local "this" if exists
-            else if(_currentEnvironment.variableOrConstExists("this"))
+            else if(vr.accessType == VisitResult.AccessType.ARRAY_ACCESS)
             {
-                bool _; // @suppress(dscanner.suspicious.unmodified)
-                thisObj = *(_currentEnvironment.lookupVariableOrConst("this", _));
+                auto ain = cast(ArrayIndexNode)fcnode.functionToCall;
+                if(cast(SuperNode)ain.objectNode)
+                    thisObj = getLocalThis();
+                else
+                    thisObj = vr.objectToAccess;
+            }
+            else
+            {
+                thisObj = getLocalThis();
             }
         }
 
@@ -616,6 +629,13 @@ public:
         auto vr = nenode.functionCallExpression.accept(this);
         return vr; // caller will check for any exceptions.
 	}
+
+    /// this should only be directly visited when used by itself
+    Variant visitSuperNode(SuperNode snode)
+    {
+        auto thisObj = getLocalThis;
+        return Variant(VisitResult(thisObj["__super__"]));
+    }
 	
     /// handles var, let, and const declarations
 	Variant visitVarDeclarationStatementNode(VarDeclarationStatementNode vdsnode)
@@ -1177,40 +1197,6 @@ public:
         return Variant(VisitResult(ScriptAny.UNDEFINED)); // everything was ok
 	}
 	
-    /// handle super constructor calls TODO use super as reference to base class with correct "this"
-	Variant visitSuperCallStatementNode(SuperCallStatementNode scsnode)
-	{
-        auto vr = scsnode.classConstructorToCall.accept(this).get!VisitResult;
-        if(vr.exception !is null)
-            return Variant(vr);
-        if(vr.result.type != ScriptAny.Type.FUNCTION)
-        {
-            vr.exception = new ScriptRuntimeException("Invalid super call");
-            return Variant(vr);
-        }
-        auto fn = vr.result.toValue!ScriptFunction;
-        // get the args
-        ScriptAny[] args = [];
-        foreach(expression ; scsnode.argExpressionNodes)
-        {
-            vr = expression.accept(this).get!VisitResult;
-            if(vr.exception !is null)
-                return Variant(vr);
-            args ~= vr.result;
-        }
-        // get the "this" out of the environment
-        bool dontCare; // @suppress(dscanner.suspicious.unmodified)
-        auto thisObjPtr = _currentEnvironment.lookupVariableOrConst("this", dontCare);
-        if(thisObjPtr == null)
-        {
-            vr.exception = new ScriptRuntimeException("Invalid `this` object in super call");
-            return Variant(vr);
-        }
-        // TODO return values in constructors with expressions are invalid
-        vr = callFn(fn, *thisObjPtr, args, false);
-        return Variant(vr);
-	}
-	
     /// handle expression statements
 	Variant visitExpressionStatementNode(ExpressionStatementNode esnode)
 	{
@@ -1359,6 +1345,13 @@ private:
 		}
 		return vr;
 	}
+
+    ScriptAny getLocalThis()
+    {
+        bool _; // @suppress(dscanner.suspicious.unmodified)
+        auto thisObj = *(_currentEnvironment.lookupVariableOrConst("this", _));
+        return thisObj;
+    }
 
 	VisitResult getObjectProperty(ScriptObject obj, in string propName)
 	{

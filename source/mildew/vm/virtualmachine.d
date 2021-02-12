@@ -656,7 +656,9 @@ private int opObjGet(VirtualMachine vm, Chunk chunk)
             auto getter = obj.findGetter(index);
             if(getter)
             {
-                vm._stack.push(vm.runFunction(getter, objToAccess, []));
+                auto retVal = vm.runFunction(getter, objToAccess, []);
+                debug writefln("retVal=%s", retVal.toString);
+                vm._stack.push(retVal);
                 if(vm._exc)
                     throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
             }
@@ -728,6 +730,11 @@ pragma(inline, true)
 private int opCall(VirtualMachine vm, Chunk chunk)
 {
     immutable n = decode!uint(chunk.bytecode.ptr + vm._ip + 1) + 2;
+    if(vm._stack.size < n)
+    {
+        vm.printStack();
+        throw new VMException("opCall failure, stack < " ~ n.to!string, vm._ip, OpCode.CALL);
+    }
     auto callInfo = vm._stack.pop(n);
     auto thisObj = callInfo[0]; // @suppress(dscanner.suspicious.unmodified)
     auto funcAny = callInfo[1];
@@ -1088,6 +1095,62 @@ private int opHalt(VirtualMachine vm, Chunk chunk)
     ++vm._ip;
     return 0;
 }
+
+/*pragma(inline, true)
+private int startFunctionCall(VirtualMachine vm, Chunk chunk, ScriptFunction func, ScriptAny thisObj, ScriptAny[] args)
+{
+    NativeFunctionError nfe = NativeFunctionError.NO_ERROR;
+    if(func.type == ScriptFunction.Type.SCRIPT_FUNCTION)
+    {
+        if(func.compiled.length == 0)
+            throw new VMException("Empty script function cannot be called", vm._ip, OpCode.CALL);
+        vm._callStack.push(VirtualMachine.CallData(VirtualMachine.FuncCallType.NORMAL, chunk.bytecode, 
+                vm._ip, vm._environment, vm._tryData));
+        vm._environment = new Environment(func.closure, func.functionName);
+        vm._ip = 0;
+        chunk.bytecode = func.compiled;
+        vm._tryData = [];
+        // set this
+        vm._environment.forceSetVarOrConst("this", thisObj, true);
+        // set args
+        for(size_t i = 0; i < func.argNames.length; ++i)
+        {
+            if(i >= args.length)
+                vm._environment.forceSetVarOrConst(func.argNames[i], ScriptAny.UNDEFINED, false);
+            else
+                vm._environment.forceSetVarOrConst(func.argNames[i], args[i], false);
+        }
+        // set arguments variable
+        vm._environment.forceSetVarOrConst("arguments", ScriptAny(args), false);
+        // check exc in case exception was thrown during call or apply
+        if(vm._exc)
+            throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
+        return 0;
+    }
+    else if(func.type == ScriptFunction.Type.NATIVE_FUNCTION)
+    {
+        auto nativeFunc = func.nativeFunction;
+        vm._stack.push(nativeFunc(vm._environment, &thisObj, args, nfe));
+    }
+    else if(func.type == ScriptFunction.Type.NATIVE_DELEGATE)
+    {
+        auto nativeDelegate = func.nativeDelegate;
+        vm._stack.push(nativeDelegate(vm._environment, &thisObj, args, nfe));
+    }
+    final switch(nfe)
+    {
+    case NativeFunctionError.NO_ERROR:
+        break;
+    case NativeFunctionError.RETURN_VALUE_IS_EXCEPTION:
+        return throwRuntimeError(vm._stack.peek().toString(), vm, chunk);
+    case NativeFunctionError.WRONG_NUMBER_OF_ARGS:
+        return throwRuntimeError("Wrong number of arguments to native function", vm, chunk);
+    case NativeFunctionError.WRONG_TYPE_OF_ARG:
+        return throwRuntimeError("Wrong type of argument to native function", vm, chunk);
+    }
+    vm._ip += 1 + uint.sizeof;
+    return 0;
+}*/
 
 /// implements virtual machine
 class VirtualMachine
@@ -1536,7 +1599,7 @@ class VirtualMachine
     }
 
     /// run a chunk of bytecode with a given const table
-    ScriptAny run(Chunk chunk, bool printDebugInfo=false)
+    ScriptAny run(Chunk chunk, bool printDebugInfo=false, bool retCS=false)
     {
         _ip = 0;
         ubyte op;
@@ -1546,6 +1609,11 @@ class VirtualMachine
         while(_ip < chunk.bytecode.length && !_stopped)
         {
             op = chunk.bytecode[_ip];
+            // handle runFunction
+            if(retCS && op == OpCode.RETURN)
+            {
+                return _stack.pop();
+            }
             if(printDebugInfo)
                 printInstruction(_ip, chunk);
             _ops[op](this, chunk);
@@ -1585,7 +1653,7 @@ class VirtualMachine
             }
             try
             {
-                result = run(chunk, _environment.getGlobalEnvironment.interpreter.printVMDebugInfo);
+                result = run(chunk, _environment.getGlobalEnvironment.interpreter.printVMDebugInfo, true);
             }
             catch(ScriptRuntimeException ex)
             {

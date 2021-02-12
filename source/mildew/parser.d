@@ -441,10 +441,6 @@ private:
         {
             statement = parseClassDeclaration();
         }
-        else if(_currentToken.isKeyword("super"))
-        {
-            statement = parseSuperCallStatement();
-        }
         else // for now has to be one expression followed by semicolon or EOF
         {
             if(_currentToken.type == Token.Type.SEMICOLON)
@@ -577,6 +573,14 @@ private:
                     }
                     fcn.returnThis = true;
                     left = new NewExpressionNode(fcn);                    
+                }
+                else if(_currentToken.text == "super")
+                {
+                    immutable stoken = _currentToken;
+                    if(_baseClassStack.length < 1)
+                        throw new ScriptCompileException("Super expression only allowed in derived classes", stoken);
+                    left = new SuperNode(stoken, _baseClassStack[$-1]);
+                    nextToken();
                 }
                 else
                     throw new ScriptCompileException("Unexpected keyword in primary expression", _currentToken);
@@ -753,8 +757,14 @@ private:
                     ulong numSupers = 0;
                     foreach(stmt ; statements)
                     {
-                        if(cast(SuperCallStatementNode)stmt)
-                            numSupers++;
+                        if(auto exprStmt = cast(ExpressionStatementNode)stmt)
+                        {
+                            if(auto fcn = cast(FunctionCallNode)exprStmt.expressionNode)
+                            {
+                                if(auto supernode = cast(SuperNode)fcn.functionToCall)
+                                    numSupers++;
+                            }
+                        }
                     }
                     if(numSupers != 1)
                         throw new ScriptCompileException("Derived class constructors must have one super call", 
@@ -1163,30 +1173,6 @@ private:
         return new ClassDeclarationStatementNode(lineNumber, classToken, classDef);
     }
 
-    SuperCallStatementNode parseSuperCallStatement()
-    {
-        immutable lineNumber = _currentToken.position.line;
-        auto stoken = _currentToken;
-        if(_baseClassStack.length == 0)
-            throw new ScriptCompileException("Super keyword may only be used in constructors of derived classes", 
-                    _currentToken);
-        nextToken();
-        // TODO check for super.method calls instead. Super will be a type of expression
-        if(_currentToken.type != Token.Type.LPAREN)
-            throw new ScriptCompileException("Super call parameters must begin with '('", _currentToken);
-        if(_functionContextStack.top.fct != FunctionContextType.CONSTRUCTOR)
-            throw new ScriptCompileException("Super constructor calls only allowed in derived class constructor", 
-                stoken);
-        nextToken();
-        auto expressions = parseCommaSeparatedExpressions(Token.Type.RPAREN);
-        nextToken(); // eat the )
-        if(_currentToken.type != Token.Type.SEMICOLON)
-            throw new ScriptCompileException("Missing ';' at end of super statement", _currentToken);
-        nextToken();
-        size_t topClass = _baseClassStack.length - 1; // @suppress(dscanner.suspicious.length_subtraction)
-        return new SuperCallStatementNode(lineNumber, stoken, _baseClassStack[topClass], expressions);
-    }
-
     SwitchStatementNode parseSwitchStatement() 
     {
         import std.variant: Variant;
@@ -1281,6 +1267,30 @@ private:
             _currentToken = _tokens[_tokenIndex++];
     }
 
+    void putbackToken()
+    {
+        if(_tokenIndex > 0)
+            _currentToken = _tokens[--_tokenIndex];
+    }
+
+    Token peekToken()
+    {
+        return peekTokens(1)[0];
+    }
+
+    Token[] peekTokens(int numToPeek)
+    {
+        Token[] list;
+        for(size_t i = _tokenIndex+1; i < _tokenIndex+1+numToPeek; ++i)
+        {
+            if(i < _tokens.length)
+                list ~= _tokens[i];
+            else
+                list ~= Token.createFakeToken(Token.Type.EOF, "");
+        }
+        return list;
+    }
+
     enum FunctionContextType {NORMAL, CONSTRUCTOR, METHOD}
 
     struct FunctionContext
@@ -1294,10 +1304,6 @@ private:
     Token[] _tokens;
     size_t _tokenIndex = 0;
     Token _currentToken;
-    // int _loopStack = 0;
     Stack!FunctionContext _functionContextStack;
-    // TODO separate labels by function context because it is not possible to break or continue out of a function
-    // string[] _labelStack;
-    // int _switchStack = 0;
     ExpressionNode[] _baseClassStack; // in case we have nested class declarations
 }

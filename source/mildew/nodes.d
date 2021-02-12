@@ -509,6 +509,29 @@ class NewExpressionNode : ExpressionNode
     ExpressionNode functionCallExpression;
 }
 
+/// for when the super keyword is not used as a constructor
+class SuperNode : ExpressionNode
+{
+    this(Token stoken, ExpressionNode bc)
+    {
+        superToken = stoken;
+        baseClass = bc;
+    }
+
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitSuperNode(this);
+    }
+
+    override string toString() const 
+    {
+        return "super";
+    }
+
+    Token superToken;
+    ExpressionNode baseClass;
+}
+
 /// root class of all statement nodes
 abstract class StatementNode
 {
@@ -982,26 +1005,6 @@ class ClassDeclarationStatementNode : StatementNode
 
     Token classToken;
     ClassDefinition classDefinition;
-}
-
-class SuperCallStatementNode : StatementNode
-{
-    this(size_t lineNo, Token stoken, ExpressionNode ctc, ExpressionNode[] args)
-    {
-        super(lineNo);
-        superToken = stoken;
-        classConstructorToCall = ctc; // Cannot be null or something wrong with parser
-        argExpressionNodes = args;
-    }
-
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitSuperCallStatementNode(this);
-	}
-
-    Token superToken;
-    ExpressionNode classConstructorToCall; // should always evaluate to a function
-    ExpressionNode[] argExpressionNodes;
 }
 
 class ExpressionStatementNode : StatementNode

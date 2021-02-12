@@ -1,3 +1,7 @@
+/*
+ All arguments are stored in an array called "arguments" each time a function is called. Unlike JavaScript,
+ the arguments variable is a full feature array with access to all Array.prototype methods such as splice.
+ */
 function sum() {
     let sum = 0;
     for(let each of arguments) {

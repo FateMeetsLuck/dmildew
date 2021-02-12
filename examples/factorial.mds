@@ -1,3 +1,7 @@
+/*
+Function recursion works just like any other language. However, a loop may be more efficient.
+Note: this file was the first ever example script to be run and tested in Mildew.
+ */
 function factorial(n) {
     if(n <= 1)
         return 1;
