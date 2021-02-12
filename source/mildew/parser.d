@@ -14,7 +14,7 @@ import mildew.exceptions: ScriptCompileException;
 import mildew.lexer: Token;
 import mildew.nodes;
 import mildew.types.any: ScriptAny;
-import mildew.types.func: ScriptFunction;
+import mildew.util.stack;
 
 private int unaryOpPrecedence(Token opToken, bool isPost = false)
 {
@@ -187,8 +187,10 @@ struct Parser
     BlockStatementNode parseProgram()
     {
         immutable lineNo = _currentToken.position.line;
+        _functionContextStack.push(FunctionContext(FunctionContextType.NORMAL, 0, 0, []));
         auto statements = parseStatements(Token.Type.EOF);
-        assert(_functionContextStack.length == 0, "Sanity check failed: _functionContextStack");
+        _functionContextStack.pop();
+        assert(_functionContextStack.size == 0, "Sanity check failed: _functionContextStack");
         return new BlockStatementNode(lineNo, statements);
     }
 
@@ -306,7 +308,6 @@ private:
 
     /// parses a single statement
     StatementNode parseStatement()
-        in { assert(_loopStack >= 0); } do
     {
         StatementNode statement;
         immutable lineNumber = _currentToken.position.line;
@@ -342,7 +343,7 @@ private:
         // break statement?
         else if(_currentToken.isKeyword("break"))
         {
-            if(_loopStack == 0 && _switchStack == 0)
+            if(_functionContextStack.top.loopStack == 0 && _functionContextStack.top.switchStack == 0)
                 throw new ScriptCompileException("Break statements only allowed in loops or switch-case bodies", 
                     _currentToken);
             nextToken();
@@ -352,9 +353,9 @@ private:
                 label = _currentToken.text;
                 bool valid = false;
                 // label must exist on stack
-                for(size_t i = _labelStack.length; i > 0; --i)
+                for(size_t i = _functionContextStack.top.labelStack.length; i > 0; --i)
                 {
-                    if(_labelStack[i-1] == label)
+                    if(_functionContextStack.top.labelStack[i-1] == label)
                     {
                         valid = true;
                         break;
@@ -372,7 +373,7 @@ private:
         // continue statement
         else if(_currentToken.isKeyword("continue"))
         {
-            if(_loopStack == 0)
+            if(_functionContextStack.top.loopStack == 0)
                 throw new ScriptCompileException("Continue statements only allowed in loops", _currentToken);
             nextToken();
             string label = "";
@@ -380,9 +381,9 @@ private:
             {
                 label = _currentToken.text;
                 bool valid = false;
-                for(size_t i = _labelStack.length; i > 0; --i)
+                for(size_t i = _functionContextStack.top.labelStack.length; i > 0; --i)
                 {
-                    if(_labelStack[i-1] == label)
+                    if(_functionContextStack.top.labelStack[i-1] == label)
                     {
                         valid = true;
                         break;
@@ -552,9 +553,9 @@ private:
                     if(_currentToken.type != Token.Type.LBRACE)
                         throw new ScriptCompileException("Expected '{' before anonymous function body", _currentToken);
                     nextToken(); // eat the {
-                    _functionContextStack ~= FunctionContext.NORMAL;
+                    _functionContextStack.push(FunctionContext(FunctionContextType.NORMAL, 0, 0, []));
                     auto statements = parseStatements(Token.Type.RBRACE);
-                    _functionContextStack = _functionContextStack[0..$-1];
+                    _functionContextStack.pop();
                     nextToken();
                     // auto func = new ScriptFunction(name, argNames, statements, null);
                     left = new FunctionLiteralNode(argNames, statements);
@@ -733,11 +734,11 @@ private:
                 throw new ScriptCompileException("Method bodies must begin with '{'", _currentToken);
             nextToken();
             if(currentMethodName != "constructor")
-                _functionContextStack ~= FunctionContext.METHOD;
+                _functionContextStack.push(FunctionContext(FunctionContextType.METHOD, 0, 0, []));
             else
-                _functionContextStack ~= FunctionContext.CONSTRUCTOR;
+                _functionContextStack.push(FunctionContext(FunctionContextType.CONSTRUCTOR, 0, 0, []));
             auto statements = parseStatements(Token.Type.RBRACE);
-            _functionContextStack = _functionContextStack[0..$-1];
+            _functionContextStack.pop();
             nextToken(); // eat }
             // now we have a method but if this is the constructor
             if(currentMethodName == "constructor")
@@ -885,33 +886,33 @@ private:
         if(_currentToken.type == Token.Type.LABEL)
         {
             label = _currentToken.text;
-            _labelStack ~= label;
+            _functionContextStack.top.labelStack ~= label;
             nextToken();
         }
         StatementNode statement;
         if(_currentToken.isKeyword("while"))
         {
-            ++_loopStack;
+            ++_functionContextStack.top.loopStack;
             statement = parseWhileStatement(label);
-            --_loopStack;
+            --_functionContextStack.top.loopStack;
         }
         // check for do-while statement TODO check for label
         else if(_currentToken.isKeyword("do"))
         {
-            ++_loopStack;
+            ++_functionContextStack.top.loopStack;
             statement = parseDoWhileStatement(label);
-            --_loopStack;
+            --_functionContextStack.top.loopStack;
         }
         // check for for loop TODO check label
         else if(_currentToken.isKeyword("for"))
         {
-            ++_loopStack;
+            ++_functionContextStack.top.loopStack;
             statement = parseForStatement(label);
-            --_loopStack;
+            --_functionContextStack.top.loopStack;
         }
         if(label != "")
         {
-            _labelStack = _labelStack[0..$-1];
+            _functionContextStack.top.labelStack = _functionContextStack.top.labelStack[0..$-1];
         }
         return statement;
     }
@@ -1063,9 +1064,9 @@ private:
         if(_currentToken.type != Token.Type.LBRACE)
             throw new ScriptCompileException("Function definition must begin with '{'", _currentToken);
         nextToken();
-        _functionContextStack ~= FunctionContext.NORMAL;
+        _functionContextStack.push(FunctionContext(FunctionContextType.NORMAL, 0, 0, []));
         auto statements = parseStatements(Token.Type.RBRACE);
-        _functionContextStack = _functionContextStack[0..$-1];
+        _functionContextStack.pop();
         nextToken(); // eat the }
         return new FunctionDeclarationStatementNode(lineNumber, name, argNames, statements);
     }
@@ -1173,7 +1174,7 @@ private:
         // TODO check for super.method calls instead. Super will be a type of expression
         if(_currentToken.type != Token.Type.LPAREN)
             throw new ScriptCompileException("Super call parameters must begin with '('", _currentToken);
-        if(_functionContextStack.length == 0 || _functionContextStack[$-1] != FunctionContext.CONSTRUCTOR)
+        if(_functionContextStack.top.fct != FunctionContextType.CONSTRUCTOR)
             throw new ScriptCompileException("Super constructor calls only allowed in derived class constructor", 
                 stoken);
         nextToken();
@@ -1187,13 +1188,12 @@ private:
     }
 
     SwitchStatementNode parseSwitchStatement() 
-        in { assert(_switchStack >= 0); } do
     {
         import std.variant: Variant;
         import mildew.interpreter: Interpreter;
         import mildew.exceptions: ScriptRuntimeException;
 
-        ++_switchStack;
+        ++_functionContextStack.top.switchStack;
         immutable lineNumber = _currentToken.position.line;
         immutable switchToken = _currentToken;
         nextToken();
@@ -1249,7 +1249,7 @@ private:
             }
         }
         nextToken(); // consume }
-        --_switchStack;
+        --_functionContextStack.top.switchStack;
         return new SwitchStatementNode(lineNumber, expression, new SwitchBody(statementNodes, defaultStatementID, 
             jumpTable));
     }
@@ -1281,15 +1281,23 @@ private:
             _currentToken = _tokens[_tokenIndex++];
     }
 
-    enum FunctionContext {NORMAL, CONSTRUCTOR, METHOD}
+    enum FunctionContextType {NORMAL, CONSTRUCTOR, METHOD}
+
+    struct FunctionContext
+    {
+        FunctionContextType fct;
+        int loopStack;
+        int switchStack;
+        string[] labelStack;
+    }
 
     Token[] _tokens;
     size_t _tokenIndex = 0;
     Token _currentToken;
-    int _loopStack = 0;
-    FunctionContext[] _functionContextStack;
+    // int _loopStack = 0;
+    Stack!FunctionContext _functionContextStack;
     // TODO separate labels by function context because it is not possible to break or continue out of a function
-    string[] _labelStack;
-    int _switchStack = 0;
+    // string[] _labelStack;
+    // int _switchStack = 0;
     ExpressionNode[] _baseClassStack; // in case we have nested class declarations
 }
