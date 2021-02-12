@@ -1503,6 +1503,38 @@ class VirtualMachine
         }  
     }
 
+    /// print the current contents of the stack
+    void printStack()
+    {
+        write("Stack: [");
+        for(size_t i = 0; i < _stack.size; ++i)
+        {
+            if(_stack.array[i].type == ScriptAny.Type.STRING)
+            {
+                auto str = _stack.array[i].toString();
+                if(str.length < 100)
+                    write("\"" ~ str ~ "\"");
+                else
+                    write("[string too long to display]");
+            }
+            else if(_stack.array[i].type == ScriptAny.Type.ARRAY)
+            {
+                immutable arrLen = _stack.array[i].toValue!(ScriptAny[]).length;
+                if(arrLen < 100)
+                    write(_stack.array[i].toString());
+                else
+                    write("[array too long to display]");
+            }
+            else
+            {
+                write(_stack.array[i].toString());
+            }
+            if(i < _stack.size - 1)
+                write(", ");
+        }
+        writeln("]");
+    }
+
     /// run a chunk of bytecode with a given const table
     ScriptAny run(Chunk chunk, bool printDebugInfo=false)
     {
@@ -1518,7 +1550,7 @@ class VirtualMachine
                 printInstruction(_ip, chunk);
             _ops[op](this, chunk);
             if(printDebugInfo)
-                writefln("Stack: %s", _stack.array);
+                printStack();
         }
         // if something is on the stack, that's the return value
         if(_stack.size > 0)

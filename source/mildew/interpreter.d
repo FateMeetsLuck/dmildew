@@ -87,7 +87,7 @@ public:
      *  If the script has a return statement with an expression, this value will be the result of that expression
      *  otherwise it will be ScriptAny.UNDEFINED
      */
-    ScriptAny evaluate(in string code)
+    ScriptAny evaluate(in string code, bool printDisasm=false)
     {
         if(_compiler is null)
         {
@@ -105,7 +105,8 @@ public:
         else
         {
             auto chunk = _compiler.compile(code);
-            debug _vm.printChunk(chunk, true);
+            if(printDisasm)
+                _vm.printChunk(chunk, true);
 
             return _vm.run(chunk, _printVMDebugInfo);
         }
