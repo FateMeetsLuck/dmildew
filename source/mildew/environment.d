@@ -11,11 +11,12 @@ import mildew.interpreter: Interpreter;
 private alias VariableTable = ScriptAny[string];
 
 /**
- * Holds the variables and consts of a script stack frame. The global context can be accessed by
+ * Holds the variables and consts of a script stack frame. The global environment can be accessed by
  * climbing the Environment.parent chain until reaching the Environment whose parent is null. This allows
  * native functions to define local and global variables. Note that calling a native function does
  * not create a stack frame so one could write a native function that adds local variables to the
- * stack frame where it was called.
+ * stack frame where it was called. NOTE: It is not possible to access integral for loop variables
+ * from an Environment when using VM mode.
  */
 class Environment
 {
@@ -23,18 +24,18 @@ public:
     /**
      * Constructs a new Environment.
      * Params:
-     *  par = The parent context, which should be null when the global context is created
-     *  nam = The name of the context. When script functions are called this is set to the name
+     *  par = The parent environment, which should be null when the global environment is created
+     *  nam = The name of the environment. When script functions are called this is set to the name
      *        of the function being called.
      */
-    this(Environment par = null, in string nam = "<context>")
+    this(Environment par = null, in string nam = "<environment>")
     {
         _parent = par;
         _name = nam;
     }
 
     /**
-     * Constructs a global context
+     * Constructs a global environment
      */
     this(Interpreter interpreter)
     {
@@ -56,20 +57,20 @@ public:
      */
     ScriptAny* lookupVariableOrConst(in string varName, out bool isConst)
     {
-        auto context = this;
-        while(context !is null)
+        auto environment = this;
+        while(environment !is null)
         {
-            if(varName in context._varTable)
+            if(varName in environment._varTable)
             {
                 isConst = false;
-                return (varName in context._varTable);
+                return (varName in environment._varTable);
             }
-            if(varName in context._constTable)
+            if(varName in environment._constTable)
             {
                 isConst = true;
-                return (varName in context._constTable);
+                return (varName in environment._constTable);
             }
-            context = context._parent;
+            environment = environment._parent;
         }
         isConst = false;
         return null; // found nothing
@@ -83,20 +84,20 @@ public:
      */
     void unsetVariable(in string name)
     {
-        auto context = this;
-        while(context !is null)
+        auto environment = this;
+        while(environment !is null)
         {
-            if(name in context._varTable)
+            if(name in environment._varTable)
             {
-                context._varTable.remove(name);
+                environment._varTable.remove(name);
                 return;
             }
-            context = context._parent;
+            environment = environment._parent;
         }
     }
 
     /** 
-     * Attempt to declare and assign a new variable in the current context. Returns false if it already exists.
+     * Attempt to declare and assign a new variable in the current environment. Returns false if it already exists.
      * Params:
      *  nam = the name of the variable to set.
      *  value = the initial value of the variable. This can be ScriptAny.UNDEFINED
@@ -121,7 +122,7 @@ public:
     }
 
     /**
-     * Searches the entire Environment stack for a variable starting with the current context and climbing the parent
+     * Searches the entire Environment stack for a variable starting with the current environment and climbing the parent
      * chain.
      * Params:
      *  name = The name of the variable to look for.
@@ -130,14 +131,14 @@ public:
      */
     bool variableOrConstExists(in string name)
     {
-        auto context = this;
-        while(context !is null)
+        auto environment = this;
+        while(environment !is null)
         {
-            if(name in context._varTable)
+            if(name in environment._varTable)
                 return true;
-            if(name in context._constTable)
+            if(name in environment._constTable)
                 return true;
-            context = context._parent;
+            environment = environment._parent;
         }
         return false;
     }
@@ -195,7 +196,7 @@ public:
     }
 
     /**
-     * Forces the removal of a const or variable in the current context.
+     * Forces the removal of a const or variable in the current environment.
      */
     void forceRemoveVarOrConst(in string name)
     {
@@ -205,7 +206,7 @@ public:
             _varTable.remove(name);
     }
 
-    /// climb context stack until finding one without a parent
+    /// climb environment stack until finding one without a parent
     Environment getGlobalEnvironment()
     {
         Environment c = this;
@@ -222,7 +223,7 @@ public:
         _labelList.insert(label);
     }
 
-    /// Retrieves the interpreter object from the top level context
+    /// Retrieves the interpreter object from the top level environment
     Interpreter interpreter()
     {
         auto search = this;
@@ -235,20 +236,20 @@ public:
         return null;
     }
 
-    /// checks context stack for a label
+    /// checks environment stack for a label
     bool labelExists(string label)
     {
-        auto context = this;
-        while(context !is null)
+        auto environment = this;
+        while(environment !is null)
         {
-            if(label in context._labelList)
+            if(label in environment._labelList)
                 return true;
-            context = context._parent;
+            environment = environment._parent;
         }
         return false;
     }
 
-    /// removes a label from the existing context
+    /// removes a label from the existing environment
     void removeLabelFromCurrent(string label)
     {
         _labelList.removeKey(label);
@@ -308,9 +309,9 @@ public:
 
 private:
 
-    /// parent context. null if this is the global context
+    /// parent environment. null if this is the global environment
     Environment _parent;
-    /// name of context
+    /// name of environment
     string _name;
     /// holds variables
     VariableTable _varTable;
@@ -318,6 +319,6 @@ private:
     VariableTable _constTable;
     /// holds a list of labels
     auto _labelList = new RedBlackTree!string;
-    /// Interpreter object can be held by global context
+    /// Interpreter object can be held by global environment
     Interpreter _interpreter;
 }

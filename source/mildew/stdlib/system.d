@@ -1,3 +1,6 @@
+/**
+ * This module implements functions in the System namespace such as getCurrentMillis.
+ */
 module mildew.stdlib.system;
 
 import std.datetime.systime;

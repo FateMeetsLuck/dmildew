@@ -1,7 +1,10 @@
 foo:
 while(true) {
+    let a = 9;
     while(true) {
+        let b = 6;
         while(true) {
+            let c = 29;
             break foo;
         }
     }
@@ -29,4 +32,4 @@ while(5 == 5) {
     break label1;
 }
 // As of Dec 30 17:40 2020 This program exits correctly
-// As of 2/9/2021 3:49 The VM ran this program correctly
+// As of 2/11/2021 17:10 The VM runs this program correctly

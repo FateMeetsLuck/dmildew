@@ -1,3 +1,7 @@
+/**
+ * This module implements functions for encoding various D types into ubyte arrays. Note that the encoding is not
+ * cross platform and results will be different across platforms depending on CPU architecture.
+ */
 module mildew.util.encode;
 
 import core.stdc.string;

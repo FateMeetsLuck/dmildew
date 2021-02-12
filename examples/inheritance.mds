@@ -35,3 +35,4 @@ var p1 = new Person("Joseph Stalin", 74);
 p1.greet();
 console.log(p1.__proto__);
 // As of Dec 30 00:48 2020 This program produces the correct output.
+// As of 2/11/2021 16:12 The VM runs this program correctly, with correct function names

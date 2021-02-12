@@ -10,4 +10,20 @@ function profile()
     console.log(`Took ${total} ms`); 
 }
 
-profile();
+// profile();
+
+class Foo {
+    constructor() {
+        console.log("Calling Foo::constructor");
+    }
+};
+
+class Bar extends Foo {
+    constructor() {
+        super();
+        console.log("Calling Bar::constructor");
+    }
+}
+
+let bar = new Bar;
+// This file is just a text pad for VM testing but it works as of 2/11/2021

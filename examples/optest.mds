@@ -2,4 +2,4 @@ var foo = 9;
 console.log(foo * foo == 81 ? "Correct" : "Something's wrong");
 console.log(foo - foo + 1? "Correct" : "Something wrong");
 console.log(5 + 5 == 4 + 6 ? "Correct" : "Something is wrong with ==");
-// This program works so let's not touch parseExpression for a while
+// This program is working correctly in both VM and interpreted mode

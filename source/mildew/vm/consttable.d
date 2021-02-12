@@ -1,8 +1,13 @@
+/// This module implements the ConstTable class
 module mildew.vm.consttable;
 
 import mildew.types.any;
 
-/// a table of consts to be sent to virtual machine so that instructions that refer to consts can be executed
+/**
+ * This is a wrapper around a dynamic array. When a value is added, ConstTable determines if the value is
+ * already in the entries or adds a new entry and returns the index. A ConstTable is shared among all
+ * Chunks compiled under the same Compiler.compile call.
+ */
 class ConstTable
 {
 public:
@@ -37,7 +42,7 @@ public:
     }
 
     /// foreach over const table
-    int opApply(scope int delegate(ref size_t index, ref ScriptAny value) dg)
+    int opApply(scope int delegate(size_t index, ScriptAny value) dg)
     {
         int result = 0;
         foreach (index, item; _constants)

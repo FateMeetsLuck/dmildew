@@ -13,6 +13,7 @@ import mildew.types.object;
 class ScriptString : ScriptObject
 {
     import std.conv: to;
+    import mildew.types.any: ScriptAny;
 public:
     /**
      * Constructs a new ScriptString out of a UTF-8 D string
@@ -40,10 +41,21 @@ public:
         return _string.to!wstring;
     }
 
+    /**
+     * This override allows for the length field
+     */
+    override ScriptAny lookupField(in string name)
+    {
+        if(name == "length")
+            return ScriptAny(getWString.length);
+        else
+            return super.lookupField(name);
+    }
+
     // methods to bind
 
 package:
-    // TODO catch utf exceptions
+    // TODO catch utf exceptions or process sequentially
     wchar charAt(size_t index)
     {
         if(index >= getWString.length)

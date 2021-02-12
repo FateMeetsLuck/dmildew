@@ -101,9 +101,15 @@ public:
         _chunk.bytecode ~= OpCode.STACK_1;
         _chunk.bytecode ~= OpCode.RETURN;
         // create function
-        ScriptAny func = new ScriptFunction(
-            flnode.optionalName == "" ? "<anonymous function>" : flnode.optionalName, 
-            flnode.argList, _chunk.bytecode, false);
+        ScriptAny func;
+        if(!flnode.isClass)
+            func = new ScriptFunction(
+                flnode.optionalName == "" ? "<anonymous function>" : flnode.optionalName, 
+                flnode.argList, _chunk.bytecode, false);
+        else
+            func = new ScriptFunction(
+                flnode.optionalName == "" ? "<anonymous class>" : flnode.optionalName,
+                flnode.argList, _chunk.bytecode, true);
         _chunk.debugMap[_chunk.bytecode.idup] = _debugInfoStack.pop();
         _chunk.bytecode = oldChunk;
         _stackVariables.pop;
@@ -148,10 +154,62 @@ public:
         return Variant(null);
     }
 
-    /// TODO (may add class instruction or instructions to assign properties and prototypes)
+    /// Class literals. Parser is supposed to make sure string-function pairs match up
 	Variant visitClassLiteralNode(ClassLiteralNode clnode)
     {
-        throwUnimplemented(clnode);
+        // first make sure the data will fit in a 5 byte instruction
+        if(clnode.classDefinition.methods.length > ubyte.max
+        || clnode.classDefinition.getMethods.length > ubyte.max 
+        || clnode.classDefinition.setMethods.length > ubyte.max
+        || clnode.classDefinition.staticMethods.length > ubyte.max)
+        {
+            throw new ScriptCompileException("Class attributes exceed 255", clnode.classToken);
+        }
+
+        if(clnode.classDefinition.baseClass)
+            _baseClassStack ~= clnode.classDefinition.baseClass;
+
+        // method names then their functions
+        immutable ubyte numMethods = cast(ubyte)clnode.classDefinition.methods.length;
+        foreach(methodName ; clnode.classDefinition.methodNames)
+            _chunk.bytecode ~= OpCode.CONST ~ encodeConst(methodName);
+        foreach(methodNode ; clnode.classDefinition.methods)
+            methodNode.accept(this);
+        
+        // getter names then their functions
+        immutable ubyte numGetters = cast(ubyte)clnode.classDefinition.getMethods.length;
+        foreach(getName ; clnode.classDefinition.getMethodNames)
+            _chunk.bytecode ~= OpCode.CONST ~ encodeConst(getName);
+        foreach(getNode ; clnode.classDefinition.getMethods)
+            getNode.accept(this);
+        
+        // setter names then their functions
+        immutable ubyte numSetters = cast(ubyte)clnode.classDefinition.setMethods.length;
+        foreach(setName ; clnode.classDefinition.setMethodNames)
+            _chunk.bytecode ~= OpCode.CONST ~ encodeConst(setName);
+        foreach(setNode ; clnode.classDefinition.setMethods)
+            setNode.accept(this);
+        
+        // static names then their functions
+        immutable ubyte numStatics = cast(ubyte)clnode.classDefinition.staticMethods.length;
+        foreach(staticName ; clnode.classDefinition.staticMethodNames)
+            _chunk.bytecode ~= OpCode.CONST ~ encodeConst(staticName);
+        foreach(staticNode ; clnode.classDefinition.staticMethods)
+            staticNode.accept(this);
+        
+        // constructor (parse guarantees it exists)
+        clnode.classDefinition.constructor.accept(this);
+        // then finally base class
+        if(clnode.classDefinition.baseClass)
+            clnode.classDefinition.baseClass.accept(this);
+        else
+            _chunk.bytecode ~= OpCode.STACK_1;
+
+        _chunk.bytecode ~= OpCode.CLASS ~ cast(ubyte[])([numMethods, numGetters, numSetters, numStatics]);
+
+        if(clnode.classDefinition.baseClass)
+            _baseClassStack = _baseClassStack[0..$-1];
+
         return Variant(null);
     }
 
@@ -214,6 +272,13 @@ public:
         case Token.Type.NEQUALS:
             _chunk.bytecode ~= OpCode.NEQUALS;
             break;
+        case Token.Type.STRICT_EQUALS:
+            _chunk.bytecode ~= OpCode.STREQUALS;
+            break;
+        case Token.Type.STRICT_NEQUALS: // TODO add yet another OpCode as an optimization
+            _chunk.bytecode ~= OpCode.STREQUALS;
+            _chunk.bytecode ~= OpCode.NOT;
+            break;
         case Token.Type.BIT_AND:
             _chunk.bytecode ~= OpCode.BITAND;
             break;
@@ -230,7 +295,10 @@ public:
             _chunk.bytecode ~= OpCode.OR;
             break;
         default:
-            throw new Exception("Uncaught parser error: " ~ bonode.toString());
+            if(bonode.opToken.isKeyword("instanceof"))
+                _chunk.bytecode ~= OpCode.INSTANCEOF;
+            else
+                throw new Exception("Uncaught parser or compiler error: " ~ bonode.toString());
         }
         return Variant(null);
     }
@@ -601,12 +669,12 @@ public:
         immutable length2 = _chunk.bytecode.length;
         immutable jmp = genJmp();
         immutable breakLocation = _chunk.bytecode.length;
-        --_compDataStack.top.loopOrSwitchStack;
         *cast(int*)(_chunk.bytecode.ptr + jmp) = -cast(int)(length2 - length0);
         *cast(int*)(_chunk.bytecode.ptr + jmpFalse) = cast(int)(_chunk.bytecode.length - length1);
         // patch gotos
         patchBreaksAndContinues(wsnode.label, breakLocation, continueLocation,
                 _compDataStack.top.depthCounter, _compDataStack.top.loopOrSwitchStack);
+        --_compDataStack.top.loopOrSwitchStack;
         removePatches();
         return Variant(null);
     }
@@ -620,10 +688,10 @@ public:
         // first emit the body for the guaranteed once run
         dwsnode.bodyNode.accept(this);
         immutable breakLocation = _chunk.bytecode.length;
-        --_compDataStack.top.loopOrSwitchStack;
         // patch the breaks or continues that may happen in the first run.
         patchBreaksAndContinues(dwsnode.label, breakLocation, continueLocation, _compDataStack.top.depthCounter,
                 _compDataStack.top.loopOrSwitchStack);
+        --_compDataStack.top.loopOrSwitchStack;
         removePatches();
         // reconstruct into while-loop and emit it
         auto wsnode = new WhileStatementNode(dwsnode.line, dwsnode.conditionNode, dwsnode.bodyNode, dwsnode.label);
@@ -654,9 +722,9 @@ public:
         // patch jmps
         *cast(int*)(_chunk.bytecode.ptr + jmpFalse) = cast(int)(breakLocation - length1);
         *cast(int*)(_chunk.bytecode.ptr + jmp) = -cast(int)(length2 - length0);
-        --_compDataStack.top.loopOrSwitchStack;
         patchBreaksAndContinues(fsnode.label, breakLocation, continueLocation, _compDataStack.top.depthCounter,
                 _compDataStack.top.loopOrSwitchStack);
+        --_compDataStack.top.loopOrSwitchStack;
         removePatches();
         return Variant(null);
     }
@@ -705,7 +773,6 @@ public:
         }
         ++_compDataStack.top.loopOrSwitchStack;
         fosnode.bodyNode.accept(this);
-        --_compDataStack.top.loopOrSwitchStack;
         immutable continueLocation = _chunk.bytecode.length;
         _chunk.bytecode ~= OpCode.POP;
         _chunk.bytecode ~= OpCode.STACK_1;
@@ -727,6 +794,7 @@ public:
         *cast(int*)(_chunk.bytecode.ptr + jmpFalse) = cast(int)(endLoop - loop);
         patchBreaksAndContinues(fosnode.label, breakLocation, continueLocation, 
                 _compDataStack.top.depthCounter, _compDataStack.top.loopOrSwitchStack);
+        --_compDataStack.top.loopOrSwitchStack;
         removePatches();
         return Variant(null);
     }
@@ -738,7 +806,7 @@ public:
         immutable patchLocation = _chunk.bytecode.length + 1;
         _chunk.bytecode ~= OpCode.GOTO ~ encode(uint.max) ~ cast(ubyte)0;
         _compDataStack.top.breaksToPatch ~= BreakOrContinueToPatch(bsnode.label, patchLocation,
-                _compDataStack.top.depthCounter, _compDataStack.top.loopOrSwitchStack - 1);
+                _compDataStack.top.depthCounter, _compDataStack.top.loopOrSwitchStack);
         return Variant(null);
     }
 
@@ -749,7 +817,7 @@ public:
         immutable patchLocation = _chunk.bytecode.length + 1;
         _chunk.bytecode ~= OpCode.GOTO ~ encode(uint.max - 1) ~ cast(ubyte)0;
         _compDataStack.top.continuesToPatch ~= BreakOrContinueToPatch(csnode.label, patchLocation,
-                _compDataStack.top.depthCounter, _compDataStack.top.loopOrSwitchStack - 1);
+                _compDataStack.top.depthCounter, _compDataStack.top.loopOrSwitchStack);
         return Variant(null);
     }
 
@@ -864,19 +932,32 @@ public:
         return Variant(null);
     }
 
-    /// TODO
+    /// Class declarations. Reduce to let leftHand = classExpression
 	Variant visitClassDeclarationStatementNode(ClassDeclarationStatementNode cdsnode)
     {
         _debugInfoStack.top.addLine(_chunk.bytecode.length, cdsnode.line);
-        throwUnimplemented(cdsnode);
+        auto reduction = new VarDeclarationStatementNode(
+            Token.createFakeToken(Token.Type.KEYWORD, "let"),
+            [
+                new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, "="),
+                    new VarAccessNode(Token.createFakeToken(Token.Type.IDENTIFIER, cdsnode.classDefinition.className)),
+                    new ClassLiteralNode(cdsnode.classToken, cdsnode.classDefinition))
+            ]);
+        reduction.accept(this);
         return Variant(null);
     }
 
-    /// TODO
+    /// This type of node is only a call to a base class constructor
 	Variant visitSuperCallStatementNode(SuperCallStatementNode scsnode)
     {
         _debugInfoStack.top.addLine(_chunk.bytecode.length, scsnode.line);
-        throwUnimplemented(scsnode);
+        _chunk.bytecode ~= OpCode.THIS;
+        if(_baseClassStack.length == 0)
+            throw new ScriptCompileException("Super call with no base class", scsnode.superToken);
+        _baseClassStack[$-1].accept(this);
+        foreach(arg ; scsnode.argExpressionNodes)
+            arg.accept(this);
+        _chunk.bytecode ~= OpCode.CALL ~ encode!uint(cast(uint)scsnode.argExpressionNodes.length);
         return Variant(null);
     }
 
@@ -960,10 +1041,17 @@ private:
 
     void handleAssignment(ExpressionNode leftExpr, Token opToken, ExpressionNode rightExpr)
     {
-        // if right hand is a function without a name, assign its name to left hand
-        if(auto fln = cast(FunctionLiteralNode)rightExpr)
+        // in case we are assigning to object access expressions
+        if(auto classExpr = cast(ClassLiteralNode)rightExpr)
         {
-            fln.optionalName = leftExpr.toString();
+            if(classExpr.classDefinition.className == ""
+            || classExpr.classDefinition.className == "<anonymous class>")
+                classExpr.classDefinition.constructor.optionalName = leftExpr.toString();
+        }
+        else if(auto funcLit = cast(FunctionLiteralNode)rightExpr)
+        {
+            if(funcLit.optionalName == "" || funcLit.optionalName == "<anonymous function>")
+                funcLit.optionalName = leftExpr.toString();
         }
         if(auto van = cast(VarAccessNode)leftExpr)
         {
@@ -1085,37 +1173,32 @@ private:
     {
         for(size_t i = 0; i < _compDataStack.top.breaksToPatch.length; ++i)
         {
-            if(!_compDataStack.top.breaksToPatch[i].patched 
-            && _compDataStack.top.breaksToPatch[i].loopLevel == loopLevel)
+            BreakOrContinueToPatch* brk = &_compDataStack.top.breaksToPatch[i];
+            if(!brk.patched)
             {
-                if(_compDataStack.top.breaksToPatch[i].labelName == label
-                || _compDataStack.top.breaksToPatch[i].labelName == "")
+                if((brk.labelName == label) || (brk.labelName == "" && brk.loopLevel == loopLevel))
                 {
-                    *cast(uint*)(_chunk.bytecode.ptr + _compDataStack.top.breaksToPatch[i].gotoPatchParam) 
-                            = cast(uint)breakGoto;
-                    _chunk.bytecode[_compDataStack.top.breaksToPatch[i].gotoPatchParam + uint.sizeof] 
-                            = cast(ubyte)(_compDataStack.top.breaksToPatch[i].depth - depthCounter);
-                    _compDataStack.top.breaksToPatch[i].patched = true;
+                    *cast(uint*)(_chunk.bytecode.ptr + brk.gotoPatchParam) = cast(uint)breakGoto;
+                    _chunk.bytecode[brk.gotoPatchParam + uint.sizeof] = cast(ubyte)(brk.depth - depthCounter);
+                    brk.patched = true;
                 }
             }
         }
 
         for(size_t i = 0; i < _compDataStack.top.continuesToPatch.length; ++i)
         {
-            if(!_compDataStack.top.continuesToPatch[i].patched
-            && _compDataStack.top.continuesToPatch[i].loopLevel == loopLevel)
+            BreakOrContinueToPatch* cont = &_compDataStack.top.continuesToPatch[i];
+            if(!cont.patched)
             {
-                if(_compDataStack.top.continuesToPatch[i].labelName == label 
-                || _compDataStack.top.continuesToPatch[i].labelName == "")
+                if((cont.labelName == label) || (cont.labelName == "" && cont.loopLevel == loopLevel))
                 {
-                    *cast(uint*)(_chunk.bytecode.ptr + _compDataStack.top.continuesToPatch[i].gotoPatchParam) 
-                            = cast(uint)continueGoto;
-                    _chunk.bytecode[_compDataStack.top.continuesToPatch[i].gotoPatchParam + uint.sizeof] 
-                            = cast(ubyte)(_compDataStack.top.continuesToPatch[i].depth - depthCounter);
-                    _compDataStack.top.continuesToPatch[i].patched = true;
+                    *cast(uint*)(_chunk.bytecode.ptr + cont.gotoPatchParam) = cast(uint)continueGoto;
+                    _chunk.bytecode[cont.gotoPatchParam + uint.sizeof] = cast(ubyte)(cont.depth - depthCounter);
+                    cont.patched = true;
                 }
             }
         }
+
     }
 
     BinaryOpNode reduceAssignment(BinaryOpNode original)
@@ -1238,13 +1321,18 @@ private:
 
     alias VarTable = VarMetadata[string];
 
+    /// when parsing a class expression or statement, if there is a base class it is added and poppped
+    /// so that super expressions can be processed
+    ExpressionNode[] _baseClassStack;
+
     /// the chunk being compiled
     Chunk _chunk;
 
-    /// debug info stack
-    Stack!DebugInfo _debugInfoStack;
     /// current source to send to each debugInfo
     string _currentSource;
+
+    /// debug info stack
+    Stack!DebugInfo _debugInfoStack;
 
     Stack!VarTable _stackVariables;
     Stack!CompilationData _compDataStack;

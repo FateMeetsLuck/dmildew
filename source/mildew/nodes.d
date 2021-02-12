@@ -1,5 +1,7 @@
 /**
- * This module implements the expression and statement node subclasses, which are used internally as a syntax tree.
+ * This module implements the expression and statement node classes, which are used internally as a syntax tree.
+ * The Interpreter can either walk the tree to execute code, or compile the tree into bytecode and run it with
+ * the VirtualMachine.
  */
 module mildew.nodes;
 
@@ -158,11 +160,12 @@ class LiteralNode : ExpressionNode
 
 class FunctionLiteralNode : ExpressionNode
 {
-    this(string[] args, StatementNode[] stmts, string optional = "")
+    this(string[] args, StatementNode[] stmts, string optional = "", bool isC = false)
     {
         argList = args;
         statements = stmts;
         optionalName = optional;
+        isClass = isC;
     }
 
     override Variant accept(IExpressionVisitor visitor)
@@ -191,6 +194,7 @@ class FunctionLiteralNode : ExpressionNode
     string[] argList;
     StatementNode[] statements;
     string optionalName;
+    bool isClass;
 }
 
 class TemplateStringNode : ExpressionNode
@@ -274,8 +278,9 @@ class ObjectLiteralNode : ExpressionNode
 
 class ClassLiteralNode : ExpressionNode 
 {
-    this(ClassDefinition cdef)
+    this(Token ctoken, ClassDefinition cdef)
     {
+        classToken = ctoken;
         classDefinition = cdef;
     }
 
@@ -289,6 +294,7 @@ class ClassLiteralNode : ExpressionNode
         return classDefinition.toString();
     }
 
+    Token classToken;
     ClassDefinition classDefinition;
 }
 
@@ -957,9 +963,10 @@ class DeleteStatementNode : StatementNode
 
 class ClassDeclarationStatementNode : StatementNode
 {
-    this(size_t lineNo, ClassDefinition cdef)
+    this(size_t lineNo, Token ctoken, ClassDefinition cdef)
     {
         super(lineNo);
+        classToken = ctoken;
         classDefinition = cdef;
     }
 
@@ -968,14 +975,21 @@ class ClassDeclarationStatementNode : StatementNode
 		return visitor.visitClassDeclarationStatementNode(this);
 	}
 
+    override string toString() const
+    {
+        return classDefinition.toString();
+    }
+
+    Token classToken;
     ClassDefinition classDefinition;
 }
 
 class SuperCallStatementNode : StatementNode
 {
-    this(size_t lineNo, ExpressionNode ctc, ExpressionNode[] args)
+    this(size_t lineNo, Token stoken, ExpressionNode ctc, ExpressionNode[] args)
     {
         super(lineNo);
+        superToken = stoken;
         classConstructorToCall = ctc; // Cannot be null or something wrong with parser
         argExpressionNodes = args;
     }
@@ -985,6 +999,7 @@ class SuperCallStatementNode : StatementNode
 		return visitor.visitSuperCallStatementNode(this);
 	}
 
+    Token superToken;
     ExpressionNode classConstructorToCall; // should always evaluate to a function
     ExpressionNode[] argExpressionNodes;
 }

@@ -17,7 +17,9 @@ import mildew.visitors;
 import mildew.vm;
 
 /**
- * This is the main interface for the host application to interact with scripts.
+ * This is the main interface for the host application to interact with scripts. It can run scripts in
+ * interpreted mode by walking the syntax tree, or if given the useVM option, can run a compiler to
+ * compile scripts into bytecode which is then executed by a VirtualMachine.
  */
 class Interpreter : INodeVisitor
 {
@@ -28,22 +30,26 @@ public:
      * run in a new environment below the global environment. This allows keywords such as let and const
      * to not pollute the global namespace. However, scripts can use var to declare variables that
      * are global.
+     * Params:
+     *  useVM = whether or not compilation to bytecode and the VM should be used instead of tree walking.
+     *  printVMDebugInfo = if useVM is true, this option prints very verbose data while executing bytecode.
      */
-    this(bool useVM = false)
+    this(bool useVM = false, bool printVMDebugInfo = true)
     {
         _globalEnvironment = new Environment(this);
         _currentEnvironment = _globalEnvironment;
         if(useVM)
         {
             _compiler = new Compiler();
+            _printVMDebugInfo = printVMDebugInfo;
             _vm = new VirtualMachine(_globalEnvironment);
         }
     }
 
     /**
      * Initializes the Mildew standard library, such as Object, Math, and console namespaces. This
-     * is optional and is not called by the constructor. For a script to use these methods this
-     * must be called first.
+     * is optional and is not called by the constructor. For a script to use these methods such as
+     * console.log this must be called first.
      */
     void initializeStdlib()
     {
@@ -73,7 +79,8 @@ public:
     }
 
     /**
-     * This is the main entry point for evaluating a script program.
+     * This is the main entry point for evaluating a script program. If the useVM option was set in the
+     * constructor, bytecode compilation and execution will be used, otherwise tree walking.
      * Params:
      *  code = This is the code of a script to be executed.
      * Returns:
@@ -100,7 +107,7 @@ public:
             auto chunk = _compiler.compile(code);
             debug _vm.printChunk(chunk, true);
 
-            return _vm.run(chunk);
+            return _vm.run(chunk, _printVMDebugInfo);
         }
     }
 
@@ -123,11 +130,18 @@ public:
 
     /**
      * Unsets a variable or constant in the global environment. Used by host applications to remove
-     * items that were loaded by the standard library load functions.
+     * items that were loaded by the standard library load functions. Specific functions of
+     * script classes can be removed by modifying the "prototype" field of their constructor.
      */
     void forceUnsetGlobal(in string name)
     {
         _globalEnvironment.forceRemoveVarOrConst(name);
+    }
+
+    /// whether or not debug info should be printed between each VM instruction
+    bool printVMDebugInfo() const 
+    {
+        return _printVMDebugInfo;
     }
 	
     /// whether or not VM option was set when created
@@ -135,6 +149,8 @@ public:
     {
         return _vm !is null;
     }
+
+// The next functions are internal and only public due to D language constraints.
 
 	/// extract a VisitResult from a LiteralNode
 	Variant visitLiteralNode(LiteralNode lnode)
@@ -1527,6 +1543,7 @@ private:
 	}
 
     Compiler _compiler;
+    bool _printVMDebugInfo;
     VirtualMachine _vm;
     Environment _globalEnvironment;
     Environment _currentEnvironment;

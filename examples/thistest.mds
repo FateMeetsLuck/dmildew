@@ -19,4 +19,4 @@ let a = "global";
 	showA();
 	let a = "block";
 	showA();
-} // wrong output
+} // wrong output still

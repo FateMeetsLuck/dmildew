@@ -116,7 +116,7 @@ public:
     }
 
     /**
-     * A method so that undefined || 22 results in 22.
+     * A method so that (undefined || 22) results in 22.
      */
     ScriptAny orOp(ScriptAny other)
     {
@@ -861,7 +861,7 @@ private:
             if(!isObject)
             {
                 if(throwing)
-                    throw new ScriptAnyException("ScriptAny " ~ toString ~ " does not store a D object", this);
+                    throw new ScriptAnyException("ScriptAny " ~ toString ~ " cannot store a D object", this);
                 else
                     return cast(T)null;
             }

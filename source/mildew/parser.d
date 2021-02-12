@@ -1,5 +1,6 @@
 /**
- * This module implements the Parser struct, which generates Nodes from tokens that are used internally.
+ * This module implements the Parser struct, which generates Nodes from tokens. The resulting syntax tree
+ * is processed by Interpreter, or Interpreter and Compiler.
  */
 module mildew.parser;
 
@@ -180,13 +181,14 @@ struct Parser
     }
 
     /**
-     * The main starting point. Also the "program" grammar rule. The generates a block statement
+     * The main starting point. Also the "program" grammar rule. This method generates a block statement
      * node where the interpreter iterates through each statement and executes it.
      */
     BlockStatementNode parseProgram()
     {
         immutable lineNo = _currentToken.position.line;
         auto statements = parseStatements(Token.Type.EOF);
+        assert(_functionContextStack.length == 0, "Sanity check failed: _functionContextStack");
         return new BlockStatementNode(lineNo, statements);
     }
 
@@ -550,7 +552,9 @@ private:
                     if(_currentToken.type != Token.Type.LBRACE)
                         throw new ScriptCompileException("Expected '{' before anonymous function body", _currentToken);
                     nextToken(); // eat the {
+                    _functionContextStack ~= FunctionContext.NORMAL;
                     auto statements = parseStatements(Token.Type.RBRACE);
+                    _functionContextStack = _functionContextStack[0..$-1];
                     nextToken();
                     // auto func = new ScriptFunction(name, argNames, statements, null);
                     left = new FunctionLiteralNode(argNames, statements);
@@ -728,7 +732,12 @@ private:
             if(_currentToken.type != Token.Type.LBRACE)
                 throw new ScriptCompileException("Method bodies must begin with '{'", _currentToken);
             nextToken();
+            if(currentMethodName != "constructor")
+                _functionContextStack ~= FunctionContext.METHOD;
+            else
+                _functionContextStack ~= FunctionContext.CONSTRUCTOR;
             auto statements = parseStatements(Token.Type.RBRACE);
+            _functionContextStack = _functionContextStack[0..$-1];
             nextToken(); // eat }
             // now we have a method but if this is the constructor
             if(currentMethodName == "constructor")
@@ -750,7 +759,7 @@ private:
                         throw new ScriptCompileException("Derived class constructors must have one super call", 
                                 classToken);
                 }
-                constructor = new FunctionLiteralNode(argNames, statements, className);
+                constructor = new FunctionLiteralNode(argNames, statements, className, true);
             }
             else // it's a normal method or getter/setter
             {
@@ -787,6 +796,9 @@ private:
             mnameMap[mname] = true;
         }
 
+        if(constructor is null)
+            constructor = new FunctionLiteralNode([], [], className, true);
+
         if(baseClass !is null)
             _baseClassStack = _baseClassStack[0..$-1];
        	return new ClassDefinition(className, constructor, methodNames, methods, getMethodNames, getMethods, 
@@ -806,7 +818,7 @@ private:
             _baseClassStack ~= baseClass;
         }
         auto classDef = parseClassDefinition(classToken, className, baseClass);
-        return new ClassLiteralNode(classDef);
+        return new ClassLiteralNode(classToken, classDef);
     }
 
     /// parses multiple statements until reaching stop
@@ -1051,7 +1063,9 @@ private:
         if(_currentToken.type != Token.Type.LBRACE)
             throw new ScriptCompileException("Function definition must begin with '{'", _currentToken);
         nextToken();
+        _functionContextStack ~= FunctionContext.NORMAL;
         auto statements = parseStatements(Token.Type.RBRACE);
+        _functionContextStack = _functionContextStack[0..$-1];
         nextToken(); // eat the }
         return new FunctionDeclarationStatementNode(lineNumber, name, argNames, statements);
     }
@@ -1145,18 +1159,23 @@ private:
             _baseClassStack ~= baseClass;
         }
         auto classDef = parseClassDefinition(classToken, className, baseClass);
-        return new ClassDeclarationStatementNode(lineNumber, classDef);
+        return new ClassDeclarationStatementNode(lineNumber, classToken, classDef);
     }
 
     SuperCallStatementNode parseSuperCallStatement()
     {
         immutable lineNumber = _currentToken.position.line;
+        auto stoken = _currentToken;
         if(_baseClassStack.length == 0)
             throw new ScriptCompileException("Super keyword may only be used in constructors of derived classes", 
                     _currentToken);
         nextToken();
+        // TODO check for super.method calls instead. Super will be a type of expression
         if(_currentToken.type != Token.Type.LPAREN)
             throw new ScriptCompileException("Super call parameters must begin with '('", _currentToken);
+        if(_functionContextStack.length == 0 || _functionContextStack[$-1] != FunctionContext.CONSTRUCTOR)
+            throw new ScriptCompileException("Super constructor calls only allowed in derived class constructor", 
+                stoken);
         nextToken();
         auto expressions = parseCommaSeparatedExpressions(Token.Type.RPAREN);
         nextToken(); // eat the )
@@ -1164,7 +1183,7 @@ private:
             throw new ScriptCompileException("Missing ';' at end of super statement", _currentToken);
         nextToken();
         size_t topClass = _baseClassStack.length - 1; // @suppress(dscanner.suspicious.length_subtraction)
-        return new SuperCallStatementNode(lineNumber, _baseClassStack[topClass], expressions);
+        return new SuperCallStatementNode(lineNumber, stoken, _baseClassStack[topClass], expressions);
     }
 
     SwitchStatementNode parseSwitchStatement() 
@@ -1262,10 +1281,14 @@ private:
             _currentToken = _tokens[_tokenIndex++];
     }
 
+    enum FunctionContext {NORMAL, CONSTRUCTOR, METHOD}
+
     Token[] _tokens;
     size_t _tokenIndex = 0;
     Token _currentToken;
     int _loopStack = 0;
+    FunctionContext[] _functionContextStack;
+    // TODO separate labels by function context because it is not possible to break or continue out of a function
     string[] _labelStack;
     int _switchStack = 0;
     ExpressionNode[] _baseClassStack; // in case we have nested class declarations

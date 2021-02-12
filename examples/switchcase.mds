@@ -35,4 +35,4 @@ test2("foo");
 test2([1,2,3]);
 test2(21);
 // As of Jan 3 17:14 2021 This program produces the correct output
-// As of 2/9/2021 19:42 The VM can run this program
+// As of 2/11/2021 17:23 The VM can run this program

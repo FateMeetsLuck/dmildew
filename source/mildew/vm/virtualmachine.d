@@ -30,6 +30,10 @@ enum OpCode : ubyte
     STACK_1, // stack1() : add one undefined to stack
     ARRAY, // array(uint) : pops n items to create array and pushes to top
     OBJECT, // array(uint) : create an object from key-value pairs starting with stack[-n] so n must be even
+    CLASS, // class(ubyte,ubyte,ubyte,ubyte) : first arg is how many normal method pairs, second arg is how many getters,
+            // third arg is how many setter pairs, 4th arg is static method pairs, and at stack[-1] base class.
+            // the finalized class constructor is pushed after all those values are popped. String group before method group
+            // stack[-2] is constructor
     ITER, // pushes a function that returns {value:..., done:bool} performed on pop()
     DEL, // delete member stack[-1]:string from object stack[2]. pops 2
     NEW, // similar to call(uint) except only func, arg1, arg2, etc.
@@ -62,6 +66,7 @@ enum OpCode : ubyte
     NOT, // not top()
     NEGATE, // negate top()
     TYPEOF, // typeof operator
+    INSTANCEOF, // instanceof operator
     POW, // exponent operation
     MUL, // multiplication
     DIV, // division
@@ -77,6 +82,7 @@ enum OpCode : ubyte
     GE, // greater than or equal
     EQUALS, // equals
     NEQUALS, // !equals
+    STREQUALS, // strict equals (===)
     BITAND, // bitwise and
     BITOR, // bitwise or
     BITXOR, // bitwise xor
@@ -267,6 +273,74 @@ private int opObject(VirtualMachine vm, Chunk chunk)
 }
 
 pragma(inline, true)
+private int opClass(VirtualMachine vm, Chunk chunk)
+{
+    immutable numMethods = decode!ubyte(chunk.bytecode.ptr + vm._ip + 1);
+    immutable numGetters = decode!ubyte(chunk.bytecode.ptr + vm._ip + 2);
+    immutable numSetters = decode!ubyte(chunk.bytecode.ptr + vm._ip + 3);
+    immutable numStatics = decode!ubyte(chunk.bytecode.ptr + vm._ip + 4);
+    auto baseClass = vm._stack.pop();
+    auto ctor = vm._stack.pop(); // @suppress(dscanner.suspicious.unmodified)
+    auto statics = vm._stack.pop(numStatics);
+    auto staticNames = vm._stack.pop(numStatics);
+    auto setters = vm._stack.pop(numSetters);
+    auto setterNames = vm._stack.pop(numSetters);
+    auto getters = vm._stack.pop(numGetters);
+    auto getterNames = vm._stack.pop(numGetters);
+    auto methods = vm._stack.pop(numMethods);
+    auto methodNames = vm._stack.pop(numMethods);
+
+    auto constructor = ctor.toValue!ScriptFunction;
+    if(constructor is null)
+        throw new VMException("Malformed class instruction: invalid constructor", vm._ip, OpCode.CLASS);
+
+    for(auto i = 0; i < numMethods; ++i)
+    {
+        auto method = methods[i].toValue!ScriptFunction; // @suppress(dscanner.suspicious.unmodified)
+        if(method is null)
+            throw new VMException("Malformed class instruction: invalid method", vm._ip, OpCode.CLASS);
+        constructor["prototype"][methodNames[i].toString] = method;
+    }
+
+    for(auto i = 0; i < numGetters; ++i)
+    {
+        auto getter = getters[i].toValue!ScriptFunction;
+        if(getter is null)
+            throw new VMException("Malformed class instruction: invalid get property", vm._ip, OpCode.CLASS);
+        constructor["prototype"].addGetterProperty(getterNames[i].toString(), getter);
+    }
+
+    for(auto i = 0; i < numSetters; ++i)
+    {
+        auto setter = setters[i].toValue!ScriptFunction;
+        if(setter is null)
+            throw new VMException("Malformed class instruction: invalid set property", vm._ip, OpCode.CLASS);
+        constructor["prototype"].addSetterProperty(setterNames[i].toString(), setter);
+    }
+
+    for(auto i = 0; i < numStatics; ++i)
+    {
+        constructor[staticNames[i].toString()] = statics[i];
+    }
+
+    if(baseClass)
+    {
+        auto baseClassCtor = baseClass.toValue!ScriptFunction;
+        if(baseClassCtor is null)
+            return throwRuntimeError("Invalid base class " ~ baseClass.toString(), vm, chunk);
+        auto ctorPrototype = constructor["prototype"].toValue!ScriptObject;
+        ctorPrototype.prototype = baseClassCtor["prototype"].toValue!ScriptObject;
+        constructor.prototype = baseClassCtor;
+    }
+
+    // push the resulting modified constructor
+    vm._stack.push(ScriptAny(constructor));
+
+    vm._ip += 1 + 4 * ubyte.sizeof;
+    return 0;
+}
+
+pragma(inline, true)
 private int opIter(VirtualMachine vm, Chunk chunk)
 {
     auto objToIterate = vm._stack.pop();
@@ -408,6 +482,7 @@ private int opNew(VirtualMachine vm, Chunk chunk)
             else
                 vm._environment.forceSetVarOrConst(func.argNames[i], args[i], false);
         }
+        vm._environment.forceSetVarOrConst("arguments", ScriptAny(args), false);
         return 0;
     }
     else if(func.type == ScriptFunction.Type.NATIVE_FUNCTION)
@@ -549,7 +624,8 @@ private int opObjGet(VirtualMachine vm, Chunk chunk)
     vm._stack.pop(2);
     // TODO handle getters
     // if field is integer it is array access
-    if(field.type == ScriptAny.Type.INTEGER)
+    if(field.isNumber 
+    && (objToAccess.type == ScriptAny.Type.ARRAY || objToAccess.type == ScriptAny.Type.STRING))
     {
         auto index = field.toValue!long;
         if(objToAccess.type == ScriptAny.Type.ARRAY)
@@ -570,27 +646,26 @@ private int opObjGet(VirtualMachine vm, Chunk chunk)
                 return throwRuntimeError("Out of bounds string access", vm, chunk);
             vm._stack.push(ScriptAny([wstr[index]]));
         }
-        else
-        {
-            return throwRuntimeError("Value " ~ objToAccess.toString() ~ " is not an array or string", vm, chunk);
-        }
     }
     else // else object field access
     {
         auto index = field.toString();
-        if(!objToAccess.isObject)
-            return throwRuntimeError("Unable to access members of non-object " ~ objToAccess.toString(), vm, chunk);
-        auto obj = objToAccess.toValue!ScriptObject; // @suppress(dscanner.suspicious.unmodified)
-        auto getter = index in obj.getters;
-        if(getter)
+        if(objToAccess.isObject)
         {
-            writeln("Calling a getter");
-            vm._stack.push(vm.runFunction(*getter, objToAccess, []));
-            if(vm._exc)
-                throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
+            auto obj = objToAccess.toValue!ScriptObject; // @suppress(dscanner.suspicious.unmodified)
+            auto getter = obj.findGetter(index);
+            if(getter)
+            {
+                vm._stack.push(vm.runFunction(getter, objToAccess, []));
+                if(vm._exc)
+                    throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
+            }
+            else
+                vm._stack.push(objToAccess[index]);
         }
         else
-            vm._stack.push(objToAccess[index]);
+            throwRuntimeError("Unable to access members of non-object " ~ objToAccess.toString(),
+                    vm, chunk);
     }
     ++vm._ip;
     return 0;
@@ -603,7 +678,8 @@ private int opObjSet(VirtualMachine vm, Chunk chunk)
     auto fieldToAssign = vm._stack.array[$-2]; // @suppress(dscanner.suspicious.unmodified)
     auto value = vm._stack.array[$-1];
     vm._stack.pop(3);
-    if(fieldToAssign.type == ScriptAny.Type.INTEGER)
+    if(fieldToAssign.isNumber 
+    && (objToAccess.type == ScriptAny.Type.ARRAY || objToAccess.type == ScriptAny.Type.STRING))
     {
         auto index = fieldToAssign.toValue!long;
         if(objToAccess.type == ScriptAny.Type.ARRAY)
@@ -616,10 +692,6 @@ private int opObjSet(VirtualMachine vm, Chunk chunk)
             arr[index] = value;
             vm._stack.push(value);
         }
-        else
-        {
-            return throwRuntimeError("Value " ~ objToAccess.toString() ~ " is not an array", vm, chunk);
-        }
     }
     else
     {
@@ -627,16 +699,16 @@ private int opObjSet(VirtualMachine vm, Chunk chunk)
         if(!objToAccess.isObject)
             return throwRuntimeError("Unable to assign member of non-object " ~ objToAccess.toString(), vm, chunk);
         auto obj = objToAccess.toValue!ScriptObject; // @suppress(dscanner.suspicious.unmodified)
-        auto setter = index in obj.setters;
+        auto setter = obj.findSetter(index);
         if(setter)
         {
-            vm.runFunction(*setter, objToAccess, [value]);
+            vm.runFunction(setter, objToAccess, [value]);
             if(vm._exc)
                 throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
             // if getter push that or else undefined
-            auto getter = index in obj.getters;
+            auto getter = obj.findGetter(index);
             if(getter)
-                vm._stack.push(vm.runFunction(*getter, objToAccess, []));
+                vm._stack.push(vm.runFunction(getter, objToAccess, []));
             else
                 vm._stack.push(ScriptAny.UNDEFINED);
             if(vm._exc)
@@ -684,6 +756,8 @@ private int opCall(VirtualMachine vm, Chunk chunk)
             else
                 vm._environment.forceSetVarOrConst(func.argNames[i], args[i], false);
         }
+        // set arguments variable
+        vm._environment.forceSetVarOrConst("arguments", ScriptAny(args), false);
         // check exc in case exception was thrown during call or apply
         if(vm._exc)
             throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
@@ -866,6 +940,35 @@ private int opTypeof(VirtualMachine vm, Chunk chunk)
     return 0;
 }
 
+pragma(inline, true)
+private int opInstanceOf(VirtualMachine vm, Chunk chunk)
+{
+    auto operands = vm._stack.pop(2);
+    if(!operands[0].isObject)
+        vm._stack.push(ScriptAny(false));
+    else if(operands[1].type != ScriptAny.Type.FUNCTION)
+        vm._stack.push(ScriptAny(false));
+    else
+    {
+        auto lhsObj = operands[0].toValue!ScriptObject; // @suppress(dscanner.suspicious.unmodified)
+        auto rhsFunc = operands[1].toValue!ScriptFunction; // @suppress(dscanner.suspicious.unmodified)
+        auto proto = lhsObj.prototype;
+        while(proto !is null)
+        {
+            if(proto["constructor"].toValue!ScriptFunction is rhsFunc)
+            {
+                vm._stack.push(ScriptAny(true));
+                ++vm._ip;
+                return 0;
+            }
+            proto = proto.prototype;
+        }
+    }
+    vm._stack.push(ScriptAny(false));
+    ++vm._ip;
+    return 0;
+}
+
 private string DEFINE_BIN_OP(string name, string op)()
 {
     import std.format: format;
@@ -909,9 +1012,18 @@ private int %1$s(VirtualMachine vm, Chunk chunk)
 mixin(DEFINE_BIN_BOOL_OP!("opLT", "<"));
 mixin(DEFINE_BIN_BOOL_OP!("opLE", "<="));
 mixin(DEFINE_BIN_BOOL_OP!("opGT", ">"));
-mixin(DEFINE_BIN_BOOL_OP!("opGE", "<"));
+mixin(DEFINE_BIN_BOOL_OP!("opGE", ">="));
 mixin(DEFINE_BIN_BOOL_OP!("opEQ", "=="));
 mixin(DEFINE_BIN_BOOL_OP!("opNEQ", "!="));
+
+pragma(inline, true)
+private int opStrictEquals(VirtualMachine vm, Chunk chunk)
+{
+    auto operands = vm._stack.pop(2);
+    vm._stack.push(ScriptAny(operands[0].strictEquals(operands[1])));
+    ++vm._ip;
+    return 0;
+}
 
 mixin(DEFINE_BIN_OP!("opBitAnd", "&"));
 mixin(DEFINE_BIN_OP!("opBitOr", "|"));
@@ -997,6 +1109,7 @@ class VirtualMachine
         _ops[OpCode.STACK_1] = &opStack1;
         _ops[OpCode.ARRAY] = &opArray;
         _ops[OpCode.OBJECT] = &opObject;
+        _ops[OpCode.CLASS] = &opClass;
         _ops[OpCode.ITER] = &opIter;
         _ops[OpCode.DEL] = &opDel;
         _ops[OpCode.NEW] = &opNew;
@@ -1025,6 +1138,7 @@ class VirtualMachine
         _ops[OpCode.NOT] = &opNot;
         _ops[OpCode.NEGATE] = &opNegate;
         _ops[OpCode.TYPEOF] = &opTypeof;
+        _ops[OpCode.INSTANCEOF] = &opInstanceOf;
         _ops[OpCode.POW] = &opPow;
         _ops[OpCode.MUL] = &opMul;
         _ops[OpCode.DIV] = &opDiv;
@@ -1040,6 +1154,7 @@ class VirtualMachine
         _ops[OpCode.GE] = &opGE;
         _ops[OpCode.EQUALS] = &opEQ;
         _ops[OpCode.NEQUALS] = &opNEQ;
+        _ops[OpCode.STREQUALS] = &opStrictEquals;
         _ops[OpCode.BITAND] = &opBitAnd;
         _ops[OpCode.BITOR] = &opBitOr;
         _ops[OpCode.BITXOR] = &opBitXor;
@@ -1071,7 +1186,11 @@ class VirtualMachine
                 }
                 else
                 {
-                    writeln("<" ~ value.typeToString() ~ "> " ~ value.toString());
+                    write("<" ~ value.typeToString() ~ "> ");
+                    if(value.toString().length < 100)
+                        writeln(value.toString());
+                    else
+                        writeln();
                 }
             }
         }
@@ -1117,6 +1236,9 @@ class VirtualMachine
                 break;
             case OpCode.OBJECT:
                 ip += 1 + uint.sizeof;
+                break;
+            case OpCode.CLASS:
+                ip += 1 + 4 * ubyte.sizeof;
                 break;
             case OpCode.ITER:
             case OpCode.DEL:
@@ -1178,6 +1300,7 @@ class VirtualMachine
             case OpCode.NOT:
             case OpCode.NEGATE:
             case OpCode.TYPEOF:
+            case OpCode.INSTANCEOF:
             case OpCode.POW:
             case OpCode.MUL:
             case OpCode.DIV:
@@ -1190,6 +1313,7 @@ class VirtualMachine
             case OpCode.GE:
             case OpCode.EQUALS:
             case OpCode.NEQUALS:
+            case OpCode.STREQUALS:
             case OpCode.BITAND:
             case OpCode.BITOR:
             case OpCode.BITXOR:
@@ -1261,6 +1385,14 @@ class VirtualMachine
         case OpCode.OBJECT: {
             immutable n = decode!uint(chunk.bytecode.ptr + ip + 1);
             writefln("%05d: %s n=%s", ip, op.opCodeToString, n);
+            break;
+        }
+        case OpCode.CLASS: {
+            immutable numMethods = decode!ubyte(chunk.bytecode.ptr + ip + 1);
+            immutable numGetters = decode!ubyte(chunk.bytecode.ptr + ip + 2);
+            immutable numSetters = decode!ubyte(chunk.bytecode.ptr + ip + 3);
+            immutable numStatics = decode!ubyte(chunk.bytecode.ptr + ip + 4);
+            writefln("%05d: %s %s,%s,%s,%s", ip, op.opCodeToString, numMethods, numGetters, numSetters, numStatics);
             break;
         }
         case OpCode.ITER:
@@ -1340,6 +1472,7 @@ class VirtualMachine
         case OpCode.NOT:
         case OpCode.NEGATE:
         case OpCode.TYPEOF:
+        case OpCode.INSTANCEOF:
         case OpCode.POW:
         case OpCode.MUL:
         case OpCode.DIV:
@@ -1352,6 +1485,7 @@ class VirtualMachine
         case OpCode.GE:
         case OpCode.EQUALS:
         case OpCode.NEQUALS:
+        case OpCode.STREQUALS:
         case OpCode.BITAND:
         case OpCode.BITOR:
         case OpCode.BITXOR:
@@ -1370,7 +1504,7 @@ class VirtualMachine
     }
 
     /// run a chunk of bytecode with a given const table
-    ScriptAny run(Chunk chunk)
+    ScriptAny run(Chunk chunk, bool printDebugInfo=false)
     {
         _ip = 0;
         ubyte op;
@@ -1380,9 +1514,11 @@ class VirtualMachine
         while(_ip < chunk.bytecode.length && !_stopped)
         {
             op = chunk.bytecode[_ip];
-            debug printInstruction(_ip, chunk);
+            if(printDebugInfo)
+                printInstruction(_ip, chunk);
             _ops[op](this, chunk);
-            debug writefln("Stack: %s", _stack.array);
+            if(printDebugInfo)
+                writefln("Stack: %s", _stack.array);
         }
         // if something is on the stack, that's the return value
         if(_stack.size > 0)
@@ -1415,9 +1551,9 @@ class VirtualMachine
                 else
                     _environment.forceSetVarOrConst(func.argNames[i], args[i], false);
             }
-            try 
+            try
             {
-                result = run(chunk);
+                result = run(chunk, _environment.getGlobalEnvironment.interpreter.printVMDebugInfo);
             }
             catch(ScriptRuntimeException ex)
             {
@@ -1479,9 +1615,13 @@ private:
 
     void printInstructionWithConstID(size_t ip, OpCode op, uint constID, Chunk chunk)
     {
-        writefln("%05d: %s #%s // <%s> %s", 
+        if(chunk.constTable.get(constID).toString().length < 100)
+            writefln("%05d: %s #%s // <%s> %s", 
                 ip, op.opCodeToString, constID, chunk.constTable.get(constID).typeToString(),
                 chunk.constTable.get(constID));
+        else
+            writefln("%05d: %s #%s // <%s>", 
+                ip, op.opCodeToString, constID, chunk.constTable.get(constID).typeToString());
     }
 
     Stack!CallData _callStack;

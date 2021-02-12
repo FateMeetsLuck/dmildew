@@ -1,13 +1,14 @@
-/// implements DebugInfo
+/// This module implements the DebugInfo class
 module mildew.vm.debuginfo;
 
 import std.string;
 import std.typecons;
 
+/// Alias for a hash map that associates DebugInfos to specific blocks of raw bytecode.
 alias DebugMap = DebugInfo[ubyte[]];
 
 /**
- * Holds debug information to be associated with completed ubyte[] code
+ * Holds debug information to be associated with completed ubyte[] code.
  */
 class DebugInfo
 {

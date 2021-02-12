@@ -5,4 +5,4 @@ for(let i=0; i < LIMIT; ++i) {
 }
 let totalms = System.getCurrentMillis() - start;
 console.log(`It took ${totalms} ms to count to ${LIMIT}`);
-
+// As of 2/11/2021 17:19 It took the VM 1173 ms to execute this program and 1885 ms in interpreted mode

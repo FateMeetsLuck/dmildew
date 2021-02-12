@@ -146,6 +146,36 @@ public:
     }
 
     /**
+     * Find a getter in the prototype chain
+     */
+    ScriptFunction findGetter(in string propName)
+    {
+        auto objectToSearch = this;
+        while(objectToSearch !is null)
+        {
+            if(propName in objectToSearch._getters)
+                return objectToSearch._getters[propName];
+            objectToSearch = objectToSearch._prototype;
+        }
+        return null;
+    }
+
+    /**
+     * Find a setter in the prototype chain
+     */
+     ScriptFunction findSetter(in string propName)
+     {
+        auto objectToSearch = this;
+        while(objectToSearch !is null)
+        {
+            if(propName in objectToSearch._setters)
+                return objectToSearch._setters[propName];
+            objectToSearch = objectToSearch._prototype;
+        }
+        return null;
+     }
+
+    /**
      * Shorthand for assignField
      */
     ScriptAny opIndexAssign(T)(T value, in string index)
@@ -238,6 +268,10 @@ private:
                     result ~= v.toValue!ScriptObject().formattedString(indent+1);
                 else
                     result ~= "<null object>";
+            }
+            else if(v.type == ScriptAny.Type.STRING)
+            {
+                result ~= "\"" ~ v.toString() ~ "\"";
             }
             else
                 result ~= v.toString();

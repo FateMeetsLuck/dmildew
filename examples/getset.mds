@@ -44,3 +44,4 @@ var a = new DerivedGS();
 a.prop = -23.53;
 console.log(a.prop);
 // This now works thanks to Object.getOwnPropertyDescriptor as of Jan 2 08:00 2021
+// As of 2/11/2021 16:06 The VM runs this program correctly.

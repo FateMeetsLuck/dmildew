@@ -61,10 +61,13 @@ int main(string[] args)
 {
     auto terminal = Terminal(ConsoleOutputType.linear);
     bool useVM = false;
+    bool printVMDebugInfo = false;
 
     try 
     {
-        auto options = cast(immutable)getopt(args, "usevm", &useVM);
+        auto options = cast(immutable)getopt(args, 
+                "usevm", &useVM,
+                "verbose|v", &printVMDebugInfo);
         if(options.helpWanted) 
         {
             printUsage();
@@ -77,7 +80,7 @@ int main(string[] args)
         return 64;
     }
 
-    auto interpreter = new Interpreter(useVM);
+    auto interpreter = new Interpreter(useVM, printVMDebugInfo);
     interpreter.initializeStdlib();
 
     if(args.length > 1)

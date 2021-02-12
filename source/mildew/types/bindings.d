@@ -51,6 +51,7 @@ ScriptObject getArrayPrototype()
         _arrayPrototype["join"] = new ScriptFunction("Array.prototype.join", &native_Array_join);
         _arrayPrototype["pop"] = new ScriptFunction("Array.prototype.pop", &native_Array_pop);
         _arrayPrototype["push"] = new ScriptFunction("Array.prototype.push", &native_Array_push);
+        _arrayPrototype["slice"] = new ScriptFunction("Array.prototype.slice", &native_Array_slice);
         _arrayPrototype["splice"] = new ScriptFunction("Array.prototype.splice", &native_Array_splice);
     }
     return _arrayPrototype;
@@ -256,6 +257,24 @@ private ScriptAny native_Array_pop(Environment c, ScriptAny* thisObj, ScriptAny[
     auto result = arr.array[$-1];
     arr.array = arr.array[0..$-1];
     return result;
+}
+
+private ScriptAny native_Array_slice(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto array = thisObj.toValue!(ScriptAny[]);
+    if(args.length < 1)
+        return ScriptAny(array);
+    size_t start = args[0].toValue!size_t;
+    if(start >= array.length)
+        start = array.length;
+    if(args.length < 2)
+        return ScriptAny(array[start .. $]);
+    size_t end = args[1].toValue!size_t;
+    if(end  >= array.length)
+        end = array.length;
+    return ScriptAny(array[start .. end]);
 }
 
 private ScriptAny native_Array_splice(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)

@@ -10,4 +10,4 @@ class Bar extends Foo {
 
 let bar = new Bar;
 console.log(bar.__proto__.constructor.__proto__.prototype.doSomething);
-// the super expression should translate to "this.__proto__.constructor.__proto__.prototype"
+// the super non-constructor expression should translate to "this.__proto__.constructor.__proto__.prototype"

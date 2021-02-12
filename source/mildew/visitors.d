@@ -1,3 +1,7 @@
+/**
+ * This module defines the interfaces that work with statement and expression nodes. Interpreter and Compiler
+ * implements all of these interfaces.
+ */
 module mildew.visitors;
 
 import std.variant;

@@ -207,9 +207,9 @@ package(mildew):
     /**
      * Method to copy fresh compiled functions with the correct context
      */
-    ScriptFunction copyCompiled(Environment env)
+    ScriptFunction copyCompiled(Environment env, bool isClass=false)
     {
-        auto newFunc = new ScriptFunction(_functionName, _argNames, _compiled, _isClass);
+        auto newFunc = new ScriptFunction(_functionName, _argNames, _compiled, isClass);
         newFunc._closure = env;
         return newFunc;
     }

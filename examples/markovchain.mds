@@ -1,87 +1,55 @@
-function randomFromZero(max) {
-    return Math.floor(Math.random() * max);
-}
+/**
+ * Generates random text based on input. This function was ported to Mildew from Java at
+ * https://rosettacode.org/wiki/Markov_chain_text_generator#Java
+ * @param text The source text to build dictionary from
+ * @param keySize Determines randomness of word sequence
+ * @param outputSize How many words to return
+ * @returns A string of random words based on Markov generation of source text
+ */
+function markovChain(text, keySize, outputSize) {
+    if(keySize < 1)
+        throw "Key size can't be less than 1";
+    let words = text.split(" ");
+    if(outputSize < keySize || outputSize >= words.length)
+        throw "Output size is out of range";
+    let dict = {};
 
-class MarkovText {
-
-    constructor(wordDepth, text) {
-        this.wordDepth = wordDepth || 2;
-        this.words = {};
-        if(text) {
-            this.learn(text);
+    for(let i = 0; i < (words.length - keySize); ++i) {
+        let key = words[i];
+        for(let j = i + 1; j < i + keySize; ++j) {
+            key = key + ' ' + words[j];
+        }
+        let value = (i + keySize < words.length) ? words[i + keySize] : "";
+        if(dict[key] === undefined) {
+            let list = [];
+            list = list.concat(value);
+            dict[key] = list;
+        } else {
+            dict[key] = dict[key].concat(value);
         }
     }
 
-    findByIndex(index, object) {
-        for(let prop of object || this.words) {
-            if(typeof object[prop] == "object")
-                if(object[prop].__i <= index && 
-                  object[prop].__i + object[prop].__o > index && 
-                    prop !== "__m") {
-                    // Return the word
-                    return prop;
-                }
+    let n = 0;
+    let rn = Math.floor(Math.random() * Object.keys(dict).length);
+    let prefix = Object.keys(dict)[rn];
+    let output = prefix.split(" ");
+    while(true) {
+        let suffix = dict[prefix];
+        if(suffix.length == 1) {
+            if(suffix[0] === "")
+                return output.join(" ");
+            output = output.concat(suffix[0]);
+        } else {
+            rn = Math.floor(Math.random() * suffix.length);
+            output = output.concat(suffix[rn]);
         }
-    }
-
-    learn(text) {
-        // split by spaces
-        let newWords = text.split(" ");
-
-        for(let i = 0; i < newWords.length - this.wordDepth; ++i) {
-            let key = "";
-            for(let k = 0; k < this.wordDepth - 1; ++k) {
-                key += newWords[i+k] + " ";
-            }
-            // make sure it exists
-            if(this.words[key] == undefined) {
-                this.words[key] = {
-                    __m: 0
-                };
-            }
-            // object with this key followed by next word?
-            if(this.words[key][newWords[i+this.wordDepth-1]] == undefined) {
-                this.words[key][newWords[i+this.wordDepth-1]] = {
-                    __i: this.words[key].__m,
-                    __o: 1 // max index is index + occurrences
-                };
-            } else {
-                this.words[key][newWords[i+this.wordDepth-1]].__o += 1;
-            }
-            // shift all __m values above this up by one (unless it is this)
-            for(let prop of this.words[key]) {
-                if(typeof this.words[key][prop] != "integer") {
-                    if(prop != newWords[i+this.wordDepth-1] && 
-                      this.words[key][prop].__i >= this.words[key][newWords[i+this.wordDepth-1]].__i ) {
-                        this.words[key][prop].__i += 1;
-                    }
-                }
-            }
-            this.words[key].__m += 1;
-            // console.log(`key=${key}`);
-        }
-    }
-
-    output(sentenceLength) {
-        let key = this.randomRootWord();
-        let generatedWords = key.split(" ");
-        let outputString = generatedWords.join(" ");
-        for(let i = 0; i < sentenceLength; ++i) {
-            let newWord = this.findByIndex(randomFromZero(this.words[key].__m), this.words[key]);
-            key = generatedWords.splice(1, this.wordDepth-1);
-            key.pop(); // Last element is always blank, pop it for easiness
-            key.push(newWord);
-            key = key.join(" ") + " ";
-    
-            generatedWords = key.split(" ");
-    
-            outputString += newWord + " ";
-        }
-        return outputString;
-    }
-
-    randomRootWord() {
-        return Object.keys(this.words)[randomFromZero(Object.keys(this.words).length)];
+        if(output.length >= outputSize)
+            return output.join(" ");
+        n++;
+        prefix = output.slice(n);
+        if(prefix.length > keySize)
+            prefix.length = keySize;
+        prefix = prefix.join(" ");
     }
 }
 
@@ -316,10 +284,6 @@ The Congress shall have power to enforce this article by appropriate legislation
 No law, varying the compensation for the services of the Senators and Representatives, shall take effect, until an election of representatives shall have intervened.
 `;
 
-var mk = new MarkovText(3, text);
-for(let i=0; i < 16; ++i) console.put('=====');
-console.log();
-console.log(mk.output(200));
-for(let i=0; i < 16; ++i) console.put('=====');
-console.log();
-// This program appears to work as intended.
+var sampleText = markovChain(text, 2, 300);
+console.log(sampleText);
+// As of 2/11/2021 18:40 This program appears to work in both VM and interpreted mode.

@@ -31,3 +31,4 @@ new Cls1(); // New anon class class1
 new Cls2(); // New anon class class2
 new Cls1(); // New anon class class1
 // As of 8:51 2/6/2021 This program produces the correct output
+// As of 2/11/2021 16:04 The VM runs this program correctly
