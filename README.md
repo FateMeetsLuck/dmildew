@@ -20,7 +20,7 @@ Building the library is as simple as writing `dub build` in a terminal in the ma
 
 In a terminal in the main project directory run `dub run dmildew:run -- examples/nameofexample.mds`. To try out the interactive shell simply type `dub run dmilew:run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after. One can also store anonymous class expressions in a global variable such as `var Foo = class {};`.
 
-An experimental VM option is now available and can be accessed by adding the --usevm flag as an argument. This feature is not yet completely implemented and most test scripts will not run.
+A VM option is now available and selected with the --usevm command line argument. An additional argument -v can be specified to see highly verbose execution of bytecode.
 
 ## Binding
 
