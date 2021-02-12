@@ -657,7 +657,6 @@ private int opObjGet(VirtualMachine vm, Chunk chunk)
             if(getter)
             {
                 auto retVal = vm.runFunction(getter, objToAccess, []);
-                debug writefln("retVal=%s", retVal.toString);
                 vm._stack.push(retVal);
                 if(vm._exc)
                     throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);

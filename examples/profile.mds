@@ -1,3 +1,4 @@
+// This program is more optimized if one uses a direct constant instead of assigning one
 let start = System.getCurrentMillis();
 const LIMIT = 1000000;
 for(let i=0; i < LIMIT; ++i) {

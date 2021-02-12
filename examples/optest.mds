@@ -1,3 +1,4 @@
+// The :? operator is given the correct precedence so as not to need parentheses for equality tests.
 var foo = 9;
 console.log(foo * foo == 81 ? "Correct" : "Something's wrong");
 console.log(foo - foo + 1? "Correct" : "Something wrong");

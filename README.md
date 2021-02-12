@@ -14,7 +14,7 @@ This project is in its early stages so one should probably use the ~main version
 
 ## Building
 
-Building the library is as simple as writing `dub build` in a terminal in the main project directory. To build the REPL and script runner one can write `dub build dmildew:run` in the same directory as the main project.
+Building the library is as simple as writing `dub build` in a terminal in the main project directory. To build the REPL and script runner one can write `dub build dmildew:run` in the same directory as the main project. Add `-b release` to the build commands to generate an optimized binary that performs slightly better than the default debugging build.
 
 ## Running the Examples
 

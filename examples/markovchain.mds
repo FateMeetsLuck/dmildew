@@ -1,3 +1,5 @@
+// This example program generates random text from the United States constitution.
+
 /**
  * Generates random text based on input. This function was ported to Mildew from Java at
  * https://rosettacode.org/wiki/Markov_chain_text_generator#Java

@@ -458,7 +458,6 @@ public:
                     _chunk.bytecode ~= OpCode.OBJGET;
                 }
             }
-            debug writefln("function call %s: args=%s", fcnode.toString, fcnode.expressionArgs.length);
             foreach(argExpr ; fcnode.expressionArgs)
                 argExpr.accept(this);
             _chunk.bytecode ~= OpCode.CALL ~ encode!uint(cast(uint)fcnode.expressionArgs.length);

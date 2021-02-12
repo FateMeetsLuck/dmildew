@@ -1,3 +1,6 @@
+/*
+The Math library is fully implemented and has all of the same functions as standard JavaScript Math.
+*/
 function getRandomNumber(min, max) {
     return min + Math.floor(Math.random() * (max-min-1));
 }

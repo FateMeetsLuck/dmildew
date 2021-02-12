@@ -1,3 +1,8 @@
+/*
+When a free function is called, the associated this is the surrounding local variable "this." Otherwise the "this"
+is the left hand side of an object access expression that is the function call. Explicit "this" objects can be
+given to any function using apply or call.
+*/
 function foo() {
 	console.log(`foo: this=${this}`);
 }

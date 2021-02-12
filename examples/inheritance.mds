@@ -1,7 +1,6 @@
-/**
- * Defines a simple class representing a person with an age and name
- * @param name The name of the person (string)
- * @param age The age of the person (integer)
+/*
+Old school JavaScript inheritance works the same in Mildew. Functions have a prototype field that becomes an
+object's __proto__ field when instantiated with new.
  */
 function Person(name, age) {
     this.name = name;

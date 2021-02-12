@@ -1,5 +1,7 @@
 /*
 Get and set properties work roughly the same as in ES6 JavaScript. They can be overridden by subclasses like any other method.
+Base class properties can be accessed with the super keyword; however, this example demonstrates usage of
+Object.getOwnPropertyDescriptor.
  */
 class Rectangle {
     constructor(w, h) {

@@ -1,3 +1,7 @@
+/*
+Switch statements work the same as in most languages. Case values can be an expression but only if the expression can be
+determined at compile time (no variable references). Without a break statement, control flow will continue to the next case.
+*/
 function test(value) {
     switch(value) {
         case 0:

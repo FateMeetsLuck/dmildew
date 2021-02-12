@@ -1,3 +1,5 @@
+// Static methods are declared with the static keyword and are directly stored in the class rather than
+// the prototype field.
 class Foo {
     static add(a, b) {
         return a+b;

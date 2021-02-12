@@ -1,3 +1,7 @@
+/*
+Loops can be labelled and break and continue statements can refer to labels only within the same function. It is not possible to
+cross function boundaries with a break or continue statement.
+ */
 foo:
 while(true) {
     let a = 9;

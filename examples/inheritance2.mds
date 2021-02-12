@@ -1,3 +1,7 @@
+/*
+The class keyword provides syntactic sugar around the prototypal inheritance system, as well as allowing properties (but not fields)
+to be defined.
+*/
 class Person {
     constructor(name, age) {
         this.name = name;

@@ -1,3 +1,7 @@
+/* 
+The Object namespace provides utility methods for working with objects, the hash map datatype of Mildew.
+Note that only strings may be keys.
+ */
 var testProto = { someValue: 2000 };
 var testObject = Object.create(testProto);
 console.log(testObject.someValue);

@@ -1,3 +1,6 @@
+/*
+The instanceof operator tests if an object is an instance of a class or super class.
+ */
 class Foo {
 
 }
