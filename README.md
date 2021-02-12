@@ -18,7 +18,7 @@ Building the library is as simple as writing `dub build` in a terminal in the ma
 
 ## Running the Examples
 
-In a terminal in the main project directory run `dub run dmildew:run -- examples/nameofexample.mds`. To try out the interactive shell simply type `dub run dmilew:run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after. One can also store anonymous class expressions in a global variable such as `var Foo = class {};`.
+In a terminal in the main project directory run `dub run dmildew:run -- examples/<nameofexample>.mds`. To try out the interactive shell simply type `dub run dmilew:run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after. One can also store anonymous class expressions in a global variable such as `var Foo = class {};`.
 
 A VM option is now available and selected with the --usevm command line argument. An additional argument -v can be specified to see highly verbose execution of bytecode.
 
@@ -34,13 +34,13 @@ The function or delegate signature that can be wrapped inside a ScriptAny (and t
 
 ## Caveats
 
-This language is stricter than JavaScript. Global variables cannot be redeclared unless they are undefined by setting them to `undefined`. Local variables cannot be redeclared in the same scope likewise. Semicolons are required in a manner similar to C# or Java.
+This language is stricter than JavaScript. Global variables cannot be redeclared unless they are undefined by setting them to `undefined`. Local variables cannot be redeclared in the same scope likewise. However, it is possible to check if a variable is defined using the `isdefined` function of the standard library, which takes a string value equal to the variable name. Semicolons are required in a manner similar to C# or Java.
 
 Since all programs are run in a scope, the `var` keyword declares variables that are stored in the global scope, while `let` and `const` work the same as in ES6. This is more similar to Lua.
 
-For-in loops cannot iterate over chars in a string so one has to write a regular for-loop that checks the length.
+In interpreted mode, for-in loops cannot iterate over chars in a string so one has to write a regular for-loop that checks the length.
 
-To declare a function to be stored in an object, one must write `objectName.fieldName = function(...)...` as `function objectName.fieldName(...)...` declarations do not work.
+To declare a function to be stored in an object, one must write `objectName.fieldName = function(...)...` because `function objectName.fieldName(...)...` declarations do not work.
 
 Binding classes by extending ScriptObject will not work and is not supported. Script classes that extend native D classes must call `super` in a constructor for it to work even if there are no parameters.
 
@@ -61,7 +61,5 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Implement a regular expression library. Regex literals will probably never be supported.
 * Bind native classes and functions with one line of code with mixins and template metaprogramming.
 * Write a more complete and robust standard library for the scripting language.
-* Allow super keyword to be used to call base class methods and properties other than the constructor.
 * Allow unicode support for source code text.
-* Reduce parse tree to low level bytecode (in progress).
 * Implement yield keyword.

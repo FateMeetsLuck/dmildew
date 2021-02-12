@@ -2,6 +2,7 @@
 module mildew.vm.consttable;
 
 import mildew.types.any;
+import mildew.util.encode;
 
 /**
  * This is a wrapper around a dynamic array. When a value is added, ConstTable determines if the value is
@@ -52,6 +53,28 @@ public:
                 break;
         }
         return result;
+    }
+
+    /// convert const table to ubytes
+    ubyte[] serialize()
+    {
+        ubyte[] data = encode!size_t(_constants.length);
+        for(auto i = 0; i < _constants.length; ++i)
+        {
+            data ~= _constants[i].serialize();
+        }
+        return data;
+    }
+
+    /// reads a ConstTable from an ubyte stream
+    static ConstTable deserialize(ref ubyte[] stream)
+    {
+        auto ct = new ConstTable();
+        ct._constants.length = decode!size_t(stream.ptr);
+        stream = stream[size_t.sizeof..$];
+        for(auto i = 0; i < ct._constants.length; ++i)
+            ct._constants[i] = ScriptAny.deserialize(stream);
+        return ct;
     }
 
 private:

@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/bccompiler
+bccompiler.so
+bccompiler.dylib
+bccompiler.dll
+bccompiler.a
+bccompiler.lib
+bccompiler-test-*
+*.exe
+*.o
+*.obj
+*.lst

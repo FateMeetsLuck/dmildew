@@ -7,7 +7,7 @@
 	"license": "GPL-3.0",
 	"name": "dmildew",
 	"subPackages": [
-		"run"
+		"run", "bccompiler"
 	],
 	"targetType": "library"
 }

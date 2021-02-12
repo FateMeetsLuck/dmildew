@@ -243,6 +243,9 @@ package(mildew):
 	/// Property get closure
 	auto closure() { return _closure; }
 
+    /// Property isClass
+    auto isClass() const { return _isClass; }
+
     /// used by the parser for missing constructors in classes that don't extend
     static ScriptFunction emptyFunction(in string name, bool isClass)
     {

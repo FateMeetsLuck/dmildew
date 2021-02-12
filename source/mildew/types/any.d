@@ -628,6 +628,137 @@ public:
         }
     }
 
+    /// convert a value to raw bytes. Only certain values can be converted. Throws exception if not possible
+    ubyte[] serialize() const
+    {
+        import mildew.util.encode: encode;
+
+        ubyte[] data = encode!uint(_type);
+
+        final switch(_type)
+        {
+        case Type.NULL:
+        case Type.UNDEFINED:
+            break;
+        case Type.BOOLEAN:
+            data ~= _asBoolean ? 1 : 0;
+            break;
+        case Type.INTEGER:
+            data ~= encode(_asInteger);
+            break;
+        case Type.DOUBLE:
+            data ~= encode(_asDouble);
+            break;
+        case Type.STRING: {
+            // save as utf-8
+            immutable str = toValue!string;
+            data ~= encode(str);
+            break;
+        }
+        case Type.ARRAY: {
+            auto arr = toValue!(ScriptAny[]);
+            data ~= encode!size_t(arr.length);
+            foreach(item ; arr)
+            {
+                data ~= item.serialize();
+            }
+            break;
+        }
+        case Type.FUNCTION: {
+            auto func = cast(ScriptFunction)_asObject;
+            if(func.type != ScriptFunction.Type.SCRIPT_FUNCTION)
+                throw new ScriptAnyException("Native functions cannot be serialized", this);
+            data ~= encode(func.functionName);
+            data ~= encode!size_t(func.argNames.length);
+            foreach(arg ; func.argNames)
+                data ~= encode(arg);
+            data ~= func.isClass ? 1 : 0;
+            data ~= encode(func.compiled);
+            break;
+        }
+        case Type.OBJECT:
+            throw new ScriptAnyException("Objects cannot be encoded yet", this);
+        }
+        return data;
+    }
+
+    /// read a ScriptAny from a stream of bytes. if invalid data, throws exception
+    static ScriptAny deserialize(ref ubyte[] stream)
+    {
+        import mildew.util.encode: decode;
+        import mildew.types.array: ScriptArray;
+        import mildew.types.string: ScriptString;
+
+        ScriptAny value = ScriptAny.UNDEFINED;
+        value._type = cast(Type)decode!int(stream.ptr);
+        stream = stream[int.sizeof..$];
+        switch(value._type)
+        {
+        case Type.NULL:
+        case Type.UNDEFINED:
+            break;
+        case Type.BOOLEAN:
+            value._asBoolean = cast(bool)decode!ubyte(stream.ptr);
+            stream = stream[ubyte.sizeof..$];
+            break;
+        case Type.INTEGER:
+            value._asInteger = decode!long(stream.ptr);
+            stream = stream[long.sizeof..$];
+            break;
+        case Type.DOUBLE:
+            value._asDouble = decode!double(stream.ptr);
+            stream = stream[double.sizeof..$];
+            break;
+        case Type.STRING: {
+            auto str = decode!(char[])(stream.ptr);
+            stream = stream[size_t.sizeof..$];
+            stream = stream[str.length*char.sizeof..$];
+            value._asObject = new ScriptString(str.to!string);
+            break;
+        }
+        case Type.ARRAY: {
+            immutable len = decode!size_t(stream.ptr);
+            stream = stream[size_t.sizeof..$];
+            auto array = new ScriptAny[len];
+            for(auto i = 0; i < len; ++i)
+            {
+                array[i] = ScriptAny.deserialize(stream);
+            }
+            value._asObject = new ScriptArray(array);
+            break;
+        }
+        case Type.FUNCTION: {
+            auto fnname = decode!(char[])(stream.ptr);
+            stream = stream[size_t.sizeof..$];
+            stream = stream[fnname.length*char.sizeof..$];
+            string[] args;
+            immutable argLen = decode!size_t(stream.ptr);
+            stream = stream[size_t.sizeof..$];
+            args = new string[argLen];
+            for(auto i = 0; i < argLen; ++i)
+            {
+                args[i] = to!string(decode!(char[])(stream.ptr));
+                stream = stream[size_t.sizeof..$];
+                stream = stream[args[i].length * char.sizeof .. $];
+            }
+            bool isClass = cast(bool)stream[0];
+            stream = stream[1..$];
+            auto compiled = decode!(ubyte[])(stream.ptr);
+            stream = stream[size_t.sizeof..$];
+            stream = stream[compiled.length..$];
+            value._asObject = new ScriptFunction(fnname.to!string, args, compiled, isClass);
+            break;
+        }
+        case Type.OBJECT:
+            throw new ScriptAnyException("Objects cannot be decoded yet", value);
+        default:
+            throw new ScriptAnyException("Decoded value is not a ScriptAny", value);
+        }
+
+        
+        return value;
+    }
+
     /**
      * This should always be used to return an undefined value.
      */
@@ -902,4 +1033,19 @@ class ScriptAnyException : Exception
     }
     /// the offending value
     ScriptAny value;
+}
+
+unittest 
+{
+    import std.stdio: writeln, writefln, writef;
+    ScriptAny foo = [1, 5, 10];
+    auto data = foo.serialize();
+    foreach( b ; data )
+    {
+        writef("%02x ", b);
+    }
+    writeln();
+    
+    ScriptAny des = ScriptAny.deserialize(data);
+    writeln(des);
 }
