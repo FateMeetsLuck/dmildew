@@ -1,6 +1,20 @@
 /**
- * This module implements the Interpreter class, the main class used by host applications to run scripts
- */
+This module implements the Interpreter class, the main class used by host applications to run scripts
+────────────────────────────────────────────────────────────────────────────────
+Copyright (C) 2021 pillager86.rf.gd
+
+This program is free software: you can redistribute it and/or modify it under 
+the terms of the GNU General Public License as published by the Free Software 
+Foundation, either version 3 of the License, or (at your option) any later 
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with 
+this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
 module mildew.interpreter;
 
 import std.typecons;
@@ -19,7 +33,8 @@ import mildew.vm;
 /**
  * This is the main interface for the host application to interact with scripts. It can run scripts in
  * interpreted mode by walking the syntax tree, or if given the useVM option, can run a compiler to
- * compile scripts into bytecode which is then executed by a VirtualMachine.
+ * compile scripts into bytecode which is then executed by a VirtualMachine. Note that interpreted mode
+ * will be deprecated.
  */
 class Interpreter : INodeVisitor
 {

@@ -1,3 +1,20 @@
+/**
+This module implements the VirtualMachine that executes compiled bytecode.
+────────────────────────────────────────────────────────────────────────────────
+Copyright (C) 2021 pillager86.rf.gd
+
+This program is free software: you can redistribute it and/or modify it under 
+the terms of the GNU General Public License as published by the Free Software 
+Foundation, either version 3 of the License, or (at your option) any later 
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with 
+this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
 module mildew.vm.virtualmachine;
 
 import std.concurrency;
@@ -26,8 +43,8 @@ enum OpCode : ubyte
     POP, // pop() : remove exactly one value from stack
     POPN, // pop(uint) : remove n values from stack
     SET, // set(uint) : set index of stack to value at top without popping stack
-    STACK, // stack(uint) : add n number of undefines to stack
-    STACK_1, // stack1() : add one undefined to stack
+    STACK, // stack(uint) : push n number of undefines to stack
+    STACK_1, // stack1() : push one undefined to stack
     ARRAY, // array(uint) : pops n items to create array and pushes to top
     OBJECT, // array(uint) : create an object from key-value pairs starting with stack[-n] so n must be even
     CLASS, // class(ubyte,ubyte,ubyte,ubyte) : first arg is how many normal method pairs, second arg is how many getters,

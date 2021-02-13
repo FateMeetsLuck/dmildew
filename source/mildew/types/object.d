@@ -1,12 +1,28 @@
 /**
- * This module implements ScriptObject, the base class for builtin Mildew objects.
- */
+This module implements ScriptObject, the base class for builtin Mildew objects.
+────────────────────────────────────────────────────────────────────────────────
+Copyright (C) 2021 pillager86.rf.gd
+
+This program is free software: you can redistribute it and/or modify it under 
+the terms of the GNU General Public License as published by the Free Software 
+Foundation, either version 3 of the License, or (at your option) any later 
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with 
+this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
 module mildew.types.object;
 
 /**
- * General Object class. Unlike JavaScript, the __proto__ property only shows up when asked for. This allows
- * allows objects to be used as dictionaries without extraneous values showing up in the for-of loop. Native D objects
- * can be stored in any ScriptObject or derived class by assigning it to its nativeObject field.
+ * General Object class. Similar to JavaScript, this class works as a dictionary but 
+ * the keys must be strings. Native D objects can be stored in any ScriptObject or derived 
+ * class by assigning it to its nativeObject field. This is also the base class for
+ * arrays, strings, and functions so that those script values can have dictionary entries
+ * assigned to them as well.
  */
 class ScriptObject
 {

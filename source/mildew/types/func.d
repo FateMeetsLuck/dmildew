@@ -1,7 +1,21 @@
 /**
- * This module implements the ScriptFunction class, which holds script defined functions as well as native D
- * functions or delegates with the correct signature.
- */
+This module implements the ScriptFunction class, which holds script defined functions as well as native D
+functions or delegates with the correct signature.
+────────────────────────────────────────────────────────────────────────────────
+Copyright (C) 2021 pillager86.rf.gd
+
+This program is free software: you can redistribute it and/or modify it under 
+the terms of the GNU General Public License as published by the Free Software 
+Foundation, either version 3 of the License, or (at your option) any later 
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with 
+this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
 module mildew.types.func;
 
 import mildew.environment: Environment;
@@ -10,10 +24,11 @@ import mildew.types.any: ScriptAny;
 import mildew.types.object: ScriptObject;
 import mildew.vm;
 
-/** When a native function or delegate encounters an error with the arguments sent,
- *  the last reference parameter should be set to the appropriate enum value.
- *  A specific exception can be thrown by setting the flag to RETURN_VALUE_IS_EXCEPTION and
- *  returning a string.
+/** 
+ * When a native function or delegate encounters an error with the arguments sent,
+ * the last reference parameter should be set to the appropriate enum value.
+ * A specific exception can be thrown by setting the flag to RETURN_VALUE_IS_EXCEPTION and
+ * returning a string.
  */
 enum NativeFunctionError 
 {

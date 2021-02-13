@@ -1,4 +1,19 @@
-/// This module implements the ConstTable class
+/** This module implements the ConstTable class
+────────────────────────────────────────────────────────────────────────────────
+Copyright (C) 2021 pillager86.rf.gd
+
+This program is free software: you can redistribute it and/or modify it under 
+the terms of the GNU General Public License as published by the Free Software 
+Foundation, either version 3 of the License, or (at your option) any later 
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with 
+this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
 module mildew.vm.consttable;
 
 import mildew.types.any;
@@ -12,6 +27,9 @@ import mildew.util.encode;
 class ConstTable
 {
 public:
+    
+    // TODO option to finalize and destroy hash table when no more consts are to be added
+
     /// add a possibly new value to table and return its index.
     size_t addValue(ScriptAny value)
     {
