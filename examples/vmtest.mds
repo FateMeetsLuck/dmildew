@@ -29,3 +29,44 @@ function testInheritance() {
     let bar = new Bar;
 }
 
+function testSuper() {
+    class Foo {
+        constructor() {
+            this.a = 55;
+        }
+        get testProp() {
+            console.log(`In testProp this=${this}`);
+            return this.a;
+        }
+        static testStatic() {
+            console.log("testStatic");
+        }
+    }
+
+    class Bar extends Foo {
+        constructor() {
+            super();
+        }
+
+        test() {
+            console.log(super.testProp);
+        }
+    }
+
+    class Unrelated {
+        constructor() {
+            this.something = 42;
+        }
+        get testProp() {
+            return this.something;
+        }
+    }
+
+    let bar = new Bar();
+    bar.test();
+    let un = new Unrelated;
+    console.log(un.testProp);
+}
+
+testSuper();
+

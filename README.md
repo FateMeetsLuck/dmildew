@@ -50,6 +50,8 @@ Binding classes by extending ScriptObject will not work and is not supported. Sc
 
 Closure functions that refer to variables in an outer scope beyond the immediate function declaration scope can have variables shadowed by declaring them in the same scope. See examples/thistest.mds for the issue.
 
+The "super" keyword cannot be used to access static base class methods.
+
 DMildew has only been tested on Windows and Linux x86_64 operating systems. Please test on other operating systems to report problems. Note that compiled bytecode is platform dependent (byte order matters) and bytecode scripts must be compiled for each platform, similar to Lua.
 
 ## Help

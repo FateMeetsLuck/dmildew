@@ -96,6 +96,16 @@ enum OpCode : ubyte
 
 alias OpCodeFunction = int function(VirtualMachine, Chunk chunk);
 
+private ScriptAny getLocalThis(Environment env)
+{
+    bool _; // @suppress(dscanner.suspicious.unmodified)
+    auto thisPtr = env.lookupVariableOrConst("this", _);
+    if(thisPtr == null)
+        return ScriptAny.UNDEFINED;
+    else
+        return *thisPtr;
+}
+
 /// helper function. TODO: rework as flag system that implements try-catch-finally mechanics
 private int throwRuntimeError(in string message, VirtualMachine vm, Chunk chunk, 
                             ScriptAny thrownValue = ScriptAny.UNDEFINED, 
@@ -647,7 +657,7 @@ private int opObjGet(VirtualMachine vm, Chunk chunk)
             vm._stack.push(ScriptAny([wstr[index]]));
         }
     }
-    else // else object field access
+    else // else object field or property access
     {
         auto index = field.toString();
         if(objToAccess.isObject)
@@ -656,7 +666,18 @@ private int opObjGet(VirtualMachine vm, Chunk chunk)
             auto getter = obj.findGetter(index);
             if(getter)
             {
-                auto retVal = vm.runFunction(getter, objToAccess, []);
+                // this might be a super property call
+                auto thisObj = getLocalThis(vm._environment);
+                ScriptAny retVal;
+                if(ScriptFunction.isInstanceOf(thisObj.toValue!ScriptObject, 
+                  objToAccess["constructor"].toValue!ScriptFunction))
+                {
+                    retVal = vm.runFunction(getter, thisObj, []);
+                }
+                else
+                {
+                    retVal = vm.runFunction(getter, objToAccess, []);
+                }
                 vm._stack.push(retVal);
                 if(vm._exc)
                     throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
@@ -703,15 +724,29 @@ private int opObjSet(VirtualMachine vm, Chunk chunk)
         auto setter = obj.findSetter(index);
         if(setter)
         {
-            vm.runFunction(setter, objToAccess, [value]);
+            auto thisObj = getLocalThis(vm._environment);
+            immutable isSuperProp = ScriptFunction.isInstanceOf(thisObj.toValue!ScriptObject, 
+                    objToAccess["constructor"].toValue!ScriptFunction);
+            if(isSuperProp)
+                vm.runFunction(setter, thisObj, [value]);
+            else
+                vm.runFunction(setter, objToAccess, [value]);
             if(vm._exc)
                 throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
             // if getter push that or else undefined
             auto getter = obj.findGetter(index);
             if(getter)
-                vm._stack.push(vm.runFunction(getter, objToAccess, []));
+            {
+                if(isSuperProp)
+                    vm._stack.push(vm.runFunction(getter, thisObj, []));
+                else
+                    vm._stack.push(vm.runFunction(getter, objToAccess, []));
+            }
             else
+            {
                 vm._stack.push(ScriptAny.UNDEFINED);
+            }
+            
             if(vm._exc)
                 throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
         }

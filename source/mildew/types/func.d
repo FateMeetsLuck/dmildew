@@ -80,6 +80,23 @@ public:
         _nativeDelegate = ndele;
     }
 
+    /**
+     * Check if an object is an instance of a "class" constructor
+     */
+    static bool isInstanceOf(ScriptObject obj, ScriptFunction clazz)
+    {
+        if(obj is null || clazz is null)
+            return false;
+        auto proto = obj.prototype;
+        while(proto !is null)
+        {
+            if(proto["constructor"].toValue!ScriptFunction is clazz)
+                return true;
+            proto = proto.prototype;
+        }
+        return false;
+    }
+
     /// Returns a string representing the type and name.
     override string toString() const
     {

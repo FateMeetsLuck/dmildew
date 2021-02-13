@@ -10,6 +10,7 @@ dmildew.dll
 dmildew.a
 dmildew.lib
 dmildew-test-*
+mdc
 *.exe
 *.o
 *.obj

@@ -130,6 +130,8 @@ public:
         raw = inputFile.rawRead(raw);
         if(raw.length > 0 && raw[0] == 0x01)
         {
+            if(_vm is null)
+                throw new ScriptRuntimeException("This file can only be run in VM mode");
             auto chunk = Chunk.deserialize(raw);
             if(printDisasm)
                 _vm.printChunk(chunk);
@@ -642,7 +644,8 @@ public:
         auto obj = vr.objectToAccess.toValue!ScriptObject;
         if(obj.hasGetter(memberName))
         {
-            auto gvr = getObjectProperty(obj, memberName);
+            VisitResult gvr;
+            gvr = getObjectProperty(obj, memberName);
             if(gvr.exception !is null)
                 return Variant(gvr);
             vr.result = gvr.result;
