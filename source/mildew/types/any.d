@@ -652,7 +652,7 @@ public:
         case Type.STRING: {
             // save as utf-8
             immutable str = toValue!string;
-            data ~= encode(str);
+            data ~= encode!(ubyte[])(cast(ubyte[])str);
             break;
         }
         case Type.ARRAY: {
@@ -685,6 +685,7 @@ public:
     /// read a ScriptAny from a stream of bytes. if invalid data, throws exception
     static ScriptAny deserialize(ref ubyte[] stream)
     {
+        debug import std.stdio;
         import mildew.util.encode: decode;
         import mildew.types.array: ScriptArray;
         import mildew.types.string: ScriptString;
@@ -695,28 +696,36 @@ public:
         switch(value._type)
         {
         case Type.NULL:
+            debug write("Decoding a null: ");
+            break;
         case Type.UNDEFINED:
+            debug write("Decoding undefined: ");
             break;
         case Type.BOOLEAN:
+            debug write("Decoding a boolean: ");
             value._asBoolean = cast(bool)decode!ubyte(stream.ptr);
             stream = stream[ubyte.sizeof..$];
             break;
         case Type.INTEGER:
+            debug write("Decoding a long: ");
             value._asInteger = decode!long(stream.ptr);
             stream = stream[long.sizeof..$];
             break;
         case Type.DOUBLE:
+            debug write("Decoding a double: ");
             value._asDouble = decode!double(stream.ptr);
             stream = stream[double.sizeof..$];
             break;
         case Type.STRING: {
-            auto str = decode!(char[])(stream.ptr);
+            debug write("Decoding a string: ");
+            auto str = cast(string)decode!(ubyte[])(stream.ptr);
             stream = stream[size_t.sizeof..$];
             stream = stream[str.length*char.sizeof..$];
-            value._asObject = new ScriptString(str.to!string);
+            value._asObject = new ScriptString(str);
             break;
         }
         case Type.ARRAY: {
+            debug write("Decoding an array: ");
             immutable len = decode!size_t(stream.ptr);
             stream = stream[size_t.sizeof..$];
             auto array = new ScriptAny[len];
@@ -728,7 +737,8 @@ public:
             break;
         }
         case Type.FUNCTION: {
-            auto fnname = decode!(char[])(stream.ptr);
+            debug write("Decoding a function: ");
+            auto fnname = cast(string)decode!(ubyte[])(stream.ptr);
             stream = stream[size_t.sizeof..$];
             stream = stream[fnname.length*char.sizeof..$];
             string[] args;
@@ -737,7 +747,7 @@ public:
             args = new string[argLen];
             for(auto i = 0; i < argLen; ++i)
             {
-                args[i] = to!string(decode!(char[])(stream.ptr));
+                args[i] = cast(string)(decode!(ubyte[])(stream.ptr));
                 stream = stream[size_t.sizeof..$];
                 stream = stream[args[i].length * char.sizeof .. $];
             }
@@ -752,10 +762,11 @@ public:
         case Type.OBJECT:
             throw new ScriptAnyException("Objects cannot be decoded yet", value);
         default:
-            throw new ScriptAnyException("Decoded value is not a ScriptAny", value);
+            throw new ScriptAnyException("Decoded value is not a ScriptAny ("
+                ~ to!string(cast(int)value._type) ~ ")", value);
         }
 
-        
+        writeln(value.toString());
         return value;
     }
 

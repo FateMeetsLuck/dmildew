@@ -55,9 +55,9 @@ int main(string[] args)
         auto chunk = compiler.compile(sourceText); // @suppress(dscanner.suspicious.unmodified)
         File outFile = File(outputFile, "wb");
         auto raw = chunk.serialize();
-        outFile.write(raw);
+        outFile.rawWrite(raw);
+        outFile.close();
         auto testChunk = Chunk.deserialize(raw);
-        debug writefln("Attempting to compile `%s` to `%s`", inputFile, outputFile);
     }
     catch(ScriptCompileException ex)
     {

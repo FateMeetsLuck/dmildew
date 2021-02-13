@@ -4,12 +4,32 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+    
         {
-            "name": "(gdb) Launch",
+            "name": "(gdb) BC Compiler",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bccompiler/dmildew_bccompiler",
+            "args": ["examples/closure.mds", "-o", "closure.mdc"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "(gdb) Run",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/run/dmildew_run",
-            "args": ["--usevm", "./examples/vmtest.mds"],
+            "args": ["examples/closure.mds"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

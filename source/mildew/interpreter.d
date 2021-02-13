@@ -1349,6 +1349,8 @@ private:
     ScriptAny getLocalThis()
     {
         bool _; // @suppress(dscanner.suspicious.unmodified)
+        if(!_currentEnvironment.variableOrConstExists("this"))
+            return ScriptAny.UNDEFINED;
         auto thisObj = *(_currentEnvironment.lookupVariableOrConst("this", _));
         return thisObj;
     }

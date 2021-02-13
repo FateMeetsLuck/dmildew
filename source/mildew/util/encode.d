@@ -4,9 +4,7 @@
  */
 module mildew.util.encode;
 
-import core.stdc.string;
-import std.range.primitives: ElementType;
-import std.traits: isBasicType, isArray;
+import std.traits: isBasicType;
 
 debug import std.stdio;
 
@@ -18,11 +16,13 @@ ubyte[] encode(T)(T value)
 	{
 		encoding ~= (cast(ubyte*)&value)[0..T.sizeof];
 	}
-	else static if(isArray!T)
+	else static if(is(T == E[], E))
 	{
+        static assert(isBasicType!E, "Only arrays of basic types are supported");
 		size_t size = value.length;
 		encoding ~= (cast(ubyte*)&size)[0..size.sizeof];
-		encoding ~= (cast(ubyte*)value.ptr)[0 .. value.length * ElementType!(T).sizeof];
+        foreach(item ; value)
+            encoding ~= encode(item);
 	}
 	else
 	{
@@ -31,20 +31,20 @@ ubyte[] encode(T)(T value)
 	return encoding;
 }
 
-/// decode a value from an ubyte pointer address
+/// decode a value from an ubyte pointer address. TODO parameter should be ubyte[] range.
 T decode(T)(in ubyte* ptr)
 {
     static if(isBasicType!T)
     {
         return *cast(T*)ptr;
     }
-    else static if(isArray!T)
+    else static if(is(T==E[], E))
     {
-        static assert(isBasicType!(ElementType!T), "Only arrays of basic types are supported");
+        static assert(isBasicType!E, "Only arrays of basic types are supported");
         size_t size = *cast(size_t*)ptr;
-        T array;
-        array.length = size;
-        memcpy(array.ptr, ptr+size_t.sizeof, size * ElementType!(T).sizeof);
+        T array = new T(size);
+        for(size_t i = 0; i < size; ++i)
+            array[i] = decode!E(ptr + size_t.sizeof + i * E.sizeof);
         return array;
     }
     else static assert(false, "Unable to decode type " ~ T.stringof);

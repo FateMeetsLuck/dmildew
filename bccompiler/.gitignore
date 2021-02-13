@@ -9,6 +9,7 @@ bccompiler.dll
 bccompiler.a
 bccompiler.lib
 bccompiler-test-*
+dmildew_bccompiler
 *.exe
 *.o
 *.obj
