@@ -685,48 +685,48 @@ public:
     /// read a ScriptAny from a stream of bytes. if invalid data, throws exception
     static ScriptAny deserialize(ref ubyte[] stream)
     {
-        debug import std.stdio;
+        // debug import std.stdio;
         import mildew.util.encode: decode;
         import mildew.types.array: ScriptArray;
         import mildew.types.string: ScriptString;
 
         ScriptAny value = ScriptAny.UNDEFINED;
-        value._type = cast(Type)decode!int(stream.ptr);
+        value._type = cast(Type)decode!int(stream);
         stream = stream[int.sizeof..$];
         switch(value._type)
         {
         case Type.NULL:
-            debug write("Decoding a null: ");
+            // debug write("Decoding a null: ");
             break;
         case Type.UNDEFINED:
-            debug write("Decoding undefined: ");
+            // debug write("Decoding undefined: ");
             break;
         case Type.BOOLEAN:
-            debug write("Decoding a boolean: ");
-            value._asBoolean = cast(bool)decode!ubyte(stream.ptr);
+            // debug write("Decoding a boolean: ");
+            value._asBoolean = cast(bool)decode!ubyte(stream);
             stream = stream[ubyte.sizeof..$];
             break;
         case Type.INTEGER:
-            debug write("Decoding a long: ");
-            value._asInteger = decode!long(stream.ptr);
+            // debug write("Decoding a long: ");
+            value._asInteger = decode!long(stream);
             stream = stream[long.sizeof..$];
             break;
         case Type.DOUBLE:
-            debug write("Decoding a double: ");
-            value._asDouble = decode!double(stream.ptr);
+            // debug write("Decoding a double: ");
+            value._asDouble = decode!double(stream);
             stream = stream[double.sizeof..$];
             break;
         case Type.STRING: {
-            debug write("Decoding a string: ");
-            auto str = cast(string)decode!(ubyte[])(stream.ptr);
+            // debug write("Decoding a string: ");
+            auto str = cast(string)decode!(ubyte[])(stream);
             stream = stream[size_t.sizeof..$];
             stream = stream[str.length*char.sizeof..$];
             value._asObject = new ScriptString(str);
             break;
         }
         case Type.ARRAY: {
-            debug write("Decoding an array: ");
-            immutable len = decode!size_t(stream.ptr);
+            // debug write("Decoding an array: ");
+            immutable len = decode!size_t(stream);
             stream = stream[size_t.sizeof..$];
             auto array = new ScriptAny[len];
             for(auto i = 0; i < len; ++i)
@@ -737,23 +737,23 @@ public:
             break;
         }
         case Type.FUNCTION: {
-            debug write("Decoding a function: ");
-            auto fnname = cast(string)decode!(ubyte[])(stream.ptr);
+            // debug write("Decoding a function: ");
+            auto fnname = cast(string)decode!(ubyte[])(stream);
             stream = stream[size_t.sizeof..$];
             stream = stream[fnname.length*char.sizeof..$];
             string[] args;
-            immutable argLen = decode!size_t(stream.ptr);
+            immutable argLen = decode!size_t(stream);
             stream = stream[size_t.sizeof..$];
             args = new string[argLen];
             for(auto i = 0; i < argLen; ++i)
             {
-                args[i] = cast(string)(decode!(ubyte[])(stream.ptr));
+                args[i] = cast(string)(decode!(ubyte[])(stream));
                 stream = stream[size_t.sizeof..$];
                 stream = stream[args[i].length * char.sizeof .. $];
             }
             bool isClass = cast(bool)stream[0];
             stream = stream[1..$];
-            auto compiled = decode!(ubyte[])(stream.ptr);
+            auto compiled = decode!(ubyte[])(stream);
             stream = stream[size_t.sizeof..$];
             stream = stream[compiled.length..$];
             value._asObject = new ScriptFunction(fnname.to!string, args, compiled, isClass);
@@ -766,7 +766,7 @@ public:
                 ~ to!string(cast(int)value._type) ~ ")", value);
         }
 
-        writeln(value.toString());
+        // writeln(value.toString());
         return value;
     }
 

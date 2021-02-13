@@ -8,7 +8,7 @@ import mildew.vm;
 
 private void printUsage()
 {
-    stderr.writeln("Usage: <name of script file> [-o=<outputfile>]");
+    stderr.writeln("Usage: <name of script file> [-o <outputfile>]");
 }
 
 int main(string[] args)

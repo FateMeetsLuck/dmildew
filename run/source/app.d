@@ -20,11 +20,15 @@ import mildew.types;
 /**
  * This runs a script program and prints the appropriate error message when a script exception is caught.
  */
-void evaluateWithErrorChecking(Interpreter interpreter, in string code, in string fileName, bool printDisasm)
+void evaluateWithErrorChecking(Interpreter interpreter, in string source, in string fileName, bool printDisasm)
 {
     try 
     {
-        auto result = interpreter.evaluate(code, printDisasm);
+        ScriptAny result;
+        if(source == "" && fileName != "<stdin>")
+            result = interpreter.evaluateFile(fileName, printDisasm);
+        else
+            result = interpreter.evaluate(source, printDisasm);
         writeln("The program successfully returned " ~ result.toString);
     }
     catch(ScriptCompileException ex)
@@ -67,7 +71,7 @@ int main(string[] args)
     try 
     {
         auto options = cast(immutable)getopt(args, 
-                "usevm", &useVM,
+                "usevm|u", &useVM,
                 "verbose|v", &printVMDebugInfo,
                 "disasm|d", &printDisasm);
         if(options.helpWanted) 
@@ -89,19 +93,7 @@ int main(string[] args)
     {
         string[] fileNames = args[1..$];
         foreach(fileName ; fileNames)
-        {
-            try 
-            {
-                auto code = readText(fileName);
-                evaluateWithErrorChecking(interpreter, code, fileName, printDisasm);
-            }
-            catch(FileException fex)
-            {
-                stderr.writeln("Could not read file " ~ fileName);
-                stderr.writeln(fex.msg);
-                return 66;
-            }
-        }
+            evaluateWithErrorChecking(interpreter, "", fileName, printDisasm);
     }    
     else
     {

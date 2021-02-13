@@ -32,22 +32,46 @@ ubyte[] encode(T)(T value)
 }
 
 /// decode a value from an ubyte pointer address. TODO parameter should be ubyte[] range.
-T decode(T)(in ubyte* ptr)
+T decode(T)(const ubyte[] data)
 {
     static if(isBasicType!T)
     {
-        return *cast(T*)ptr;
+        if(data.length < T.sizeof)
+            throw new EncodeException("Data length is too short for type " ~ T.stringof);
+        return *cast(T*)(data.ptr);
     }
     else static if(is(T==E[], E))
     {
         static assert(isBasicType!E, "Only arrays of basic types are supported");
-        size_t size = *cast(size_t*)ptr;
+        if(data.length < size_t.sizeof)
+            throw new EncodeException("Data length is shorter than size_t for " ~ T.stringof);
+        size_t size = *cast(size_t*)(data.ptr);
+        if(data.length < size_t.sizeof + E.sizeof * size)
+            throw new EncodeException("Data length is too short for array elements " ~ E.stringof);
         T array = new T(size);
-        for(size_t i = 0; i < size; ++i)
-            array[i] = decode!E(ptr + size_t.sizeof + i * E.sizeof);
+        static if(is(E==ubyte))
+        {
+            for(size_t i = 0; i < size; ++i)
+                array[i] = cast(E)data[size_t.sizeof + i];
+        }
+        else
+        {
+            for(size_t i = 0; i < size; ++i)
+                array[i] = cast(T)decode!E(data[size_t.sizeof..$]);
+        }
         return array;
     }
     else static assert(false, "Unable to decode type " ~ T.stringof);
+}
+
+/// Thrown when decoding
+class EncodeException : Exception
+{
+    /// ctor
+    this(string msg, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line);
+    }
 }
 
 unittest

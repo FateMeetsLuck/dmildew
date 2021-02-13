@@ -46,7 +46,7 @@ class Chunk
         if(stream[0] != 0x01)
             throw new ChunkDecodeException("Invalid file format, not a chunk file");
         stream = stream[1..$];
-        immutable magic = decode!uint(stream.ptr);
+        immutable magic = decode!uint(stream);
         stream = stream[uint.sizeof..$];
         if(magic != MAGIC)
         {
@@ -56,34 +56,37 @@ class Chunk
             else
                 throw new ChunkDecodeException("This is not a chunk file");
         }
-        immutable version_ = stream[0];
+        immutable version_ = decode!ubyte(stream);
         stream = stream[1..$];
         if(version_ != VERSION)
             throw new ChunkDecodeException("The version of the file is incompatible");
-        immutable sizeOfSizeT = stream[0];
+        immutable sizeOfSizeT = decode!ubyte(stream);
         stream = stream[1..$];
         if(sizeOfSizeT != size_t.sizeof)
             throw new ChunkDecodeException("Different CPU width, must recompile script for this machine");
-        immutable sizeOfMD = decode!size_t(stream.ptr);
+        immutable sizeOfMD = decode!size_t(stream);
         stream = stream[size_t.sizeof..$];
 
         Chunk chunk = new Chunk();
         chunk.constTable = ConstTable.deserialize(stream);
-        chunk.bytecode = decode!(ubyte[])(stream.ptr);
+        chunk.bytecode = decode!(ubyte[])(stream);
         stream = stream[size_t.sizeof..$];
         stream = stream[chunk.bytecode.length * ubyte.sizeof .. $];
         return chunk;
     }
 
-private:
     /// enums used when serializing to and from file in the future
     static const uint MAGIC = 0xB00BA911;
+    /// see above
     static const uint MAGIC_REVERSE = 0x11A90BB0;
+    /// binary file format version
     static const ubyte VERSION = 0x01; // file format version
 }
 
+/// Thrown when decoding binary chunk fails
 class ChunkDecodeException : Exception
 {
+    /// ctor
     this(string msg, string file = __FILE__, size_t line = __LINE__)
     {
         super(msg, file, line);

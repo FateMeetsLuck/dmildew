@@ -168,7 +168,7 @@ private int opNop(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opConst(VirtualMachine vm, Chunk chunk)
 {
-    immutable constID = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
+    immutable constID = decode!uint(chunk.bytecode[vm._ip + 1..$]);
     auto value = chunk.constTable.get(constID);
     if(value.type == ScriptAny.Type.FUNCTION)
         value = value.toValue!ScriptFunction().copyCompiled(vm._environment);
@@ -196,7 +196,7 @@ private int opConst1(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opPush(VirtualMachine vm, Chunk chunk)
 {
-    immutable index = decode!int(chunk.bytecode.ptr + vm._ip + 1);
+    immutable index = decode!int(chunk.bytecode[vm._ip + 1..$]);
     if(index < 0)
         vm._stack.push(vm._stack.array[$ + index]);
     else
@@ -216,7 +216,7 @@ private int opPop(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opPopN(VirtualMachine vm, Chunk chunk)
 {
-    immutable amount = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
+    immutable amount = decode!uint(chunk.bytecode[vm._ip + 1..$]);
     vm._stack.pop(amount);
     vm._ip += 1 + uint.sizeof;
     return 0;
@@ -225,7 +225,7 @@ private int opPopN(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opSet(VirtualMachine vm, Chunk chunk)
 {
-    immutable index = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
+    immutable index = decode!uint(chunk.bytecode[vm._ip + 1..$]);
     vm._stack.array[index] = vm._stack.array[$-1];
     vm._ip += 1 + uint.sizeof;
     return 0;
@@ -234,7 +234,7 @@ private int opSet(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opStack(VirtualMachine vm, Chunk chunk)
 {
-    immutable n = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
+    immutable n = decode!uint(chunk.bytecode[vm._ip + 1..$]);
     ScriptAny[] undefineds = new ScriptAny[n];
     vm._stack.push(undefineds);
     vm._ip += 1 + uint.sizeof;
@@ -252,7 +252,7 @@ private int opStack1(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opArray(VirtualMachine vm, Chunk chunk)
 {
-    immutable n = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
+    immutable n = decode!uint(chunk.bytecode[vm._ip + 1..$]);
     auto arr = vm._stack.pop(n);
     vm._stack.push(ScriptAny(arr));
     vm._ip += 1 + uint.sizeof;
@@ -262,7 +262,7 @@ private int opArray(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opObject(VirtualMachine vm, Chunk chunk)
 {
-    immutable n = decode!uint(chunk.bytecode.ptr + vm._ip + 1) * 2;
+    immutable n = decode!uint(chunk.bytecode[vm._ip + 1..$]) * 2;
     auto pairList = vm._stack.pop(n);
     auto obj = new ScriptObject("object", null, null);
     for(uint i = 0; i < n; i += 2)
@@ -275,10 +275,10 @@ private int opObject(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opClass(VirtualMachine vm, Chunk chunk)
 {
-    immutable numMethods = decode!ubyte(chunk.bytecode.ptr + vm._ip + 1);
-    immutable numGetters = decode!ubyte(chunk.bytecode.ptr + vm._ip + 2);
-    immutable numSetters = decode!ubyte(chunk.bytecode.ptr + vm._ip + 3);
-    immutable numStatics = decode!ubyte(chunk.bytecode.ptr + vm._ip + 4);
+    immutable numMethods = decode!ubyte(chunk.bytecode[vm._ip + 1..$]);
+    immutable numGetters = decode!ubyte(chunk.bytecode[vm._ip + 2..$]);
+    immutable numSetters = decode!ubyte(chunk.bytecode[vm._ip + 3..$]);
+    immutable numStatics = decode!ubyte(chunk.bytecode[vm._ip + 4..$]);
     auto baseClass = vm._stack.pop();
     auto ctor = vm._stack.pop(); // @suppress(dscanner.suspicious.unmodified)
     auto statics = vm._stack.pop(numStatics);
@@ -450,7 +450,7 @@ private int opDel(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opNew(VirtualMachine vm, Chunk chunk)
 {
-    immutable n = decode!uint(chunk.bytecode.ptr + vm._ip + 1) + 1;
+    immutable n = decode!uint(chunk.bytecode[vm._ip + 1..$]) + 1;
     auto callInfo = vm._stack.pop(n);
     auto funcAny = callInfo[0];
     auto args = callInfo[1..$];
@@ -546,7 +546,7 @@ private int opCloseScope(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opDeclVar(VirtualMachine vm, Chunk chunk)
 {
-    auto constID = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
+    auto constID = decode!uint(chunk.bytecode[vm._ip + 1..$]);
     auto varName = chunk.constTable.get(constID).toString();
     auto value = vm._stack.pop();
     immutable ok = vm._globals.declareVariableOrConst(varName, value, false);
@@ -559,7 +559,7 @@ private int opDeclVar(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opDeclLet(VirtualMachine vm, Chunk chunk)
 {
-    auto constID = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
+    auto constID = decode!uint(chunk.bytecode[vm._ip + 1..$]);
     auto varName = chunk.constTable.get(constID).toString();
     auto value = vm._stack.pop();
     immutable ok = vm._environment.declareVariableOrConst(varName, value, false);
@@ -572,7 +572,7 @@ private int opDeclLet(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opDeclConst(VirtualMachine vm, Chunk chunk)
 {
-    auto constID = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
+    auto constID = decode!uint(chunk.bytecode[vm._ip + 1..$]);
     auto varName = chunk.constTable.get(constID).toString();
     auto value = vm._stack.pop();
     immutable ok = vm._environment.declareVariableOrConst(varName, value, true);
@@ -585,7 +585,7 @@ private int opDeclConst(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opGetVar(VirtualMachine vm, Chunk chunk)
 {
-    auto constID = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
+    auto constID = decode!uint(chunk.bytecode[vm._ip + 1..$]);
     auto varName = chunk.constTable.get(constID).toString();
     bool isConst; // @suppress(dscanner.suspicious.unmodified)
     auto valuePtr = vm._environment.lookupVariableOrConst(varName, isConst);
@@ -599,7 +599,7 @@ private int opGetVar(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opSetVar(VirtualMachine vm, Chunk chunk)
 {
-    auto constID = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
+    auto constID = decode!uint(chunk.bytecode[vm._ip + 1..$]);
     auto varName = chunk.constTable.get(constID).toString();
     bool isConst; // @suppress(dscanner.suspicious.unmodified)
     auto varPtr = vm._environment.lookupVariableOrConst(varName, isConst);
@@ -728,7 +728,7 @@ private int opObjSet(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opCall(VirtualMachine vm, Chunk chunk)
 {
-    immutable n = decode!uint(chunk.bytecode.ptr + vm._ip + 1) + 2;
+    immutable n = decode!uint(chunk.bytecode[vm._ip + 1..$]) + 2;
     if(vm._stack.size < n)
     {
         vm.printStack();
@@ -797,7 +797,7 @@ private int opCall(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opJmpFalse(VirtualMachine vm, Chunk chunk)
 {
-    immutable jmpAmount = decode!int(chunk.bytecode.ptr + vm._ip + 1);
+    immutable jmpAmount = decode!int(chunk.bytecode[vm._ip + 1..$]);
     immutable shouldJump = vm._stack.pop();
     if(!shouldJump)
         vm._ip += jmpAmount;
@@ -809,7 +809,7 @@ private int opJmpFalse(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opJmp(VirtualMachine vm, Chunk chunk)
 {
-    immutable jmpAmount = decode!int(chunk.bytecode.ptr + vm._ip + 1);
+    immutable jmpAmount = decode!int(chunk.bytecode[vm._ip + 1..$]);
     vm._ip += jmpAmount;
     return 0;
 }
@@ -817,7 +817,7 @@ private int opJmp(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opSwitch(VirtualMachine vm, Chunk chunk)
 {
-    immutable relAbsJmp = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
+    immutable relAbsJmp = decode!uint(chunk.bytecode[vm._ip + 1..$]);
     auto valueToTest = vm._stack.pop();
     auto jumpTableArray = vm._stack.pop();
     // build the jump table out of the entries
@@ -843,8 +843,8 @@ private int opSwitch(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opGoto(VirtualMachine vm, Chunk chunk)
 {
-    immutable address = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
-    immutable depth = decode!ubyte(chunk.bytecode.ptr + vm._ip + 1 + uint.sizeof);
+    immutable address = decode!uint(chunk.bytecode[vm._ip + 1..$]);
+    immutable depth = decode!ubyte(chunk.bytecode[vm._ip+1+uint.sizeof..$]);
     for(ubyte i = 0; i < depth; ++i)
     {
         vm._environment = vm._environment.parent;
@@ -872,7 +872,7 @@ private int opRethrow(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opTry(VirtualMachine vm, Chunk chunk)
 {
-    immutable catchGoto = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
+    immutable catchGoto = decode!uint(chunk.bytecode[vm._ip + 1..$]);
     immutable depth = cast(int)vm._environment.depth();
     vm._tryData ~= VirtualMachine.TryData(depth, vm._stack.size, catchGoto);
     vm._ip += 1 + uint.sizeof;
@@ -904,7 +904,7 @@ private int opLoadExc(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opConcat(VirtualMachine vm, Chunk chunk)
 {
-    immutable n = decode!uint(chunk.bytecode.ptr + vm._ip + 1);
+    immutable n = decode!uint(chunk.bytecode[vm._ip + 1..$]);
     string result = "";
     auto values = vm._stack.pop(n);
     foreach(value ; values)
@@ -1405,7 +1405,7 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.CONST: {
-            immutable constID = decode!uint(chunk.bytecode.ptr + ip + 1);
+            immutable constID = decode!uint(chunk.bytecode[ip + 1..$]);
             printInstructionWithConstID(ip, op, constID, chunk);
             break;
         }
@@ -1414,7 +1414,7 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.PUSH: {
-            immutable index = decode!int(chunk.bytecode.ptr + ip + 1);
+            immutable index = decode!int(chunk.bytecode[ip + 1..$]);
             writefln("%05d: %s index=%s", ip, op.opCodeToString, index);
             break;
         }
@@ -1422,17 +1422,17 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.POPN: {
-            immutable amount = decode!uint(chunk.bytecode.ptr + ip + 1);
+            immutable amount = decode!uint(chunk.bytecode[ip + 1..$]);
             writefln("%05d: %s amount=%s", ip, op.opCodeToString, amount);
             break;
         }
         case OpCode.SET: {
-            immutable index = decode!uint(chunk.bytecode.ptr + ip + 1);
+            immutable index = decode!uint(chunk.bytecode[ip + 1..$]);
             writefln("%05d: %s index=%s", ip, op.opCodeToString, index);
             break;
         }
         case OpCode.STACK: {
-            immutable n = decode!uint(chunk.bytecode.ptr + ip + 1);
+            immutable n = decode!uint(chunk.bytecode[ip + 1..$]);
             writefln("%05d: %s n=%s", ip, op.opCodeToString, n);
             break;
         }
@@ -1440,20 +1440,20 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.ARRAY: {
-            immutable n = decode!uint(chunk.bytecode.ptr + ip + 1);
+            immutable n = decode!uint(chunk.bytecode[ip + 1..$]);
             writefln("%05d: %s n=%s", ip, op.opCodeToString, n);
             break;
         }
         case OpCode.OBJECT: {
-            immutable n = decode!uint(chunk.bytecode.ptr + ip + 1);
+            immutable n = decode!uint(chunk.bytecode[ip + 1..$]);
             writefln("%05d: %s n=%s", ip, op.opCodeToString, n);
             break;
         }
         case OpCode.CLASS: {
-            immutable numMethods = decode!ubyte(chunk.bytecode.ptr + ip + 1);
-            immutable numGetters = decode!ubyte(chunk.bytecode.ptr + ip + 2);
-            immutable numSetters = decode!ubyte(chunk.bytecode.ptr + ip + 3);
-            immutable numStatics = decode!ubyte(chunk.bytecode.ptr + ip + 4);
+            immutable numMethods = decode!ubyte(chunk.bytecode[ip + 1..$]);
+            immutable numGetters = decode!ubyte(chunk.bytecode[ip + 2..$]);
+            immutable numSetters = decode!ubyte(chunk.bytecode[ip + 3..$]);
+            immutable numStatics = decode!ubyte(chunk.bytecode[ip + 4..$]);
             writefln("%05d: %s %s,%s,%s,%s", ip, op.opCodeToString, numMethods, numGetters, numSetters, numStatics);
             break;
         }
@@ -1462,7 +1462,7 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.NEW: {
-            immutable args = decode!uint(chunk.bytecode.ptr + ip + 1);
+            immutable args = decode!uint(chunk.bytecode[ip + 1..$]);
             writefln("%05d: %s args=%s", ip, op.opCodeToString, args);
             break;
         }
@@ -1476,13 +1476,13 @@ class VirtualMachine
         case OpCode.DECLVAR: 
         case OpCode.DECLLET:
         case OpCode.DECLCONST: {
-            immutable constID = decode!uint(chunk.bytecode.ptr + ip + 1);
+            immutable constID = decode!uint(chunk.bytecode[ip + 1..$]);
             printInstructionWithConstID(ip, op, constID, chunk);
             break;
         }
         case OpCode.GETVAR:
         case OpCode.SETVAR: {
-            immutable constID = decode!uint(chunk.bytecode.ptr + ip + 1);
+            immutable constID = decode!uint(chunk.bytecode[ip + 1..$]);
             printInstructionWithConstID(ip, op, constID, chunk);
             break;
         }
@@ -1491,24 +1491,24 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.CALL: {
-            immutable args = decode!uint(chunk.bytecode.ptr + ip + 1);
+            immutable args = decode!uint(chunk.bytecode[ip + 1..$]);
             writefln("%05d: %s args=%s", ip, op.opCodeToString, args);
             break;
         }
         case OpCode.JMPFALSE: 
         case OpCode.JMP: {
-            immutable jump = decode!int(chunk.bytecode.ptr + ip + 1);
+            immutable jump = decode!int(chunk.bytecode[ip + 1..$]);
             writefln("%05d: %s jump=%s", ip, op.opCodeToString, jump);
             break;
         }
         case OpCode.SWITCH: {
-            immutable def = decode!uint(chunk.bytecode.ptr + ip + 1);
+            immutable def = decode!uint(chunk.bytecode[ip + 1..$]);
             writefln("%05d: %s default=%s", ip, op.opCodeToString, def);
             break;
         }
         case OpCode.GOTO: {
-            immutable instruction = decode!uint(chunk.bytecode.ptr + ip + 1);
-            immutable depth = decode!ubyte(chunk.bytecode.ptr + ip + 1 + uint.sizeof);
+            immutable instruction = decode!uint(chunk.bytecode[ip + 1..$]);
+            immutable depth = decode!ubyte(chunk.bytecode[ip + 1 + uint.sizeof..$]);
             writefln("%05d: %s instruction=%s, depth=%s", ip, op.opCodeToString, instruction, depth);
             break;
         }
@@ -1517,7 +1517,7 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.TRY: {
-            immutable catchGoto = decode!uint(chunk.bytecode.ptr + ip + 1);
+            immutable catchGoto = decode!uint(chunk.bytecode[ip + 1..$]);
             writefln("%05d: %s catch=%s", ip, op.opCodeToString, catchGoto);
             break;
         }
@@ -1526,7 +1526,7 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.CONCAT: {
-            immutable n = decode!uint(chunk.bytecode.ptr + ip + 1);
+            immutable n = decode!uint(chunk.bytecode[ip + 1..$]);
             writefln("%05d: %s n=%s", ip, op.opCodeToString, n);
             break;
         }

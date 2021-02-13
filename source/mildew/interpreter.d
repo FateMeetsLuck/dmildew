@@ -83,6 +83,7 @@ public:
      * constructor, bytecode compilation and execution will be used, otherwise tree walking.
      * Params:
      *  code = This is the code of a script to be executed.
+     *  printDisasm = If VM mode is set, print the disassembly of bytecode if true.
      * Returns:
      *  If the script has a return statement with an expression, this value will be the result of that expression
      *  otherwise it will be ScriptAny.UNDEFINED
@@ -109,6 +110,35 @@ public:
                 _vm.printChunk(chunk, true);
 
             return _vm.run(chunk, _printVMDebugInfo);
+        }
+    }
+
+    /**
+     * Evaluates a file that can be either binary bytecode or textual source code.
+     * Params:
+     *  pathName = the location of the code file in the file system.
+     * Returns:
+     *  The result of evaluating the file, undefined if no return statement.
+     */
+    ScriptAny evaluateFile(in string pathName, bool printDisasm=false)
+    {
+        import std.stdio: File, writefln;
+        import mildew.util.encode: decode;
+
+        File inputFile = File(pathName, "rb");
+        auto raw = new ubyte[inputFile.size];
+        raw = inputFile.rawRead(raw);
+        if(raw.length > 0 && raw[0] == 0x01)
+        {
+            auto chunk = Chunk.deserialize(raw);
+            if(printDisasm)
+                _vm.printChunk(chunk);
+            return _vm.run(chunk, _printVMDebugInfo);
+        }
+        else
+        {
+            auto source = cast(string)raw;
+            return evaluate(source, printDisasm);
         }
     }
 

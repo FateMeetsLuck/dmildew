@@ -70,7 +70,7 @@ public:
     static ConstTable deserialize(ref ubyte[] stream)
     {
         auto ct = new ConstTable();
-        ct._constants.length = decode!size_t(stream.ptr);
+        ct._constants.length = decode!size_t(stream);
         stream = stream[size_t.sizeof..$];
         for(auto i = 0; i < ct._constants.length; ++i)
             ct._constants[i] = ScriptAny.deserialize(stream);

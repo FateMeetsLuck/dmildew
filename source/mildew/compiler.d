@@ -612,14 +612,12 @@ public:
         isnode.onTrueStatement.accept(this);
         auto length2 = cast(int)_chunk.bytecode.length;
         auto jmpOverToPatch = genJmp();
-        // *jmpFalseToPatch = cast(int)_chunk.bytecode.length - length;
         *cast(int*)(_chunk.bytecode.ptr + jmpFalseToPatch) = cast(int)_chunk.bytecode.length - length;
         length = cast(int)_chunk.bytecode.length;
         if(isnode.onFalseStatement !is null)
         {
             isnode.onFalseStatement.accept(this);
         }
-        // *jmpOverToPatch = cast(int)_chunk.bytecode.length - length2;
         *cast(int*)(_chunk.bytecode.ptr + jmpOverToPatch) = cast(int)_chunk.bytecode.length - length2;
 
         return Variant(null);
@@ -1210,7 +1208,11 @@ private:
                 if((brk.labelName == label) || (brk.labelName == "" && brk.loopLevel == loopLevel))
                 {
                     *cast(uint*)(_chunk.bytecode.ptr + brk.gotoPatchParam) = cast(uint)breakGoto;
-                    _chunk.bytecode[brk.gotoPatchParam + uint.sizeof] = cast(ubyte)(brk.depth - depthCounter);
+                    immutable depthSize = brk.depth - depthCounter;
+                    if(depthSize > ubyte.max)
+                        throw new ScriptCompileException("Break depth exceeds ubyte.max",
+                            Token.createFakeToken(Token.Type.KEYWORD, "break"));
+                    _chunk.bytecode[brk.gotoPatchParam + uint.sizeof] = cast(ubyte)depthSize;
                     brk.patched = true;
                 }
             }
@@ -1224,7 +1226,11 @@ private:
                 if((cont.labelName == label) || (cont.labelName == "" && cont.loopLevel == loopLevel))
                 {
                     *cast(uint*)(_chunk.bytecode.ptr + cont.gotoPatchParam) = cast(uint)continueGoto;
-                    _chunk.bytecode[cont.gotoPatchParam + uint.sizeof] = cast(ubyte)(cont.depth - depthCounter);
+                    immutable depthSize = cont.depth - depthCounter;
+                    if(depthSize > ubyte.max)
+                        throw new ScriptCompileException("Continue depth exceeds ubyte.max",
+                            Token.createFakeToken(Token.Type.KEYWORD, "continue"));
+                    _chunk.bytecode[cont.gotoPatchParam + uint.sizeof] = cast(ubyte)depthSize;
                     cont.patched = true;
                 }
             }
