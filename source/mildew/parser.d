@@ -1268,9 +1268,12 @@ private:
             expressions ~= expression;
             if(_currentToken.type == Token.Type.COMMA)
                 nextToken();
-            else if(_currentToken.type != stop && !_currentToken.isKeyword("of")
+            else if(_currentToken.type != stop 
+              && !_currentToken.isKeyword("of")
               && !_currentToken.isKeyword("in"))
-                throw new ScriptCompileException("Comma separated list items must be separated by ','", _currentToken);
+                throw new ScriptCompileException("Comma separated list items must be separated by ','" 
+                    ~ " (or missing '" ~ Token.createFakeToken(stop, "").symbol ~ "')", 
+                    _currentToken);
         }
 
         return expressions;

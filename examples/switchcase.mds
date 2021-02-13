@@ -7,7 +7,7 @@ function test(value) {
         case 0:
             console.log("Value was 0");
             break;
-        case 5:
+        case 2+3:
             console.log("Value was 5");
             break;
         case "foo": case 69:

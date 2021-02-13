@@ -1,6 +1,6 @@
 /*
 The class keyword provides syntactic sugar around the prototypal inheritance system, as well as allowing properties (but not fields)
-to be defined.
+to be defined. Fields are created by assigning members to "this" in the constructor.
 */
 class Person {
     constructor(name, age) {

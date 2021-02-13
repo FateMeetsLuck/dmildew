@@ -65,7 +65,7 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Implement ES6 destructuring declaration and assignments of arrays and objects into variables.
 * Implement lambda functions.
 * Implement a regular expression library. Regex literals will probably never be supported.
-* Bind native classes and functions with one line of code with mixins and template metaprogramming.
+* Bind native classes and functions with one line of code with mixins and template metaprogramming. Or write software that will analyze D source files and generate bindings.
 * Write a more complete and robust standard library for the scripting language.
 * Allow unicode support for source code text.
 * Implement yield keyword.

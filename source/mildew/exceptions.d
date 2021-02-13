@@ -60,8 +60,7 @@ class ScriptCompileException : Exception
  *
  * In VM mode this exception is also thrown once a traceback of line numbers has been collected.
  *
- * This exception can also be "thrown" and caught
- * by the script.
+ * This exception can also be "thrown" and caught by the script.
  */
 class ScriptRuntimeException : Exception
 {

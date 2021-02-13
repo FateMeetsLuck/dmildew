@@ -23,8 +23,7 @@ function markovChain(text, keySize, outputSize) {
         }
         let value = (i + keySize < words.length) ? words[i + keySize] : "";
         if(dict[key] === undefined) {
-            let list = [];
-            list = list.concat(value);
+            let list = [ value ];
             dict[key] = list;
         } else {
             dict[key] = dict[key].concat(value);
