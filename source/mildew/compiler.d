@@ -713,18 +713,19 @@ public:
     {
         _debugInfoStack.top.addLine(_chunk.bytecode.length, dwsnode.line);
         ++_compDataStack.top.loopOrSwitchStack;
-        immutable continueLocation = _chunk.bytecode.length;
-        // first emit the body for the guaranteed once run
+        immutable doWhile = _chunk.bytecode.length;
         dwsnode.bodyNode.accept(this);
+        immutable continueLocation = _chunk.bytecode.length;
+        dwsnode.conditionNode.accept(this);
+        _chunk.bytecode ~= OpCode.NOT;
+        immutable whileCondition = _chunk.bytecode.length;
+        immutable jmpFalse = genJmpFalse();
+        *cast(int*)(_chunk.bytecode.ptr + jmpFalse) = -cast(int)(whileCondition - doWhile);
         immutable breakLocation = _chunk.bytecode.length;
-        // patch the breaks or continues that may happen in the first run.
         patchBreaksAndContinues(dwsnode.label, breakLocation, continueLocation, _compDataStack.top.depthCounter,
                 _compDataStack.top.loopOrSwitchStack);
         --_compDataStack.top.loopOrSwitchStack;
         removePatches();
-        // reconstruct into while-loop and emit it
-        auto wsnode = new WhileStatementNode(dwsnode.line, dwsnode.conditionNode, dwsnode.bodyNode, dwsnode.label);
-        wsnode.accept(this);
         return Variant(null);
     }
 

@@ -68,5 +68,24 @@ function testSuper() {
     console.log(un.testProp);
 }
 
-testSuper();
+// testSuper();
+
+function testDoWhile()
+{
+    let i = 0;
+    do {
+        if(i == 2)
+        {
+            ++i;
+            continue;
+        }
+        if(i == 4)
+            break;
+        console.log(`i=${i}`);
+        ++i;
+    } while(i < 5);
+
+}
+
+testDoWhile();
 
