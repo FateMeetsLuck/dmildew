@@ -1301,7 +1301,7 @@ private:
     Token[] peekTokens(int numToPeek)
     {
         Token[] list;
-        for(size_t i = _tokenIndex+1; i < _tokenIndex+1+numToPeek; ++i)
+        for(size_t i = _tokenIndex; i < _tokenIndex+numToPeek; ++i)
         {
             if(i < _tokens.length)
                 list ~= _tokens[i];

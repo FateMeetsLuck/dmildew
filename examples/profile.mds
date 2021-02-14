@@ -1,9 +1,9 @@
 // This program is more optimized if one uses a direct constant instead of assigning one
-let start = System.getCurrentMillis();
+let start = System.currentTimeMillis();
 const LIMIT = 1000000;
 for(let i=0; i < LIMIT; ++i) {
 
 }
-let totalms = System.getCurrentMillis() - start;
+let totalms = System.currentTimeMillis() - start;
 console.log(`It took ${totalms} ms to count to ${LIMIT}`);
 // As of 2/11/2021 17:19 It took the VM 1173 ms to execute this program and 1885 ms in interpreted mode

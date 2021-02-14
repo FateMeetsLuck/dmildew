@@ -187,7 +187,9 @@ private ScriptAny native_Math_ceil(Environment env,
         return ScriptAny(double.nan);
     if(!args[0].isNumber)
         return ScriptAny(double.nan);
-    return ScriptAny(math.ceil(args[0].toValue!double));
+    if(args[0].isInteger)
+        return ScriptAny(args[0].toValue!long);
+    return ScriptAny(cast(long)math.ceil(args[0].toValue!double));
 }
 
 private ScriptAny native_Math_clz32(Environment env,
@@ -260,7 +262,9 @@ private ScriptAny native_Math_floor(Environment env,
         return ScriptAny(double.nan);
     if(!args[0].isNumber)
         return ScriptAny(double.nan);
-    return ScriptAny(math.floor(args[0].toValue!double));
+    if(args[0].isInteger)
+        return ScriptAny(args[0].toValue!long);
+    return ScriptAny(cast(long)math.floor(args[0].toValue!double));
 }
 
 private ScriptAny native_Math_fround(Environment env,
@@ -286,7 +290,7 @@ private ScriptAny native_Math_hypot(Environment env,
     {
         if(!arg.isNumber)
             return ScriptAny(double.nan);
-        sum += arg.toValue!double;
+        sum += arg.toValue!double * arg.toValue!double;
     }
     return ScriptAny(math.sqrt(sum));
 }
@@ -427,7 +431,9 @@ private ScriptAny native_Math_round(Environment env,
         return ScriptAny(double.nan);
     if(!args[0].isNumber)
         return ScriptAny(double.nan);
-    return ScriptAny(math.round(args[0].toValue!double));
+    if(args[0].isInteger)
+        return ScriptAny(args[0].toValue!long);
+    return ScriptAny(cast(long)math.round(args[0].toValue!double));
 }
 
 private ScriptAny native_Math_sign(Environment env,

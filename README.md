@@ -52,6 +52,8 @@ Closure functions that refer to variables in an outer scope beyond the immediate
 
 The "super" keyword cannot be used to access static base class methods.
 
+DMildew is not optimized for computationally heavy tasks. The design of the language focuses on interoperability with D native functions and CPU intensive operations should be moved to native implementations and called from the scripting language.
+
 DMildew has only been tested on Windows and Linux x86_64 operating systems. Please test on other operating systems to report problems. Note that compiled bytecode is platform dependent (byte order matters) and bytecode scripts must be compiled for each platform, similar to Lua.
 
 ## Help
@@ -68,4 +70,4 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Bind native classes and functions with one line of code with mixins and template metaprogramming. Or write software that will analyze D source files and generate bindings.
 * Write a more complete and robust standard library for the scripting language.
 * Allow unicode support for source code text.
-* Implement yield keyword.
+* Implement yield keyword and Generators. Yield may not become an expression.

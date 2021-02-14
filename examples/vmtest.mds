@@ -4,9 +4,9 @@
  */
 function profile()
 {
-    let start = System.getCurrentMillis();
+    let start = System.currentTimeMillis();
     for(let i = 0; i < 1000000; ++i) {}
-    let total = System.getCurrentMillis() - start;
+    let total = System.currentTimeMillis() - start;
     console.log(`Took ${total} ms`); 
 }
 
@@ -87,5 +87,5 @@ function testDoWhile()
 
 }
 
-testDoWhile();
+// testDoWhile();
 
