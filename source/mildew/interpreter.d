@@ -567,6 +567,8 @@ public:
     /// handle array index
 	Variant visitArrayIndexNode(ArrayIndexNode ainode)
 	{
+        import std.utf: UTFException;
+
 		VisitResult vr = ainode.indexValueNode.accept(this).get!VisitResult;
         if(vr.exception !is null)
             return Variant(vr);
@@ -599,12 +601,20 @@ public:
             vr.objectToAccess = objVR.result;
             if(auto asString = objVR.result.toValue!ScriptString)
             {
-                // TODO catch the UTFException and just return whatever
-                auto wstr = asString.getWString();
-                if(indexAsNum >= wstr.length)
+                auto str = asString.toString();
+                if(indexAsNum >= str.length)
                     vr.result = ScriptAny.UNDEFINED;
                 else
-                    vr.result = ScriptAny(cast(wstring)([ wstr[indexAsNum] ]));
+                {
+                    try 
+                    {
+                        vr.result = ScriptAny([ str[indexAsNum] ]);
+                    }
+                    catch(UTFException)
+                    {
+                        vr.result = ScriptAny.UNDEFINED;
+                    }
+                }
             }
             else if(auto asArray = objVR.result.toValue!ScriptArray)
             {

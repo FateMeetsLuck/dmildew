@@ -48,41 +48,17 @@ public:
     }
 
     /**
-     * Gets the wstring UTF-16 representation
-     */
-    wstring getWString() const
-    {
-        return _string.to!wstring;
-    }
-
-    /**
      * This override allows for the length field
      */
     override ScriptAny lookupField(in string name)
     {
         if(name == "length")
-            return ScriptAny(getWString.length);
+            return ScriptAny(_string.length);
         else
             return super.lookupField(name);
     }
 
     // methods to bind
-
-package:
-    // TODO catch utf exceptions or process sequentially
-    wchar charAt(size_t index)
-    {
-        if(index >= getWString.length)
-            return '\0';
-        return getWString[index];
-    }
-
-    ushort charCodeAt(size_t index)
-    {
-        if(index >= getWString.length)
-            return 0;
-        return cast(ushort)(getWString[index]);
-    }
 
 private:
     string _string;

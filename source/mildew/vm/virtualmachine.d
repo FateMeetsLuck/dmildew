@@ -646,6 +646,8 @@ private int opSetVar(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opObjGet(VirtualMachine vm, Chunk chunk)
 {
+    import std.utf: UTFException;
+
     auto objToAccess = vm._stack.array[$-2];
     auto field = vm._stack.array[$-1]; // @suppress(dscanner.suspicious.unmodified)
     vm._stack.pop(2);
@@ -666,12 +668,19 @@ private int opObjGet(VirtualMachine vm, Chunk chunk)
         }
         else if(objToAccess.type == ScriptAny.Type.STRING)
         {
-            auto wstr = objToAccess.toValue!(ScriptString)().getWString();
+            auto str = objToAccess.toValue!(ScriptString)().toString();
             if(index < 0)
-                index = wstr.length + index;
-            if(index < 0 || index >= wstr.length)
+                index = str.length + index;
+            if(index < 0 || index >= str.length)
                 return throwRuntimeError("Out of bounds string access", vm, chunk);
-            vm._stack.push(ScriptAny([wstr[index]]));
+            try 
+            {
+                vm._stack.push(ScriptAny([str[index]]));
+            }
+            catch(UTFException)
+            {
+                vm._stack.push(ScriptAny.UNDEFINED);
+            }
         }
     }
     else // else object field or property access

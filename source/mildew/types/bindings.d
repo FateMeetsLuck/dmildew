@@ -44,7 +44,16 @@ void initializeTypesLibrary(Interpreter interpreter)
             &native_Object_s_getOwnPropertyDescriptor);
     Object_ctor["keys"] = new ScriptFunction("Object.keys", &native_Object_s_keys);
     Object_ctor["values"] = new ScriptFunction("Object.values", &native_Object_s_values);
+    ScriptAny String_ctor = new ScriptFunction("String", &native_String_ctor, true);
+    String_ctor["prototype"] = getStringPrototype();
+    String_ctor["prototype"]["constructor"] = String_ctor;
+    String_ctor["fromCharCode"] = new ScriptFunction("String.fromCharCode",
+            &native_String_s_fromCharCode);
+    String_ctor["fromCodePoint"] = new ScriptFunction("String.fromCodePoint",
+            &native_String_s_fromCodePoint);
+
     interpreter.forceSetGlobal("Object", Object_ctor, false); // maybe should be const
+    interpreter.forceSetGlobal("String", String_ctor, false);
 }
 
 ScriptObject getObjectPrototype()
@@ -91,7 +100,29 @@ ScriptObject getStringPrototype()
         _stringPrototype["charAt"] = new ScriptFunction("String.prototype.charAt", &native_String_charAt);
         _stringPrototype["charCodeAt"] = new ScriptFunction("String.prototype.charCodeAt", 
                 &native_String_charCodeAt);
+        _stringPrototype["codePointAt"] = new ScriptFunction("String.prototype.codePointAt",
+                &native_String_codePointAt);
+        _stringPrototype["concat"] = new ScriptFunction("String.prototype.concat", &native_String_concat);
+        _stringPrototype["endsWith"] = new ScriptFunction("String.prototype.endsWith", &native_String_endsWith);
+        _stringPrototype["includes"] = new ScriptFunction("String.prototype.includes", &native_String_includes);
+        _stringPrototype["indexOf"] = new ScriptFunction("String.prototype.indexOf", &native_String_indexOf);
+        _stringPrototype["lastIndexOf"] = new ScriptFunction("String.prototype.lastIndexOf",
+                &native_String_lastIndexOf);
+        _stringPrototype["padEnd"] = new ScriptFunction("String.prototype.padEnd", &native_String_padEnd);
+        _stringPrototype["padStart"] = new ScriptFunction("String.prototype.padStart",
+                &native_String_padStart);
+        _stringPrototype["repeat"] = new ScriptFunction("String.prototype.repeat", &native_String_repeat);
+        _stringPrototype["replace"] = new ScriptFunction("String.prototype.replace", &native_String_replace);
+        _stringPrototype["replaceAll"] = new ScriptFunction("String.prototype.replaceAll",
+                &native_String_replaceAll);
+        _stringPrototype["slice"] = new ScriptFunction("String.prototype.slice", &native_String_slice);
         _stringPrototype["split"] = new ScriptFunction("String.prototype.split", &native_String_split);
+        _stringPrototype["startsWith"] = new ScriptFunction("String.prototype/startsWith", &native_String_startsWith);
+        _stringPrototype["substring"] = new ScriptFunction("String.prototype.substring", &native_String_substring);
+        _stringPrototype["toLowerCase"] = new ScriptFunction("String.prototype.toLowerCase",
+                &native_String_toLowerCase);
+        _stringPrototype["toUpperCase"] = new ScriptFunction("String.prototype.toUpperCase", 
+                &native_String_toUpperCase);
     }
     return _stringPrototype;
 }
@@ -425,21 +456,42 @@ private ScriptAny native_Function_apply(Environment c, ScriptAny* thisIsFn, Scri
 // String methods /////////////////////////////////////////////////////////////  
 //
 
+/// Creates a string by converting arguments to strings and concatenating them
+private ScriptAny native_String_ctor(Environment env, ScriptAny* thisObj,
+                                     ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto str = "";
+    foreach(arg ; args)
+    {
+        str ~= arg.toString();
+    }
+    *thisObj = ScriptAny(str);
+    return ScriptAny.UNDEFINED;
+}
+
 private ScriptAny native_String_charAt(Environment c, ScriptAny* thisObj,
                                        ScriptAny[] args, ref NativeFunctionError nfe)
 {
+    import std.utf: UTFException;
+
     if(thisObj.type != ScriptAny.Type.STRING)
         return ScriptAny.UNDEFINED;
-    if(args.length < 1)
-        return ScriptAny.UNDEFINED;
 
-    auto ss = thisObj.toValue!ScriptString;
-    auto index = args[0].toValue!size_t;
+    auto ss = thisObj.toString();
+    immutable size_t index = args.length > 0 ? args[0].toValue!size_t : 0;
 
-    if(index >= ss.getWString.length)
+    if(index >= ss.length)
         return ScriptAny("");
 
-    return ScriptAny([ss.charAt(index)]);
+    try
+    {
+        immutable char ch = ss[index];
+        return ScriptAny([ch]);
+    }
+    catch(UTFException ex)
+    {
+        return ScriptAny("");
+    }
 }
 
 private ScriptAny native_String_charCodeAt(Environment c, ScriptAny* thisObj,
@@ -450,16 +502,279 @@ private ScriptAny native_String_charCodeAt(Environment c, ScriptAny* thisObj,
     if(args.length < 1)
         return ScriptAny.UNDEFINED;
 
-    auto ss = thisObj.toValue!ScriptString;
-    auto index = args[0].toValue!size_t;
+    auto ss = thisObj.toString();
+    immutable size_t index = args.length > 0 ? args[0].toValue!size_t : 0;
 
-    if(index >= ss.getWString.length)
+    if(index >= ss.length)
         return ScriptAny(0);
 
-    return ScriptAny(ss.charCodeAt(index));
+    return ScriptAny(cast(ubyte)ss[index]);
 }
 
-private ScriptAny native_String_split(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+private ScriptAny native_String_codePointAt(Environment env, ScriptAny* thisObj,
+                                            ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+
+    auto str = thisObj.toString();
+    immutable size_t index = args.length >= 1 ? args[0].toValue!size_t: 0;
+    size_t counter = 0;
+    foreach(dchar dch ; str)
+    {
+        if(counter == index)
+            return ScriptAny(cast(uint)dch);
+        ++counter;
+    }
+    return ScriptAny.UNDEFINED;
+}
+
+private ScriptAny native_String_concat(Environment env, ScriptAny* thisObj,
+                                       ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    auto str = thisObj.toString();
+    foreach(arg ; args)
+    {
+        str ~= arg.toString();
+    }
+    return ScriptAny(str);
+}
+
+private ScriptAny native_String_endsWith(Environment env, ScriptAny* thisObj,
+                                         ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny(false);
+    auto str = thisObj.toString();
+    if(args.length < 1)
+        return ScriptAny(true);
+    auto testStr = args[0].toString();
+    size_t limit = args.length > 1 ? args[1].toValue!size_t : str.length;
+    if(limit > str.length)
+        limit = str.length;
+    str = str[0..limit];
+    if(testStr.length > str.length)
+        return ScriptAny(false);
+    return ScriptAny(str[$-testStr.length .. $] == testStr);
+}
+
+private ScriptAny native_String_s_fromCharCode(Environment env, ScriptAny* thisObj,
+                                               ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.utf: UTFException;
+    auto result = "";
+    foreach(arg ; args)
+    {
+        try 
+        {
+            result ~= cast(char)(arg.toValue!uint % 256);
+        }
+        catch(UTFException ex)
+        {
+            return ScriptAny.UNDEFINED;
+        }
+    }
+    return ScriptAny(result);
+}
+
+private ScriptAny native_String_s_fromCodePoint(Environment env, ScriptAny* thisObj,
+                                                ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.utf: UTFException;
+    dstring result = "";
+    foreach(arg ; args)
+    {
+        try 
+        {
+            result ~= cast(dchar)(arg.toValue!uint);
+        }
+        catch(UTFException ex)
+        {
+            return ScriptAny.UNDEFINED;
+        }
+    }
+    return ScriptAny(result);
+}
+
+private ScriptAny native_String_includes(Environment env, ScriptAny* thisObj,
+                                         ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.string: indexOf;
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny(false);
+    auto str = thisObj.toString();
+    if(args.length < 1)
+        return ScriptAny(true);
+    auto search = args[0].toString();
+    return ScriptAny(str.indexOf(search) != -1);
+}
+
+private ScriptAny native_String_indexOf(Environment env, ScriptAny* thisObj,
+                                        ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.string: indexOf;
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny(-1);
+    auto str = thisObj.toString();
+    if(args.length < 1)
+        return ScriptAny(0);
+    auto searchText = args[0].toString();
+    return ScriptAny(str.indexOf(searchText));
+}
+
+private ScriptAny native_String_lastIndexOf(Environment env, ScriptAny* thisObj,
+                                            ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.string: lastIndexOf;
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny(-1);
+    auto str = thisObj.toString();
+    if(args.length < 1)
+        return ScriptAny(0);
+    auto searchText = args[0].toString();
+    immutable startIdx = args.length > 1 ? args[1].toValue!long : str.length;
+    return ScriptAny(str.lastIndexOf(searchText, startIdx));
+}
+
+// TODO match once regular expressions are implemented
+
+// TODO matchAll once regular expressions and Generators are implemented
+
+private ScriptAny native_String_padEnd(Environment env, ScriptAny* thisObj,
+                                       ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    auto str = thisObj.toString();
+    if(args.length < 1)
+        return *thisObj;
+    immutable numPadding = args[0].toValue!long;
+    auto padding = args.length > 1 ? args[1].toString(): " ";
+    if(str.length > numPadding)
+        return *thisObj;
+    if(padding.length == 0)
+        return *thisObj;
+    immutable amountToAdd = (numPadding - str.length) / padding.length;
+    for(auto i = 0; i < amountToAdd+1; ++i)
+        str ~= padding;
+    return ScriptAny(str[0..numPadding]);
+}
+
+private ScriptAny native_String_padStart(Environment env, ScriptAny* thisObj,
+                                         ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    auto str = thisObj.toString();
+    if(args.length < 1)
+        return *thisObj;
+    immutable numPadding = args[0].toValue!long;
+    auto padding = args.length > 1 ? args[1].toString(): " ";
+    if(padding.length == 0)
+        return *thisObj;
+    if(str.length > numPadding)
+        return *thisObj;
+    immutable amountToAdd = (numPadding - str.length) / padding.length;
+    string frontString = "";
+    for(auto i = 0; i < amountToAdd+1; ++i)
+        frontString ~= padding;
+    frontString = frontString[0..numPadding-str.length];
+    return ScriptAny(frontString ~ str);
+}
+
+// TODO not add String.raw but add C# @`...` for true literal strings
+
+private ScriptAny native_String_repeat(Environment env, ScriptAny* thisObj,
+                                       ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    auto str = thisObj.toString();
+    auto result = "";
+    immutable size_t timesToRepeat = args.length >= 1 ? args[0].toValue!size_t: 0;
+    for(size_t i = 0; i < timesToRepeat; ++i)
+        result ~= str;
+    return ScriptAny(result);
+}
+
+// TODO handle regex as first argument once implemented
+// TODO handle second argument as possible function
+private ScriptAny native_String_replace(Environment env, ScriptAny* thisObj,
+                                        ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.string: indexOf;
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    if(args.length < 2)
+        return *thisObj;
+    auto str = thisObj.toString();
+    auto pattern = args[0].toString();
+    immutable replacement = args[1].toString();
+    immutable index = str.indexOf(pattern);
+    if(index != -1)
+    {
+        str = str[0..index] ~ replacement ~ str[index+pattern.length..$];
+        return ScriptAny(str);
+    }
+    return *thisObj;
+}
+
+// TODO handle regex as first argument once implemented
+// TODO handle second argument as possible function
+private ScriptAny native_String_replaceAll(Environment env, ScriptAny* thisObj,
+                                        ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.array: replace;
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    if(args.length < 2)
+        return *thisObj;
+    auto str = thisObj.toString();
+    auto pattern = args[0].toString();
+    auto replacement = args[1].toString();
+    return ScriptAny(str.replace(pattern, replacement));    
+}
+
+// TODO String.prototype.search(someRegex)
+
+private ScriptAny native_String_slice(Environment env, ScriptAny* thisObj,
+                                      ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.utf : UTFException;
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    
+    auto str = thisObj.toString();
+
+    long start = args.length > 0 ? args[0].toValue!long : 0;
+    long end = args.length > 1 ? args[1].toValue!long : str.length;
+
+    if(start < 0)
+        start = str.length + start;
+    if(end < 0)
+        end = str.length + end;
+    
+    if(start < 0 || start > str.length)
+        start = 0;
+    
+    if(end < 0 || end > str.length)
+        end = str.length;
+
+    try 
+    {
+        str = str[start..end];
+        return ScriptAny(str);
+    }
+    catch(UTFException ex)
+    {
+        return ScriptAny.UNDEFINED;
+    }
+}
+
+private ScriptAny native_String_split(Environment env, ScriptAny* thisObj, 
+                                      ScriptAny[] args, ref NativeFunctionError nfe)
 {
     import std.array: split;
     if(thisObj.type != ScriptAny.Type.STRING)
@@ -469,4 +784,59 @@ private ScriptAny native_String_split(Environment c, ScriptAny* thisObj, ScriptA
         splitter = args[0].toString();
     auto splitResult = thisObj.toString().split(splitter);
     return ScriptAny(splitResult);
+}
+
+private ScriptAny native_String_startsWith(Environment env, ScriptAny* thisObj,
+                                           ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny(false);
+    auto str = thisObj.toString();
+    string substring = args.length > 0 ? args[0].toString() : "";
+    size_t startIndex = args.length > 1 ? args[1].toValue!size_t : 0;
+    if(startIndex > str.length)
+        startIndex = str.length;
+    str = str[startIndex..$];
+    if(str.length < substring.length)
+        return ScriptAny(false);
+    return ScriptAny(str[0..substring.length] == substring);
+}
+
+private ScriptAny native_String_substring(Environment env, ScriptAny* thisObj,
+                                          ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.conv: to;
+
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    auto dstr = to!dstring(thisObj.toString());
+    long startIndex = args.length > 0 ? args[0].toValue!long : 0;
+    long endIndex = args.length > 1 ? args[1].toValue!long : dstr.length;
+    if(startIndex < 0)
+        startIndex = dstr.length + startIndex;
+    if(endIndex < 0)
+        endIndex = dstr.length + endIndex;
+    if(startIndex < 0 || startIndex >= dstr.length)
+        startIndex = 0;
+    if(endIndex < 0 || endIndex >= dstr.length)
+        endIndex = dstr.length;
+    return ScriptAny(dstr[startIndex..endIndex]);
+}
+
+private ScriptAny native_String_toLowerCase(Environment env, ScriptAny* thisObj,
+                                            ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.uni : toLower;
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    return ScriptAny(toLower(thisObj.toString()));
+}
+
+private ScriptAny native_String_toUpperCase(Environment env, ScriptAny* thisObj,
+                                            ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.uni : toUpper;
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    return ScriptAny(toUpper(thisObj.toString()));
 }
