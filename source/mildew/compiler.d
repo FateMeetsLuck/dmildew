@@ -78,6 +78,23 @@ public:
         return send;
     }
 
+    /**
+     * This is strictly for use by the Parser to evaluate case expressions and such.
+     */
+    package Chunk compile(StatementNode[] statements)
+    {
+        _chunk = new Chunk();
+        _compDataStack.push(CompilationData.init);
+        _debugInfoStack.push(new DebugInfo(""));
+        auto block = new BlockStatementNode(1, statements);
+        block.accept(this);
+        destroy(block);
+        Chunk send = _chunk;
+        _chunk = null;
+        _compDataStack.pop();
+        return send;
+    }
+
 // The visitNode methods are not intended for public use but are required to be public by D language constraints
 
     /// handle literal value node (easiest)

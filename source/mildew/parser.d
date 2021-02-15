@@ -320,6 +320,26 @@ package:
 
 private:
 
+    ScriptAny evaluateCTFE(ExpressionNode expr)
+    {
+        import mildew.environment: Environment;
+        import mildew.compiler: Compiler;
+        import mildew.vm.chunk: Chunk;
+        import mildew.vm.virtualmachine: VirtualMachine;
+        auto ret = new ReturnStatementNode(0, expr);
+        auto compiler = new Compiler();
+        auto chunk = compiler.compile([ret]);
+        auto vm = new VirtualMachine(new Environment(null, "<ctfe>"));
+        try 
+        {
+            return vm.run(chunk);
+        }
+        catch(Exception ex)
+        {
+            return ScriptAny.UNDEFINED;
+        }
+    }
+
     /// parses a single statement
     StatementNode parseStatement()
     {
@@ -1218,10 +1238,6 @@ private:
 
     SwitchStatementNode parseSwitchStatement() 
     {
-        import std.variant: Variant;
-        import mildew.interpreter: Interpreter;
-        import mildew.exceptions: ScriptRuntimeException;
-
         ++_functionContextStack.top.switchStack;
         immutable lineNumber = _currentToken.position.line;
         immutable switchToken = _currentToken;
@@ -1241,7 +1257,6 @@ private:
         StatementNode[] statementNodes;
         size_t defaultStatementID = size_t.max;
         size_t[ScriptAny] jumpTable;
-        Interpreter interpreter = new Interpreter();
         while(_currentToken.type != Token.Type.RBRACE)
         {
             if(_currentToken.isKeyword("case"))
@@ -1250,15 +1265,21 @@ private:
                 caseStarted = true;
                 auto caseExpression = parseExpression();
                 // it has to be evaluatable at compile time
-                auto vr = caseExpression.accept(interpreter).get!(Interpreter.VisitResult);
+                /*auto vr = caseExpression.accept(interpreter).get!(Interpreter.VisitResult);
                 if(vr.exception !is null || vr.result == ScriptAny.UNDEFINED)
                     throw new ScriptCompileException("Case expression must be determined at compile time", switchToken);
+                */
+                auto result = evaluateCTFE(caseExpression);
+                if(result == ScriptAny.UNDEFINED)
+                    throw new ScriptCompileException(
+                        "Case expression must be determined at compile time and cannot be undefined", 
+                        switchToken);
                 if(_currentToken.type != Token.Type.COLON)
                     throw new ScriptCompileException("Expected ':' after case expression", _currentToken);
                 nextToken();
-                if(vr.result in jumpTable)
+                if(result in jumpTable)
                     throw new ScriptCompileException("Duplicate case entries not allowed", switchToken);
-                jumpTable[vr.result] = statementCounter;
+                jumpTable[result] = statementCounter;
             }
             else if(_currentToken.isKeyword("default"))
             {
@@ -1309,7 +1330,7 @@ private:
             argList ~= _currentToken.text;
             nextToken();
         }
-        // sanity check, make sure arrow
+        // make sure arrow
         if(_currentToken.type != Token.Type.ARROW)
             throw new ScriptCompileException("Arrow expected after lambda argument list", _currentToken);
         auto arrow = _currentToken;
