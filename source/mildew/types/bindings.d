@@ -44,6 +44,14 @@ void initializeTypesLibrary(Interpreter interpreter)
             &native_Object_s_getOwnPropertyDescriptor);
     Object_ctor["keys"] = new ScriptFunction("Object.keys", &native_Object_s_keys);
     Object_ctor["values"] = new ScriptFunction("Object.values", &native_Object_s_values);
+
+    ScriptAny Array_ctor = new ScriptFunction("Array", &native_Array_ctor, true);
+    Array_ctor["prototype"] = getArrayPrototype();
+    Array_ctor["prototype"]["constructor"] = Array_ctor;
+    Array_ctor["from"] = new ScriptFunction("Array.from", &native_Array_s_from);
+    Array_ctor["isArray"] = new ScriptFunction("Array.isArray", &native_Array_s_isArray);
+    Array_ctor["of"] = new ScriptFunction("Array.of", &native_Array_s_of);
+
     ScriptAny String_ctor = new ScriptFunction("String", &native_String_ctor, true);
     String_ctor["prototype"] = getStringPrototype();
     String_ctor["prototype"]["constructor"] = String_ctor;
@@ -52,7 +60,12 @@ void initializeTypesLibrary(Interpreter interpreter)
     String_ctor["fromCodePoint"] = new ScriptFunction("String.fromCodePoint",
             &native_String_s_fromCodePoint);
 
+    // set the consts NaN and Infinity
+    interpreter.forceSetGlobal("Infinity", ScriptAny(double.infinity), true);
+    interpreter.forceSetGlobal("NaN", ScriptAny(double.nan), true);
+
     interpreter.forceSetGlobal("Object", Object_ctor, false); // maybe should be const
+    interpreter.forceSetGlobal("Array", Array_ctor, false);
     interpreter.forceSetGlobal("String", String_ctor, false);
 }
 
@@ -61,6 +74,7 @@ ScriptObject getObjectPrototype()
     if(_objectPrototype is null)
     {
         _objectPrototype = new ScriptObject("object"); // this is the base prototype for all objects
+        _objectPrototype["toString"] = new ScriptFunction("Object.toString", &native_Object_toString);
     }
     return _objectPrototype;
 }
@@ -70,12 +84,40 @@ ScriptObject getArrayPrototype()
     if(_arrayPrototype is null)
     {
         _arrayPrototype = new ScriptObject("array", null);
+        _arrayPrototype["at"] = new ScriptFunction("Array.prototype.at", &native_Array_at);
         _arrayPrototype["concat"] = new ScriptFunction("Array.prototype.concat", &native_Array_concat);
+        _arrayPrototype["copyWithin"] = new ScriptFunction("Array.prototype.copyWithin",
+                &native_Array_copyWithin);
+        _arrayPrototype["every"] = new ScriptFunction("Array.prototype.every", &native_Array_every);
+        _arrayPrototype["fill"] = new ScriptFunction("Array.prototype.fill", &native_Array_fill);
+        _arrayPrototype["filter"] = new ScriptFunction("Array.prototype.filter", &native_Array_filter);
+        _arrayPrototype["find"] = new ScriptFunction("Array.prototype.find", &native_Array_find);
+        _arrayPrototype["findIndex"] = new ScriptFunction("Array.prototype.findIndex", &native_Array_findIndex);
+        _arrayPrototype["flat"] = new ScriptFunction("Array.prototype.flat", &native_Array_flat);
+        _arrayPrototype["flatMap"] = new ScriptFunction("Array.prototype.flatMap", &native_Array_flatMap);
+        _arrayPrototype["forEach"] = new ScriptFunction("Array.prototype.forEach", &native_Array_forEach);
+        _arrayPrototype["includes"] = new ScriptFunction("Array.prototype.includes", &native_Array_includes);
+        _arrayPrototype["indexOf"] = new ScriptFunction("Array.prototype.indexOf", &native_Array_indexOf);
         _arrayPrototype["join"] = new ScriptFunction("Array.prototype.join", &native_Array_join);
+        _arrayPrototype["lastIndexOf"] = new ScriptFunction("Array.prototype.lastIndexOf",
+                &native_Array_lastIndexOf);
+        _arrayPrototype.addGetterProperty("length", new ScriptFunction("Array.prototype.length", 
+                &native_Array_p_length));
+        _arrayPrototype.addSetterProperty("length", new ScriptFunction("Array.prototype.length", 
+                &native_Array_p_length));
+        _arrayPrototype["map"] = new ScriptFunction("Array.prototype.map", &native_Array_map);
         _arrayPrototype["pop"] = new ScriptFunction("Array.prototype.pop", &native_Array_pop);
         _arrayPrototype["push"] = new ScriptFunction("Array.prototype.push", &native_Array_push);
+        _arrayPrototype["reduce"] = new ScriptFunction("Array.prototype.reduce", &native_Array_reduce);
+        _arrayPrototype["reduceRight"] = new ScriptFunction("Array.prototype.reduceRight",
+                &native_Array_reduceRight);
+        _arrayPrototype["reverse"] = new ScriptFunction("Array.prototype.reverse", &native_Array_reverse);
+        _arrayPrototype["shift"] = new ScriptFunction("Array.prototype.shift", &native_Array_shift);
         _arrayPrototype["slice"] = new ScriptFunction("Array.prototype.slice", &native_Array_slice);
+        _arrayPrototype["some"] = new ScriptFunction("Array.prototype.some", &native_Array_some);
+        _arrayPrototype["sort"] = new ScriptFunction("Array.prototype.sort", &native_Array_sort);
         _arrayPrototype["splice"] = new ScriptFunction("Array.prototype.splice", &native_Array_splice);
+        _arrayPrototype["unshift"] = new ScriptFunction("Array.prototype.unshift", &native_Array_unshift);
     }
     return _arrayPrototype;
 }
@@ -108,6 +150,8 @@ ScriptObject getStringPrototype()
         _stringPrototype["indexOf"] = new ScriptFunction("String.prototype.indexOf", &native_String_indexOf);
         _stringPrototype["lastIndexOf"] = new ScriptFunction("String.prototype.lastIndexOf",
                 &native_String_lastIndexOf);
+        _stringPrototype.addGetterProperty("length", new ScriptFunction("String.prototype.length", 
+                &native_String_p_length));
         _stringPrototype["padEnd"] = new ScriptFunction("String.prototype.padEnd", &native_String_padEnd);
         _stringPrototype["padStart"] = new ScriptFunction("String.prototype.padStart",
                 &native_String_padStart);
@@ -131,6 +175,17 @@ private ScriptObject _objectPrototype;
 private ScriptObject _arrayPrototype;
 private ScriptObject _functionPrototype;
 private ScriptObject _stringPrototype;
+
+// Helper methods
+
+private ScriptAny getLocalThis(Environment env)
+{
+    bool _; // @suppress(dscanner.suspicious.unmodified)
+    ScriptAny* thisObj = env.lookupVariableOrConst("this", _);
+    if(thisObj == null)
+        return ScriptAny.UNDEFINED;
+    return *thisObj;
+}
 
 //
 // Object methods /////////////////////////////////////////////////////////////
@@ -224,6 +279,14 @@ private ScriptAny native_Object_s_keys(Environment context,
     return keys;
 }
 
+private ScriptAny native_Object_toString(Environment env, ScriptAny* thisObj,
+                                         ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(!thisObj.isObject)
+        return ScriptAny.UNDEFINED;
+    return ScriptAny(thisObj.toString());
+}
+
 /// returns an array of values of an object (or function)
 private ScriptAny native_Object_s_values(Environment context,
                                         ScriptAny* thisObj,
@@ -245,6 +308,39 @@ private ScriptAny native_Object_s_values(Environment context,
 // Array methods //////////////////////////////////////////////////////////////
 //
 
+private ScriptAny native_Array_ctor(Environment env, ScriptAny* thisObj,
+                                    ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    ScriptAny[] result;
+    if(args.length == 1 && args[0].type == ScriptAny.Type.INTEGER)
+    {
+        result = new ScriptAny[args[0].toValue!long];
+    }
+    else
+    {
+        foreach(arg ; args)
+            result ~= arg;
+    }
+    *thisObj = ScriptAny(result);
+    return ScriptAny.UNDEFINED;
+}
+
+private ScriptAny native_Array_at(Environment env, ScriptAny* thisObj,
+                                  ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+    auto array = thisObj.toValue!(ScriptAny[]);
+    long index = args[0].toValue!long;
+    if(index < 0)
+        index += array.length;
+    if(index < 0 || index >= array.length)
+        return ScriptAny.UNDEFINED;
+    return array[index];
+}
+
 private ScriptAny native_Array_concat(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(thisObj.type != ScriptAny.Type.ARRAY)
@@ -252,18 +348,341 @@ private ScriptAny native_Array_concat(Environment c, ScriptAny* thisObj, ScriptA
     if(args.length < 1)
         return *thisObj;
     ScriptAny[] result = thisObj.toValue!ScriptArray.array;
-    if(args[0].type != ScriptAny.Type.ARRAY)
+    foreach(arg ; args)
     {
-        result ~= args[0];
-    }
-    else
-    {
-        result ~= args[0].toValue!ScriptArray.array;
+        if(arg.type != ScriptAny.Type.ARRAY)
+        {
+            result ~= arg;
+        }
+        else
+        {
+            result ~= arg.toValue!ScriptArray.array;
+        }
     }
     return ScriptAny(result);
 }
 
-private ScriptAny native_Array_join(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+private ScriptAny native_Array_copyWithin(Environment env, ScriptAny* thisObj,
+                                          ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray;
+    long target = args.length > 0 ? args[0].toValue!long : arr.array.length;
+    long start = args.length > 1 ? args[1].toValue!long : 0;
+    long end = args.length > 2 ? args[2].toValue!long : arr.array.length;
+    if(target < 0 || target >= arr.array.length)
+        target = arr.array.length;
+    if(start < 0 || start >= arr.array.length)
+        start  = 0;
+    if(end < 0 || end >= arr.array.length)
+        end = arr.array.length;
+    if(end <= start)
+        return *thisObj;
+    for(long i = 0; i < (end - start); ++i)
+    {
+        if(i + target >= arr.array.length || i + start >= arr.array.length)
+            break;
+        arr.array[i+target] = arr.array[i+start];
+    }
+    return *thisObj;
+}
+
+// TODO: entries once Generators are a thing
+
+private ScriptAny native_Array_every(Environment env, ScriptAny* thisObj,
+                                     ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny(false);
+    auto arr = thisObj.toValue!ScriptArray;
+    if(args.length < 1)
+        return ScriptAny(false);
+    if(args[0].type != ScriptAny.Type.FUNCTION)
+        return ScriptAny(false);
+    auto theThisArg = args.length > 1 ? args[1] : getLocalThis(env);
+    bool result = true;
+    size_t counter = 0;
+    foreach(element ; arr.array)
+    {
+        auto temp = native_Function_call(env, &args[0], 
+            [ theThisArg, element, ScriptAny(counter), *thisObj ], nfe);
+        if(nfe != NativeFunctionError.NO_ERROR)
+            return temp;
+        result = result && temp;
+        ++counter;
+    }
+    return ScriptAny(result);
+}
+
+private ScriptAny native_Array_fill(Environment env, ScriptAny* thisObj,
+                                    ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray.array;
+    if(args.length < 1)
+        return *thisObj;
+    // auto value = args[0]; // @suppress(dscanner.suspicious.unmodified)
+    long start = args.length > 1 ? args[1].toValue!long : 0;
+    long end = args.length > 2 ? args[2].toValue!long : arr.length;
+    if(start < 0 || start >= arr.length)
+        start = 0;
+    if(end < 0 || end >= arr.length)
+        end = arr.length;
+    for(size_t i = start; i < end; ++i)
+        arr[i] = args[0];
+    return *thisObj;
+}
+
+private ScriptAny native_Array_filter(Environment env, ScriptAny* thisObj,
+                                      ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray.array;
+    if(args.length < 1)
+        return *thisObj;
+    if(args[0].type != ScriptAny.Type.FUNCTION)
+        return *thisObj;
+    ScriptAny thisToUse = args.length > 1 ? args[1] : getLocalThis(env);
+    ScriptAny[] result;
+    size_t counter = 0;
+    foreach(element ; arr)
+    {
+        auto temp = native_Function_call(env, &args[0], 
+            [thisToUse, element, ScriptAny(counter), *thisObj], nfe);
+        if(nfe != NativeFunctionError.NO_ERROR)
+            return temp;
+        if(temp)
+            result ~= element;
+        ++counter;
+    }
+    return ScriptAny(result);
+}
+
+private ScriptAny native_Array_find(Environment env, ScriptAny* thisObj, 
+                                    ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray.array;
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+    if(args[0].type != ScriptAny.Type.FUNCTION)
+        return ScriptAny.UNDEFINED;
+    auto thisToUse = args.length > 1 ? args[1] : getLocalThis(env);
+    for(size_t i = 0; i < arr.length; ++i)
+    {
+        auto temp = native_Function_call(env, &args[0], 
+            [thisToUse, arr[i], ScriptAny(i), *thisObj], nfe);
+        if(nfe != NativeFunctionError.NO_ERROR)
+            return temp;
+        if(temp)
+            return arr[i];
+    }
+
+    return ScriptAny.UNDEFINED;
+}
+
+private ScriptAny native_Array_findIndex(Environment env, ScriptAny* thisObj, 
+                                    ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray.array;
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+    if(args[0].type != ScriptAny.Type.FUNCTION)
+        return ScriptAny.UNDEFINED;
+    auto thisToUse = args.length > 1 ? args[1] : ScriptAny.UNDEFINED;
+    for(size_t i = 0; i < arr.length; ++i)
+    {
+        auto temp = native_Function_call(env, &args[0], 
+            [thisToUse, arr[i], ScriptAny(i), *thisObj], nfe);
+        if(nfe != NativeFunctionError.NO_ERROR)
+            return temp;
+        if(temp)
+            return ScriptAny(i);
+    }
+
+    return ScriptAny(-1);
+}
+
+// Credit for flat and flatMap algorithm:
+// https://medium.com/better-programming/javascript-tips-4-array-flat-and-flatmap-implementation-2f81e618bde
+private ScriptAny native_Array_flat(Environment env, ScriptAny* thisObj,
+                                    ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray.array;
+    ScriptAny[] flattened;
+    immutable depth = args.length > 0 ? args[0].toValue!int : 1;
+    void flattener(ScriptAny[] list, int dp)
+    {
+        foreach(item ; list)
+        {
+            if(item.type == ScriptAny.Type.ARRAY && dp > 0)
+            {
+                flattener(item.toValue!(ScriptAny[]), dp - 1);
+            }
+            else
+            {
+                flattened ~= item;
+            }
+        }
+    }
+    flattener(arr, depth);
+    return ScriptAny(flattened);
+}
+
+private ScriptAny native_Array_flatMap(Environment env, ScriptAny* thisObj,
+                                       ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray.array;
+    ScriptAny[] flattened;
+    if(args.length < 1)
+        return *thisObj;
+    if(args[0].type != ScriptAny.Type.FUNCTION)
+        return *thisObj;
+    ScriptAny thisToUse = args.length > 1 ? args[1] : getLocalThis(env);
+    for(size_t i = 0; i < arr.length; ++i)
+    {
+        auto temp = native_Function_call(env, &args[0], [thisToUse, arr[i], ScriptAny(i), *thisObj], nfe);
+        if(nfe != NativeFunctionError.NO_ERROR)
+            return temp;
+        if(temp.type == ScriptAny.Type.ARRAY)
+        {
+            foreach(element ; temp.toValue!ScriptArray.array)
+                flattened ~= element;
+        }
+    }
+    return ScriptAny(flattened);
+}
+
+private ScriptAny native_Array_forEach(Environment env, ScriptAny* thisObj,
+                                       ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray.array;
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+    if(args[0].type != ScriptAny.Type.FUNCTION)
+        return ScriptAny.UNDEFINED;
+    auto thisToUse = args.length > 1 ? args[1] : getLocalThis(env);
+    for(size_t i = 0; i < arr.length; ++i)
+    {
+        auto temp = native_Function_call(env, &args[0],
+            [thisToUse, arr[i], ScriptAny(i), *thisObj], nfe);
+        if(nfe != NativeFunctionError.NO_ERROR)
+            return temp;
+    }
+    return ScriptAny.UNDEFINED;
+}
+
+private ScriptAny native_Array_s_from(Environment env, ScriptAny* thisObj,
+                                      ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(args.length < 1)
+        return ScriptAny(cast(ScriptAny[])[]);
+    ScriptAny func = args.length > 1 ? args[1] : ScriptAny.UNDEFINED;
+    auto thisToUse = args.length > 2 ? args[2] : getLocalThis(env);
+    
+    ScriptAny[] result;
+    if(args[0].type == ScriptAny.Type.ARRAY)
+    {
+        auto arr = args[0].toValue!ScriptArray.array;
+        for(size_t i = 0; i < arr.length; ++i)
+        {
+            if(func.type == ScriptAny.Type.FUNCTION)
+            {
+                auto temp = native_Function_call(env, &func, [thisToUse, arr[i], ScriptAny(i), args[0]], nfe);
+                if(nfe != NativeFunctionError.NO_ERROR)
+                    return temp;
+                result ~= temp;
+            }
+            else
+            {
+                result ~= arr[i];
+            }
+        }
+    }
+    else if(args[0].type == ScriptAny.Type.STRING)
+    {
+        size_t index = 0;
+        foreach(dchar ch ; args[0].toString())
+        {
+            if(func.type == ScriptAny.Type.FUNCTION)
+            {
+                auto temp = native_Function_call(env, &func, 
+                    [thisToUse, ScriptAny([ch]), ScriptAny(index), args[0]], nfe);
+                if(nfe != NativeFunctionError.NO_ERROR)
+                    return temp;
+                result ~= temp;
+            }
+            else
+            {
+                result ~= ScriptAny([ch]);
+            }
+            ++index;
+        }       
+    }
+
+    return ScriptAny(result);
+}
+
+private ScriptAny native_Array_includes(Environment env, ScriptAny* thisObj,
+                                        ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny(false);
+    auto arr = thisObj.toValue!ScriptArray.array;
+    if(args.length < 1)
+        return ScriptAny(false);
+    long indexToStart = args.length > 1 ? args[1].toValue!long : 0;
+    if(indexToStart < 0)
+        indexToStart = args.length + indexToStart;
+    if(indexToStart < 0 || indexToStart >= arr.length)
+        indexToStart = arr.length;
+    for(size_t i = indexToStart; i < arr.length; ++i)
+        if(args[0].strictEquals(arr[i]))
+            return ScriptAny(true);
+    return ScriptAny(false);
+}
+
+
+private ScriptAny native_Array_indexOf(Environment env, ScriptAny* thisObj,
+                                        ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray.array;
+    if(args.length < 1)
+        return ScriptAny(-1);
+    long indexToStart = args.length > 1 ? args[1].toValue!long : 0;
+    if(indexToStart < 0)
+        indexToStart = args.length + indexToStart;
+    if(indexToStart < 0 || indexToStart >= arr.length)
+        indexToStart = arr.length;
+    for(size_t i = indexToStart; i < arr.length; ++i)
+        if(args[0].strictEquals(arr[i]))
+            return ScriptAny(i);
+    return ScriptAny(-1);
+}
+
+private ScriptAny native_Array_s_isArray(Environment env, ScriptAny* thisObj,
+                                         ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(args.length < 1)
+        return ScriptAny(false);
+    return ScriptAny(args[0].type == ScriptAny.Type.ARRAY);
+}
+
+private ScriptAny native_Array_join(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(thisObj.type != ScriptAny.Type.ARRAY)
         return ScriptAny.UNDEFINED;
@@ -281,7 +700,81 @@ private ScriptAny native_Array_join(Environment c, ScriptAny* thisObj, ScriptAny
     return ScriptAny(result);
 }
 
-private ScriptAny native_Array_push(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+// TODO Array.prototype.keys once Generators are a thing
+
+private ScriptAny native_Array_lastIndexOf(Environment env, ScriptAny* thisObj,
+                                           ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray.array;
+    if(args.length < 1)
+        return ScriptAny(-1);
+    long indexToStart = args.length > 1 ? args[1].toValue!long : arr.length - 1;
+    if(indexToStart < 0)
+        indexToStart = args.length + indexToStart;
+    if(indexToStart < 0 || indexToStart >= arr.length)
+        indexToStart = arr.length - 1;
+    for(size_t i = indexToStart; i >= 0; --i)
+    {
+        if(i < arr.length && args[0].strictEquals(arr[i]))
+            return ScriptAny(i);
+    }
+    return ScriptAny(-1);    
+}
+
+private ScriptAny native_Array_p_length(Environment env, ScriptAny* thisObj,
+                                        ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    if(args.length >= 1)
+    {
+        auto actualArray = thisObj.toValue!ScriptArray;
+        immutable length = args[0].toValue!long;
+        actualArray.array.length = length;
+        return ScriptAny(actualArray.array.length);
+    }
+    else
+    {
+        auto arr = thisObj.toValue!(ScriptAny[]);
+        return ScriptAny(arr.length);
+    }
+}
+
+private ScriptAny native_Array_map(Environment env, ScriptAny* thisObj,
+                                   ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray.array;
+    if(args.length < 1)
+        return *thisObj;
+    if(args[0].type != ScriptAny.Type.FUNCTION)
+        return *thisObj;
+    ScriptAny thisToUse = args.length > 1 ? args[1] : ScriptAny.UNDEFINED;
+    ScriptAny[] result;
+    for(size_t i = 0; i < arr.length; ++i)
+    {
+        auto temp = native_Function_call(env, &args[0], 
+            [thisToUse, arr[i], ScriptAny(i), *thisObj], nfe);
+        if(nfe != NativeFunctionError.NO_ERROR)
+            return temp;
+        result ~= temp;
+    }
+    return ScriptAny(result);
+}
+
+private ScriptAny native_Array_s_of(Environment env, ScriptAny* thisObj,
+                                    ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    ScriptAny[] results;
+    foreach(arg ; args)
+        results ~= arg;
+    return ScriptAny(results);
+}
+
+private ScriptAny native_Array_push(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(thisObj.type != ScriptAny.Type.ARRAY)
         return ScriptAny.UNDEFINED;
@@ -292,7 +785,7 @@ private ScriptAny native_Array_push(Environment c, ScriptAny* thisObj, ScriptAny
     return ScriptAny(arr.array.length);
 }
 
-private ScriptAny native_Array_pop(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+private ScriptAny native_Array_pop(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(thisObj.type != ScriptAny.Type.ARRAY)
         return ScriptAny.UNDEFINED;
@@ -304,22 +797,139 @@ private ScriptAny native_Array_pop(Environment c, ScriptAny* thisObj, ScriptAny[
     return result;
 }
 
+private ScriptAny native_Array_reduce(Environment env, ScriptAny* thisObj,
+                                      ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray.array;
+    if(args.length < 0 || args[0].type != ScriptAny.Type.FUNCTION)
+        return ScriptAny.UNDEFINED;
+    ScriptAny accumulator = args.length > 1 ? args[1] : (arr.length > 0? arr[0] : ScriptAny.UNDEFINED);
+    for(size_t i = 0; i < arr.length; ++i)
+    {
+        accumulator = native_Function_call(env, &args[0], 
+            [getLocalThis(env), accumulator, arr[i], ScriptAny(i), *thisObj], nfe);
+        if(nfe != NativeFunctionError.NO_ERROR)
+            return accumulator;
+    }
+    return accumulator;
+}
+
+private ScriptAny native_Array_reduceRight(Environment env, ScriptAny* thisObj,
+                                      ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray.array;
+    if(args.length < 0 || args[0].type != ScriptAny.Type.FUNCTION)
+        return ScriptAny.UNDEFINED;
+    ScriptAny accumulator = args.length > 1 ? args[1] : (arr.length > 0? arr[arr.length-1] : ScriptAny.UNDEFINED);
+    for(size_t i = arr.length; i > 0; --i)
+    {
+        accumulator = native_Function_call(env, &args[0], 
+            [getLocalThis(env), accumulator, arr[i-1], ScriptAny(i-1), *thisObj], nfe);
+        if(nfe != NativeFunctionError.NO_ERROR)
+            return accumulator;
+    }
+    return accumulator;
+}
+
+private ScriptAny native_Array_reverse(Environment env, ScriptAny* thisObj,
+                                       ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.algorithm.mutation: reverse;
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray;
+    reverse(arr.array);
+    return *thisObj;
+}
+
+private ScriptAny native_Array_shift(Environment env, ScriptAny* thisObj,
+                                     ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray;
+    if(arr.array.length < 1)
+        return ScriptAny.UNDEFINED;
+    auto removed = arr.array[0];
+    arr.array = arr.array[1..$];
+    return removed;
+}
+
 private ScriptAny native_Array_slice(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(thisObj.type != ScriptAny.Type.ARRAY)
         return ScriptAny.UNDEFINED;
     auto array = thisObj.toValue!(ScriptAny[]);
-    if(args.length < 1)
-        return ScriptAny(array);
-    size_t start = args[0].toValue!size_t;
-    if(start >= array.length)
-        start = array.length;
-    if(args.length < 2)
-        return ScriptAny(array[start .. $]);
-    size_t end = args[1].toValue!size_t;
-    if(end  >= array.length)
+    long start = args.length > 0 ? args[0].toValue!long : 0;
+    long end = args.length > 1 ? args[1].toValue!long : array.length;
+    if(start < 0)
+        start = array.length + start;
+    if(end < 0)
+        end = array.length + end;
+    if(start < 0 || start >= array.length)
+        start = 0;
+    if(end < 0 || end > array.length)
         end = array.length;
     return ScriptAny(array[start .. end]);
+}
+
+private ScriptAny native_Array_some(Environment env, ScriptAny* thisObj, 
+                                    ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    if(args.length < 1 || args[0].type != ScriptAny.Type.FUNCTION)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray.array;
+    ScriptAny thisToUse = args.length > 1 ? args[1] : getLocalThis(env);
+    for(size_t i = 0; i < arr.length; ++i)
+    {
+        auto temp = native_Function_call(env, &args[0], 
+            [thisToUse, arr[i], ScriptAny(i), *thisObj], nfe);
+        if(nfe != NativeFunctionError.NO_ERROR || temp)
+            return temp;
+    }
+    return ScriptAny(false);
+}
+
+private ScriptAny native_Array_sort(Environment env, ScriptAny* thisObj,
+                                    ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.algorithm: sort;
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray;
+    if(arr.array.length <= 1)
+        return *thisObj;
+    if(args.length < 1 || args[0].type != ScriptAny.Type.FUNCTION)
+    {
+        sort(arr.array);
+    }
+    else
+    {
+        // use bubble sort
+        for(size_t i = 0; i < arr.length-1; ++i)
+        {
+            for(size_t j = 0; j < arr.length - i - 1; ++j)
+            {
+                auto temp = native_Function_call(env, &args[0], 
+                    [getLocalThis(env), arr.array[j], arr.array[j+1]], nfe);
+                if(nfe != NativeFunctionError.NO_ERROR)
+                    return temp;
+                if(temp.toValue!int > 0)
+                {
+                    auto swap = arr.array[j+1]; // @suppress(dscanner.suspicious.unmodified)
+                    arr.array[j+1] = arr.array[j];
+                    arr.array[j] = swap;
+                }
+            }
+        }
+    }
+    return *thisObj;
 }
 
 private ScriptAny native_Array_splice(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
@@ -353,11 +963,37 @@ private ScriptAny native_Array_splice(Environment c, ScriptAny* thisObj, ScriptA
     return ScriptAny(removed);
 }
 
+private ScriptAny native_Array_unshift(Environment env, ScriptAny* thisObj,
+                                       ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = thisObj.toValue!ScriptArray;
+    arr.array = args ~ arr.array;
+    return ScriptAny(arr.length);
+}
+
 //
 // Function methods ///////////////////////////////////////////////////////////
 //
 
-private ScriptAny native_Function_call(Environment c, ScriptAny* thisIsFn, ScriptAny[] args, 
+/**
+ * This function provides a way for Mildew functions to be called with arbitrary "this"
+ * objects. This function is public so that there is a common interface for calling ScriptFunctions
+ * without worrying about the underlying details.
+ *
+ * Params:
+ *  env = Since this function is to be called from other native functions, this should be the Environment object
+ *        received. The underlying function handlers will handle the closure data of ScriptFunctions.
+ *  thisIfFn = This should be a ScriptAny pointer of the ScriptFunction to be called.
+ *  args = An array of arguments to call the function with, but the first element must be the "this" object to use.
+ *  nfe = Since this function is to be called from native ScriptFunction implementations, this should be the same
+ *        NativeFunctionError reference. This must always be checked after using native_Function_call directly.
+ *
+ * Returns:
+ *  The return value of calling the ScriptFunction.
+ */
+ScriptAny native_Function_call(Environment env, ScriptAny* thisIsFn, ScriptAny[] args, 
                                        ref NativeFunctionError nfe)
 {
     import mildew.exceptions: ScriptRuntimeException;
@@ -380,17 +1016,17 @@ private ScriptAny native_Function_call(Environment c, ScriptAny* thisIsFn, Scrip
     args = args[1..$];
     try 
     {
-        auto interpreter = c.interpreter;
+        auto interpreter = env.interpreter;
         if(interpreter.usingVM)
         {
             if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
                 return interpreter.vm.runFunction(fn, thisToUse, args);
             else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
-                return fn.nativeFunction()(c, &thisToUse, args, nfe);
+                return fn.nativeFunction()(env, &thisToUse, args, nfe);
             else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
-                return fn.nativeDelegate()(c, &thisToUse, args, nfe);
+                return fn.nativeDelegate()(env, &thisToUse, args, nfe);
         }
-        if(c !is null)
+        if(env !is null)
             return interpreter.callFunction(fn, thisToUse, args);
         else
             return ScriptAny.UNDEFINED;
@@ -636,6 +1272,15 @@ private ScriptAny native_String_lastIndexOf(Environment env, ScriptAny* thisObj,
     auto searchText = args[0].toString();
     immutable startIdx = args.length > 1 ? args[1].toValue!long : str.length;
     return ScriptAny(str.lastIndexOf(searchText, startIdx));
+}
+
+private ScriptAny native_String_p_length(Environment env, ScriptAny* thisObj,
+                                         ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    auto str = thisObj.toString();
+    return ScriptAny(str.length);
 }
 
 // TODO match once regular expressions are implemented

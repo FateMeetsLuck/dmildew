@@ -47,17 +47,6 @@ public:
         return _string;
     }
 
-    /**
-     * This override allows for the length field
-     */
-    override ScriptAny lookupField(in string name)
-    {
-        if(name == "length")
-            return ScriptAny(_string.length);
-        else
-            return super.lookupField(name);
-    }
-
     // methods to bind
 
 private:

@@ -325,7 +325,7 @@ public:
     static immutable KEYWORDS = redBlackTree(
         "true", "false", "undefined", "null",
         "var", "let", "const", 
-        "if", "else", "while", "do", "for", "of", "in",
+        "if", "else", "while", "do", "for", "in",
         "switch", "case", "default",
         "break", "continue", "return", 
         "function", "class", "super", "extends",

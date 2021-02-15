@@ -45,28 +45,6 @@ public:
     size_t length() const { return _array.length; }
 
     /**
-     * This override allows for the length field
-     */
-    override ScriptAny lookupField(in string name)
-    {
-        if(name == "length")
-            return ScriptAny(_array.length);
-        else
-            return super.lookupField(name);
-    }
-
-    /**
-     * This override allows for the length to be reassigned
-     */
-    override ScriptAny assignField(in string name, ScriptAny value)
-    {
-        if(name == "length")
-            return ScriptAny(_array.length = value.toValue!size_t);
-        else
-            return super.assignField(name, value);
-    }
-
-    /**
      * Returns a string representation of the array, which is [] surrounding a comma separated
      * list of elements.
      */

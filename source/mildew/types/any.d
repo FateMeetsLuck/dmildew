@@ -350,14 +350,6 @@ public:
     int opCmp(const ScriptAny other) const
     {
         import mildew.types.array: ScriptArray;
-
-        // undefined is always less than any defined value
-        if(_type == Type.UNDEFINED && !other._type == Type.UNDEFINED)
-            return -1;
-        else if(_type != Type.UNDEFINED && other._type == Type.UNDEFINED)
-            return 1;
-        else if(_type == Type.UNDEFINED && other._type == Type.UNDEFINED)
-            return 0;
         
         // if either are strings, convert and compare
         if(_type == Type.STRING || other._type == Type.STRING)
@@ -415,6 +407,10 @@ public:
         {
             return (cast(ScriptFunction)_asObject).opCmp(cast(ScriptFunction)other._asObject);
         }
+
+        // if different types by this point return the enum difference
+        if(_type != other._type)
+            return cast(int)_type - cast(int)other._type;
 
         // TODO write opCmp for object
         if(_asObject == other._asObject)

@@ -790,7 +790,10 @@ private:
             {
                 if(ptype == PropertyType.NONE)
                 {
-                    methods ~= new FunctionLiteralNode(argNames, statements, currentMethodName);
+                    auto trueName = currentMethodName;
+                    if(className != "<anonymous class>" && className != "")
+                        trueName = className ~ ".prototype." ~ currentMethodName;
+                    methods ~= new FunctionLiteralNode(argNames, statements, trueName);
                     methodNames ~= currentMethodName;
                 }
                 else if(ptype == PropertyType.GET)
@@ -805,7 +808,10 @@ private:
                 }
                 else if(ptype == PropertyType.STATIC)
                 {
-                    staticMethods ~= new FunctionLiteralNode(argNames, statements, currentMethodName);
+                    auto trueName = currentMethodName;
+                    if(className != "<anonymous class>" && className != "")
+                        trueName = className ~ "." ~ currentMethodName;
+                    staticMethods ~= new FunctionLiteralNode(argNames, statements, trueName);
                     staticMethodNames ~= currentMethodName;
                 }
             }
@@ -990,7 +996,7 @@ private:
         VarDeclarationStatementNode decl = null;
         if(_currentToken.type != Token.Type.SEMICOLON)
             decl = parseVarDeclarationStatement(false);
-        if(_currentToken.isKeyword("in") || _currentToken.isKeyword("of"))
+        if(_currentToken.isKeyword("in") || _currentToken.isIdentifier("of"))
         {
             immutable ofInToken = _currentToken;
             // first we need to validate the VarDeclarationStatementNode to make sure it only consists
@@ -1261,7 +1267,7 @@ private:
     {
         ExpressionNode[] expressions;
 
-        while(_currentToken.type != stop && _currentToken.type != Token.Type.EOF && !_currentToken.isKeyword("of")
+        while(_currentToken.type != stop && _currentToken.type != Token.Type.EOF && !_currentToken.isIdentifier("of")
           && !_currentToken.isKeyword("in"))
         {
             auto expression = parseExpression();
@@ -1269,7 +1275,7 @@ private:
             if(_currentToken.type == Token.Type.COMMA)
                 nextToken();
             else if(_currentToken.type != stop 
-              && !_currentToken.isKeyword("of")
+              && !_currentToken.isIdentifier("of")
               && !_currentToken.isKeyword("in"))
                 throw new ScriptCompileException("Comma separated list items must be separated by ','" 
                     ~ " (or missing '" ~ Token.createFakeToken(stop, "").symbol ~ "')", 

@@ -176,7 +176,8 @@ private int throwRuntimeError(in string message, VirtualMachine vm, Chunk chunk,
             return 1;
         }
     }
-    // there is no available script exception handler found so throw the exception
+    // there is no available script exception handler found so clear stack and throw the exception
+    vm._stack.size = 0;
     throw vm._exc;
 }
 
@@ -515,14 +516,20 @@ private int opNew(VirtualMachine vm, Chunk chunk)
     else if(func.type == ScriptFunction.Type.NATIVE_FUNCTION)
     {
         auto nativeFunc = func.nativeFunction;
-        nativeFunc(vm._environment, &thisObj, args, nfe);
-        vm._stack.push(thisObj);
+        auto possibleError = nativeFunc(vm._environment, &thisObj, args, nfe);
+        if(nfe == NativeFunctionError.RETURN_VALUE_IS_EXCEPTION)
+            vm._stack.push(possibleError);
+        else
+            vm._stack.push(thisObj);
     }
     else if(func.type == ScriptFunction.Type.NATIVE_DELEGATE)
     {
         auto nativeDelegate = func.nativeDelegate;
-        nativeDelegate(vm._environment, &thisObj, args, nfe);
-        vm._stack.push(thisObj);
+        auto possibleError = nativeDelegate(vm._environment, &thisObj, args, nfe);
+        if(nfe == NativeFunctionError.RETURN_VALUE_IS_EXCEPTION)
+            vm._stack.push(possibleError);
+        else
+            vm._stack.push(thisObj);
     }
     final switch(nfe)
     {
@@ -535,6 +542,8 @@ private int opNew(VirtualMachine vm, Chunk chunk)
     case NativeFunctionError.WRONG_TYPE_OF_ARG:
         return throwRuntimeError("Wrong type of argument to native function", vm, chunk);
     }
+    if(vm._exc)
+        return throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
     vm._ip += 1 + uint.sizeof;
     return 0;
 }
@@ -774,10 +783,13 @@ private int opObjSet(VirtualMachine vm, Chunk chunk)
             }
             
             if(vm._exc)
-                throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
+                return throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
         }
         else
         {
+            if(obj.hasGetter(index))
+                return throwRuntimeError("Object " ~ obj.toString() ~ " has getter for property "
+                    ~ index ~ " but no setter.", vm, chunk);
             objToAccess[index] = value;
             vm._stack.push(value);
         }
@@ -851,6 +863,8 @@ private int opCall(VirtualMachine vm, Chunk chunk)
     case NativeFunctionError.WRONG_TYPE_OF_ARG:
         return throwRuntimeError("Wrong type of argument to native function", vm, chunk);
     }
+    if(vm._exc)
+        return throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
     vm._ip += 1 + uint.sizeof;
     return 0;
 }

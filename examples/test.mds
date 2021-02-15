@@ -25,3 +25,15 @@ console.log(bar.__super__.doSomething);
 
 bar.doSuper();
 
+let test = ["ass", 55, "titties", "booba"];
+test.sort(function(a,b){
+    if(a > b)
+        return -1;
+    else if(a < b)
+        return 1;
+    else
+        return 0;
+});
+console.log(test);
+test.unshift("foo", "bar");
+console.log(test.toString());

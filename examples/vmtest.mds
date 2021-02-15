@@ -89,3 +89,15 @@ function testDoWhile()
 
 // testDoWhile();
 
+class Foo {
+    myFunction() {
+        console.log("Doing nothing");
+    }
+
+    static myStaticMethod() {
+
+    }
+}
+
+console.log(Foo.prototype.myFunction);
+console.log(Foo.myStaticMethod);
