@@ -133,6 +133,24 @@ public:
         return Variant(null);
     }
 
+    /// handle lambdas
+    Variant visitLambdaNode(LambdaNode lnode)
+    {
+        FunctionLiteralNode flnode;
+        if(lnode.returnExpression)
+        {
+            flnode = new FunctionLiteralNode(lnode.argList, [
+                    new ReturnStatementNode(lnode.arrowToken.position.line, lnode.returnExpression)
+                ], "<lambda>", false);
+        }
+        else
+        {
+            flnode = new FunctionLiteralNode(lnode.argList, lnode.statements, "<lambda>", false);
+        }
+        flnode.accept(this);
+        return Variant(null);
+    }
+
     /// handles template strings
     Variant visitTemplateStringNode(TemplateStringNode tsnode)
     {

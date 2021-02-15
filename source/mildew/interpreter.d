@@ -213,6 +213,23 @@ public:
         return Variant(VisitResult(ScriptAny(func)));
     }
 
+    /// handle lambda
+    Variant visitLambdaNode(LambdaNode lnode)
+    {
+        FunctionLiteralNode flnode;
+        if(lnode.returnExpression)
+        {
+            flnode = new FunctionLiteralNode(lnode.argList, [
+                    new ReturnStatementNode(lnode.arrowToken.position.line, lnode.returnExpression)
+                ], "<lambda>", false);
+        }
+        else
+        {
+            flnode = new FunctionLiteralNode(lnode.argList, lnode.statements, "<lambda>", false);
+        }
+        return flnode.accept(this);
+    }
+
     /// handle template literal nodes
     Variant visitTemplateStringNode(TemplateStringNode tsnode)
     {

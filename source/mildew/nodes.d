@@ -211,6 +211,57 @@ class FunctionLiteralNode : ExpressionNode
     bool isClass;
 }
 
+class LambdaNode : ExpressionNode
+{
+    this(Token arrow, string[] args, StatementNode[] stmts)
+    {
+        arrowToken = arrow;
+        argList = args;
+        statements = stmts;
+    }
+
+    this(Token arrow, string[] args, ExpressionNode ret)
+    {
+        arrowToken = arrow;
+        argList = args;
+        returnExpression = ret;
+    }
+
+    override string toString() const
+    {
+        auto result = "(";
+        for(size_t i = 0; i < argList.length; ++i)
+        {
+            result ~= argList[i];
+            if(i < argList.length - 1)
+                result ~= ", ";
+        }
+        result ~= ") => ";
+        if(returnExpression)
+        {
+            result ~= returnExpression.toString();
+        }
+        else
+        {
+            result ~= "{";
+            foreach(stmt ; statements)
+                result ~= stmt.toString() ~ " ";
+            result ~= "}";
+        }
+        return result;
+    }
+
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitLambdaNode(this);
+    }
+
+    Token arrowToken;
+    string[] argList;
+    StatementNode[] statements;
+    ExpressionNode returnExpression;
+}
+
 class TemplateStringNode : ExpressionNode
 {
     this(ExpressionNode[] ns)

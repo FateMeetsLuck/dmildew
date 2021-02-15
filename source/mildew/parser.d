@@ -482,13 +482,24 @@ private:
         ExpressionNode left = null;
         switch(_currentToken.type)
         {
-            case Token.Type.LPAREN:
-                nextToken();
-                left = parseExpression();
-                if(_currentToken.type != Token.Type.RPAREN)
-                    throw new ScriptCompileException("Missing ')' in primary expression", _currentToken);
-                nextToken();
+            case Token.Type.LPAREN: {
+                // first check if this is a lambda
+                auto lookahead = peekTokens(3);
+                if(lookahead[1].type == Token.Type.COMMA ||
+                   lookahead[2].type == Token.Type.ARROW)
+                {
+                    left = parseLambda(true);
+                }
+                else
+                {
+                    nextToken();
+                    left = parseExpression();
+                    if(_currentToken.type != Token.Type.RPAREN)
+                        throw new ScriptCompileException("Missing ')' in primary expression", _currentToken);
+                    nextToken();
+                }
                 break;
+            }
             case Token.Type.LBRACE:
                 left = parseObjectLiteral();
                 break;
@@ -600,10 +611,19 @@ private:
                     throw new ScriptCompileException("Unexpected keyword in primary expression", _currentToken);
                 break;
                 // TODO function
-            case Token.Type.IDENTIFIER:
-                left = new VarAccessNode(_currentToken);
-                nextToken();
+            case Token.Type.IDENTIFIER: {
+                immutable lookahead = peekToken();
+                if(lookahead.type == Token.Type.ARROW)
+                {
+                    left = parseLambda(false);
+                }
+                else
+                {
+                    left = new VarAccessNode(_currentToken);
+                    nextToken();
+                }
                 break;
+            }
             case Token.Type.LBRACKET: // an array
             {
                 nextToken(); // eat the [
@@ -1261,6 +1281,52 @@ private:
         --_functionContextStack.top.switchStack;
         return new SwitchStatementNode(lineNumber, expression, new SwitchBody(statementNodes, defaultStatementID, 
             jumpTable));
+    }
+
+    LambdaNode parseLambda(bool hasParentheses)
+    {
+        string[] argList;
+        if(hasParentheses)
+        {
+            nextToken(); // eat the (
+            while(_currentToken.type != Token.Type.RPAREN)
+            {
+                if(_currentToken.type != Token.Type.IDENTIFIER)
+                    throw new ScriptCompileException("Lambda argument names must be valid identifiers", _currentToken);
+                argList ~= _currentToken.text;
+                nextToken();
+                if(_currentToken.type == Token.Type.COMMA)
+                    nextToken();
+                else if(_currentToken.type != Token.Type.RPAREN)
+                    throw new ScriptCompileException("Lambda argument names must be separated by comma", _currentToken);
+            }
+            nextToken(); // eat the )
+        }
+        else
+        {
+            if(_currentToken.type != Token.Type.IDENTIFIER)
+                throw new ScriptCompileException("Lambda argument name must be valid identifier", _currentToken);
+            argList ~= _currentToken.text;
+            nextToken();
+        }
+        // sanity check, make sure arrow
+        if(_currentToken.type != Token.Type.ARROW)
+            throw new ScriptCompileException("Arrow expected after lambda argument list", _currentToken);
+        auto arrow = _currentToken;
+        nextToken();
+        // either a single expression, or body marked by {
+        if(_currentToken.type == Token.Type.LBRACE)
+        {
+            nextToken(); // eat the {
+            auto stmts = parseStatements(Token.Type.RBRACE);
+            nextToken(); // eat the }
+            return new LambdaNode(arrow, argList, stmts);
+        }
+        else
+        {
+            auto expr = parseExpression();
+            return new LambdaNode(arrow, argList, expr);
+        }
     }
 
     ExpressionNode[] parseCommaSeparatedExpressions(in Token.Type stop)

@@ -76,7 +76,9 @@ struct Token
         INC, DEC, // ++ and --
         BIT_AND, BIT_XOR, BIT_OR, BIT_NOT, BIT_LSHIFT, BIT_RSHIFT, BIT_URSHIFT,
         LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET, 
-        SEMICOLON, COMMA, LABEL, QUESTION, COLON, INVALID
+        SEMICOLON, COMMA, LABEL, QUESTION, COLON, ARROW,
+        
+        INVALID
     }
 
     /**
@@ -160,6 +162,7 @@ struct Token
         case Type.LABEL: return text ~ ":";
         case Type.QUESTION: return "?";
         case Type.COLON: return ":";
+        case Type.ARROW: return "=>";
         case Type.INVALID: return "#";
         }
     }
@@ -555,6 +558,11 @@ private:
             {
                 return Token(Token.Type.EQUALS, startpos);
             }
+        }
+        else if(peekChar == '>')
+        {
+            advanceChar();
+            return Token(Token.Type.ARROW, startpos);
         }
         else
         {
