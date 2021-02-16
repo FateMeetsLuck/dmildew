@@ -1,6 +1,8 @@
 /**
 This module implements functions for the "Math" namespace in the scripting language
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -25,7 +27,10 @@ import mildew.types;
 
 /**
  * Initializes the math library. This is called by Interpreter.initializeStdlib. Functions
- * are stored in the global Math object and are accessed such as "Math.acos"
+ * are stored in the global Math object and are accessed such as "Math.acos". Documentation
+ * for this library can be found at https://pillager86.github.io/dmildew/
+ * Params:
+ *  interpreter = The Interpreter object to load the namespace into.
  */
 public void initializeMathLibrary(Interpreter interpreter)
 {
@@ -527,9 +532,9 @@ private ScriptAny native_Math_trunc(Environment env,
 }
 
 
-/// software implementation of CLZ32 because I don't know assembly
+/// software implementation of CLZ32 because I don't know assembly nor care to lock DMildew to a specific CPU
 /// courtesy of https://embeddedgurus.com/state-space/2014/09/fast-deterministic-and-portable-counting-leading-zeros/
-pragma(inline) 
+pragma(inline, true) 
 uint CLZ1(uint x) 
 {
     static immutable ubyte[] clz_lkup = [

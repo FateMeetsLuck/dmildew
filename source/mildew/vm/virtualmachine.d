@@ -815,6 +815,8 @@ private int opCall(VirtualMachine vm, Chunk chunk)
     if(funcAny.type != ScriptAny.Type.FUNCTION)
         return throwRuntimeError("Unable to call non-function " ~ funcAny.toString(), vm, chunk);
     auto func = funcAny.toValue!ScriptFunction; // @suppress(dscanner.suspicious.unmodified)
+    if(func.boundThis != ScriptAny.UNDEFINED)
+        thisObj = func.boundThis;
     if(func.type == ScriptFunction.Type.SCRIPT_FUNCTION)
     {
         if(func.compiled.length == 0)

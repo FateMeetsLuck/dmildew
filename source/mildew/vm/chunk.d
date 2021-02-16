@@ -1,6 +1,8 @@
 /** 
 This module implements the Chunk class.
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -86,6 +88,7 @@ class Chunk
         chunk.bytecode = decode!(ubyte[])(stream);
         stream = stream[size_t.sizeof..$];
         stream = stream[chunk.bytecode.length * ubyte.sizeof .. $];
+        chunk.constTable.seal(); // there is no hashmap so it's not possible to add anymore values
         return chunk;
     }
 

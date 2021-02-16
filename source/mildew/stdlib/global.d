@@ -1,7 +1,8 @@
 /**
 This module implements script functions that are stored in the global namespace such as parseInt and isdefined.
-`isdefined` takes a string as an argument, and returns true if a variable with that name is defined anywhere on the stack.
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -23,7 +24,10 @@ import mildew.interpreter;
 import mildew.types;
 
 /**
- * This is called by the interpreter's initializeStdlib method to store functions in the global namespace
+ * This is called by the interpreter's initializeStdlib method to store functions in the global namespace.
+ * Documentation for these functions can be found at https://pillager86.github.io/dmildew/
+ * Params:
+ *  interpreter = The Interpreter instance to load the functions into.
  */
 void initializeGlobalLibrary(Interpreter interpreter)
 {

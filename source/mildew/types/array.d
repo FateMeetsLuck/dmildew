@@ -1,7 +1,9 @@
 /**
 This module implements how arrays are internally handled. There is no reason to use this instead of constructing a
 ScriptAny with a D array or using toValue!(ScriptAny[]) on a ScriptAny that stores an array. 
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 

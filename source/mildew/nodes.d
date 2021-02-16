@@ -1,8 +1,10 @@
 /**
 This module implements the expression and statement node classes, which are used internally as a syntax tree.
-The Interpreter can either walk the tree to execute code, or compile the tree into bytecode and run it with
+The Interpreter can either walk the tree to execute code (deprecated), or compile the tree into bytecode and run it with
 the VirtualMachine.
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -57,7 +59,7 @@ class ClassDefinition
         baseClass = base;
     }
 
-    ScriptFunction create(Environment environment)
+    deprecated ScriptFunction create(Environment environment)
     {
         import mildew.interpreter: Interpreter;
 

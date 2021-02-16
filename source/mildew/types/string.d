@@ -1,7 +1,9 @@
 /**
 This module implements ScriptString. However, host applications should work with D strings by converting
 the ScriptAny directly to string with toString().
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -21,8 +23,8 @@ module mildew.types.string;
 import mildew.types.object;
 
 /**
- * Encapsulates a string. It is stored internally as UTF-8 but is cast to UTF-16 for the
- * methods that access individual array indices. TODO: code point iteration
+ * Encapsulates a string. It is stored internally as UTF-8 and treated as such
+ * except during iteration, in which dchar code points are the iteration element.
  */
 class ScriptString : ScriptObject
 {

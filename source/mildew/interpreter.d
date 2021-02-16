@@ -1,6 +1,8 @@
 /**
 This module implements the Interpreter class, the main class used by host applications to run scripts
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -32,9 +34,9 @@ import mildew.vm;
 
 /**
  * This is the main interface for the host application to interact with scripts. It can run scripts in
- * interpreted mode by walking the syntax tree, or if given the useVM option, can run a compiler to
+ * interpreted mode by walking the syntax tree (deprecated), or if given the useVM option, can run a compiler to
  * compile scripts into bytecode which is then executed by a VirtualMachine. Note that interpreted mode
- * will be deprecated.
+ * is deprecated.
  */
 class Interpreter : INodeVisitor
 {
@@ -64,7 +66,8 @@ public:
     /**
      * Initializes the Mildew standard library, such as Object, Math, and console namespaces. This
      * is optional and is not called by the constructor. For a script to use these methods such as
-     * console.log this must be called first.
+     * console.log this must be called first. It is also possible to only call specific
+     * initialize*Library functions and/or force set globals from them to UNDEFINED.
      */
     void initializeStdlib()
     {
@@ -85,7 +88,7 @@ public:
     /**
      * Calls a script function. Can throw ScriptRuntimeException.
      */
-    ScriptAny callFunction(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args, bool useVM=false)
+    deprecated ScriptAny callFunction(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args, bool useVM=false)
     {
         auto vr = callFn(func, thisObj, args, false, useVM);
         if(vr.exception)
@@ -97,8 +100,8 @@ public:
      * This is the main entry point for evaluating a script program. If the useVM option was set in the
      * constructor, bytecode compilation and execution will be used, otherwise tree walking.
      * Params:
-     *  code = This is the code of a script to be executed.
-     *  printDisasm = If VM mode is set, print the disassembly of bytecode if true.
+     *  code = This is the source code of a script to be executed.
+     *  printDisasm = If VM mode is set, print the disassembly of bytecode before running if true.
      * Returns:
      *  If the script has a return statement with an expression, this value will be the result of that expression
      *  otherwise it will be ScriptAny.UNDEFINED
@@ -198,23 +201,23 @@ public:
         return _vm !is null;
     }
 
-// The next functions are internal and only public due to D language constraints.
+// The next functions are internal and deprecated and only public due to D language constraints.
 
 	/// extract a VisitResult from a LiteralNode
-	Variant visitLiteralNode(LiteralNode lnode)
+	deprecated Variant visitLiteralNode(LiteralNode lnode)
 	{
 		return Variant(VisitResult(lnode.value));
 	}
 	
     /// handles function literals
-    Variant visitFunctionLiteralNode(FunctionLiteralNode flnode)
+    deprecated Variant visitFunctionLiteralNode(FunctionLiteralNode flnode)
     {
         auto func = new ScriptFunction("<anonymous function>", flnode.argList, flnode.statements, _currentEnvironment);
         return Variant(VisitResult(ScriptAny(func)));
     }
 
     /// handle lambda
-    Variant visitLambdaNode(LambdaNode lnode)
+    deprecated Variant visitLambdaNode(LambdaNode lnode)
     {
         FunctionLiteralNode flnode;
         if(lnode.returnExpression)
@@ -231,7 +234,7 @@ public:
     }
 
     /// handle template literal nodes
-    Variant visitTemplateStringNode(TemplateStringNode tsnode)
+    deprecated Variant visitTemplateStringNode(TemplateStringNode tsnode)
     {
         VisitResult vr;
         string result = "";
@@ -246,7 +249,7 @@ public:
     }
 
 	/// return an array from an array literal node
-	Variant visitArrayLiteralNode(ArrayLiteralNode alnode)
+	deprecated Variant visitArrayLiteralNode(ArrayLiteralNode alnode)
 	{
 		VisitResult vr;
         ScriptAny[] values = [];
@@ -262,7 +265,7 @@ public:
 	}
 	
 	/// generates object from object literal node
-	Variant visitObjectLiteralNode(ObjectLiteralNode olnode)
+	deprecated Variant visitObjectLiteralNode(ObjectLiteralNode olnode)
 	{
 		if(olnode.keys.length != olnode.valueNodes.length)
             throw new Exception("Error with object literal node");
@@ -285,7 +288,7 @@ public:
 	}
 	
     /// handle class literals
-	Variant visitClassLiteralNode(ClassLiteralNode clnode)
+	deprecated Variant visitClassLiteralNode(ClassLiteralNode clnode)
 	{
 		VisitResult vr;
 
@@ -302,7 +305,7 @@ public:
 	}
 	
 	/// processes binary operations including assignment
-	Variant visitBinaryOpNode(BinaryOpNode bonode)
+	deprecated Variant visitBinaryOpNode(BinaryOpNode bonode)
 	{
 		import std.conv: to;
 
@@ -415,7 +418,7 @@ public:
 	}
 	
     /// returns a value from a unary operation
-	Variant visitUnaryOpNode(UnaryOpNode uonode)
+	deprecated Variant visitUnaryOpNode(UnaryOpNode uonode)
 	{
 		auto vr = uonode.operandNode.accept(this).get!VisitResult;
         if(vr.exception !is null)
@@ -463,7 +466,7 @@ public:
 	}
 	
     /// handle constructs such as i++ and i--
-	Variant visitPostfixOpNode(PostfixOpNode ponode)
+	deprecated Variant visitPostfixOpNode(PostfixOpNode ponode)
 	{
 		// first get the operand's original value that will be returned
         VisitResult vr = ponode.operandNode.accept(this).get!VisitResult;
@@ -495,7 +498,7 @@ public:
 	}
 	
     /// handles : ? operator
-	Variant visitTerniaryOpNode(TerniaryOpNode tonode)
+	deprecated Variant visitTerniaryOpNode(TerniaryOpNode tonode)
 	{
 		// first evaluate the condition
         auto vr = tonode.conditionNode.accept(this).get!VisitResult;
@@ -509,7 +512,7 @@ public:
 	}
 	
     /// handles variable access
-	Variant visitVarAccessNode(VarAccessNode vanode)
+	deprecated Variant visitVarAccessNode(VarAccessNode vanode)
 	{
 		VisitResult vr;
         vr.accessType = VisitResult.AccessType.VAR_ACCESS;
@@ -524,7 +527,7 @@ public:
 	}
 
     /// handles function calls
-	Variant visitFunctionCallNode(FunctionCallNode fcnode)
+	deprecated Variant visitFunctionCallNode(FunctionCallNode fcnode)
 	{
         ScriptAny thisObj;
         auto vr = fcnode.functionToCall.accept(this).get!VisitResult;
@@ -582,7 +585,7 @@ public:
 	}
 	
     /// handle array index
-	Variant visitArrayIndexNode(ArrayIndexNode ainode)
+	deprecated Variant visitArrayIndexNode(ArrayIndexNode ainode)
 	{
         import std.utf: UTFException;
 
@@ -653,7 +656,7 @@ public:
 	}
 	
     /// handle dot operator
-	Variant visitMemberAccessNode(MemberAccessNode manode)
+	deprecated Variant visitMemberAccessNode(MemberAccessNode manode)
 	{
         VisitResult vr;
         string memberName = "";
@@ -698,7 +701,7 @@ public:
 	}
 	
     /// handles new expression
-	Variant visitNewExpressionNode(NewExpressionNode nenode)
+	deprecated Variant visitNewExpressionNode(NewExpressionNode nenode)
 	{
 		// fce should be a valid function call with its returnThis flag already set by the parser
         auto vr = nenode.functionCallExpression.accept(this);
@@ -706,14 +709,14 @@ public:
 	}
 
     /// this should only be directly visited when used by itself
-    Variant visitSuperNode(SuperNode snode)
+    deprecated Variant visitSuperNode(SuperNode snode)
     {
         auto thisObj = getLocalThis;
         return Variant(VisitResult(thisObj["__super__"]));
     }
 	
     /// handles var, let, and const declarations
-	Variant visitVarDeclarationStatementNode(VarDeclarationStatementNode vdsnode)
+	deprecated Variant visitVarDeclarationStatementNode(VarDeclarationStatementNode vdsnode)
 	{
 		VisitResult visitResult;
         foreach(varNode; vdsnode.varAccessOrAssignmentNodes)
@@ -755,7 +758,7 @@ public:
 	}
 	
     /// handles {block} statement
-	Variant visitBlockStatementNode(BlockStatementNode bsnode)
+	deprecated Variant visitBlockStatementNode(BlockStatementNode bsnode)
 	{
         Environment oldEnvironment = _currentEnvironment; // @suppress(dscanner.suspicious.unmodified)
 		_currentEnvironment = new Environment(_currentEnvironment, "<scope>");
@@ -775,7 +778,7 @@ public:
 	}
 	
     /// handles if statements
-	Variant visitIfStatementNode(IfStatementNode isnode)
+	deprecated Variant visitIfStatementNode(IfStatementNode isnode)
 	{
 		auto vr = isnode.conditionNode.accept(this).get!VisitResult;
         if(vr.exception !is null)
@@ -794,7 +797,7 @@ public:
 	}
 	
     /// handles switch case statements
-	Variant visitSwitchStatementNode(SwitchStatementNode ssnode)
+	deprecated Variant visitSwitchStatementNode(SwitchStatementNode ssnode)
 	{
 		auto vr = ssnode.expressionNode.accept(this).get!VisitResult;
         if(vr.exception !is null)
@@ -817,7 +820,7 @@ public:
 	}
 	
     /// handles while statements
-	Variant visitWhileStatementNode(WhileStatementNode wsnode)
+	deprecated Variant visitWhileStatementNode(WhileStatementNode wsnode)
 	{
 		if(wsnode.label != "")
             _currentEnvironment.insertLabel(wsnode.label);
@@ -871,7 +874,7 @@ public:
 	}
 	
     /// handles do-while statement
-	Variant visitDoWhileStatementNode(DoWhileStatementNode dwsnode)
+	deprecated Variant visitDoWhileStatementNode(DoWhileStatementNode dwsnode)
 	{
 		auto vr = VisitResult(ScriptAny.UNDEFINED);
         if(dwsnode.label != "")
@@ -926,7 +929,7 @@ public:
 	}
 	
     /// handles for(;;) statements
-	Variant visitForStatementNode(ForStatementNode fsnode)
+	deprecated Variant visitForStatementNode(ForStatementNode fsnode)
 	{
         Environment oldEnvironment = _currentEnvironment; // @suppress(dscanner.suspicious.unmodified)
 		_currentEnvironment = new Environment(_currentEnvironment, "<outer_for_loop>");
@@ -992,7 +995,7 @@ public:
 	}
 	
     /// handles for-of (and for-in) loops. TODO rewrite with iterators and implement string
-	Variant visitForOfStatementNode(ForOfStatementNode fosnode)
+	deprecated Variant visitForOfStatementNode(ForOfStatementNode fosnode)
 	{
 		auto vr = fosnode.objectToIterateNode.accept(this).get!VisitResult;
         // make sure this is iterable
@@ -1137,7 +1140,7 @@ public:
 	}
 	
     /// handle break statements
-	Variant visitBreakStatementNode(BreakStatementNode bsnode)
+	deprecated Variant visitBreakStatementNode(BreakStatementNode bsnode)
 	{
 		auto vr = VisitResult(ScriptAny.UNDEFINED);
         vr.breakFlag = true;
@@ -1146,7 +1149,7 @@ public:
 	}
 	
     /// handle continue statements
-	Variant visitContinueStatementNode(ContinueStatementNode csnode)
+	deprecated Variant visitContinueStatementNode(ContinueStatementNode csnode)
 	{
         auto vr = VisitResult(ScriptAny.UNDEFINED);
         vr.continueFlag = true;
@@ -1155,7 +1158,7 @@ public:
 	}
 	
     /// handles return statements
-	Variant visitReturnStatementNode(ReturnStatementNode rsnode)
+	deprecated Variant visitReturnStatementNode(ReturnStatementNode rsnode)
 	{
 		VisitResult vr = VisitResult(ScriptAny.UNDEFINED);
         if(rsnode.expressionNode !is null)
@@ -1171,7 +1174,7 @@ public:
 	}
 	
     /// handle function declarations
-	Variant visitFunctionDeclarationStatementNode(FunctionDeclarationStatementNode fdsnode)
+	deprecated Variant visitFunctionDeclarationStatementNode(FunctionDeclarationStatementNode fdsnode)
 	{
 		auto func = new ScriptFunction(fdsnode.name, fdsnode.argNames, fdsnode.statementNodes, _currentEnvironment);
         immutable okToDeclare = _currentEnvironment.declareVariableOrConst(fdsnode.name, ScriptAny(func), false);
@@ -1185,7 +1188,7 @@ public:
 	}
 	
     /// handles throw statements
-	Variant visitThrowStatementNode(ThrowStatementNode tsnode)
+	deprecated Variant visitThrowStatementNode(ThrowStatementNode tsnode)
 	{
 		auto vr = tsnode.expressionNode.accept(this).get!VisitResult;
         if(vr.exception !is null)
@@ -1199,7 +1202,7 @@ public:
 	}
 	
     /// handle try catch block statements
-	Variant visitTryCatchBlockStatementNode(TryCatchBlockStatementNode tcbsnode)
+	deprecated Variant visitTryCatchBlockStatementNode(TryCatchBlockStatementNode tcbsnode)
 	{
 		auto vr = tcbsnode.tryBlockNode.accept(this).get!VisitResult;
         // if there was an exception we need to start a new environment and set it as a local variable
@@ -1226,7 +1229,7 @@ public:
 	}
 	
     /// handle delete statement
-	Variant visitDeleteStatementNode(DeleteStatementNode dsnode)
+	deprecated Variant visitDeleteStatementNode(DeleteStatementNode dsnode)
 	{
 		auto vr = dsnode.memberAccessOrArrayIndexNode.accept(this).get!VisitResult;
         // TODO handle array
@@ -1245,7 +1248,7 @@ public:
 	}
 	
     /// handle class declaration
-	Variant visitClassDeclarationStatementNode(ClassDeclarationStatementNode cdsnode)
+	deprecated Variant visitClassDeclarationStatementNode(ClassDeclarationStatementNode cdsnode)
 	{
 		VisitResult vr;
         // generate class
@@ -1273,7 +1276,7 @@ public:
 	}
 	
     /// handle expression statements
-	Variant visitExpressionStatementNode(ExpressionStatementNode esnode)
+	deprecated Variant visitExpressionStatementNode(ExpressionStatementNode esnode)
 	{
 		VisitResult vr;
         if(esnode.expressionNode !is null)
@@ -1287,7 +1290,7 @@ public:
 	
 package:
 	/// holds information from visiting nodes TODO redesign this as a union
-	struct VisitResult
+	deprecated struct VisitResult
 	{
 		enum AccessType { NO_ACCESS=0, VAR_ACCESS, ARRAY_ACCESS, OBJECT_ACCESS }
 
@@ -1315,7 +1318,7 @@ package:
 
 private:
 
-    VisitResult callFn(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args, 
+    deprecated VisitResult callFn(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args, 
                        bool returnThis = false, bool useVM = false)
 	{
 		VisitResult vr;
@@ -1404,7 +1407,7 @@ private:
 		}
 	}
 
-	VisitResult convertExpressionsToArgs(ExpressionNode[] exprs, out ScriptAny[] args)
+	deprecated VisitResult convertExpressionsToArgs(ExpressionNode[] exprs, out ScriptAny[] args)
 	{
 		args = [];
 		VisitResult vr;
@@ -1421,7 +1424,7 @@ private:
 		return vr;
 	}
 
-    ScriptAny getLocalThis()
+    deprecated ScriptAny getLocalThis()
     {
         bool _; // @suppress(dscanner.suspicious.unmodified)
         if(!_currentEnvironment.variableOrConstExists("this"))
@@ -1430,7 +1433,7 @@ private:
         return thisObj;
     }
 
-	VisitResult getObjectProperty(ScriptObject obj, in string propName)
+	deprecated VisitResult getObjectProperty(ScriptObject obj, in string propName)
 	{
 		VisitResult vr;
 		ScriptObject objToSearch = obj;
@@ -1447,7 +1450,7 @@ private:
 		return vr;
 	}
 
-	VisitResult handleArrayReassignment(Token opToken, ScriptAny arr, size_t index, ScriptAny value)
+	deprecated VisitResult handleArrayReassignment(Token opToken, ScriptAny arr, size_t index, ScriptAny value)
 	{
 		VisitResult vr;
 		if(arr.type != ScriptAny.Type.ARRAY)
@@ -1480,7 +1483,7 @@ private:
 		return vr;
 	}
 
-	VisitResult handleObjectReassignment(Token opToken, ScriptAny objToAccess, in string index, ScriptAny value)
+	deprecated VisitResult handleObjectReassignment(Token opToken, ScriptAny objToAccess, in string index, ScriptAny value)
 	{
 		VisitResult vr;
 		if(!objToAccess.isObject)
@@ -1537,7 +1540,7 @@ private:
 		return vr;
 	}
 
-	VisitResult handleVarDeclaration(in string qual, in string varName, ScriptAny value)
+	deprecated VisitResult handleVarDeclaration(in string qual, in string varName, ScriptAny value)
 	{
 		VisitResult vr;
 		bool ok = false;
@@ -1565,7 +1568,7 @@ private:
 		return vr;
 	}
 
-	VisitResult handleVarReassignment(Token opToken, in string varName, ScriptAny value)
+	deprecated VisitResult handleVarReassignment(Token opToken, in string varName, ScriptAny value)
 	{
 		bool isConst; // @suppress(dscanner.suspicious.unmodified)
 		auto ptr = _currentEnvironment.lookupVariableOrConst(varName, isConst);
@@ -1596,7 +1599,7 @@ private:
 		return vr;
 	}
 
-	VisitResult setObjectProperty(ScriptObject obj, string propName, ScriptAny value)
+	deprecated VisitResult setObjectProperty(ScriptObject obj, string propName, ScriptAny value)
 	{
 		VisitResult vr;
         auto objectToSearch = obj;

@@ -1,4 +1,4 @@
-class Foo {
+/*class Foo {
     doSomething() {
         console.log("a Foo is doing something on " + this);
     }
@@ -25,15 +25,58 @@ console.log(bar.__super__.doSomething);
 
 bar.doSuper();
 
-let test = ["ass", 55, "titties", "booba"];
-test.sort(function(a,b){
-    if(a > b)
-        return -1;
-    else if(a < b)
-        return 1;
-    else
-        return 0;
+const foo = {a: 22};
+Object.defineProperties(foo, { 
+    x: { value: 99 }
 });
-console.log(test);
-test.unshift("foo", "bar");
-console.log(test.toString());
+console.log(foo);
+
+Object.defineProperty(foo, 'dumbProp', {
+    get: () => 1000
+});
+console.log(foo.dumbProp);
+
+let entries = [
+    ["titties", 69],
+    ["stupid", "yes"]
+];
+console.log(Object.fromEntries(entries));
+
+// console.log(Object.getOwnPropertyNames(Array.prototype).some(name => name=="length"));
+console.log(Object.getPrototypeOf([]));
+
+console.log(Object.getPrototypeOf(Object.getPrototypeOf([])));
+
+console.log(foo.__proto__.isPrototypeOf(foo));
+
+Object.setPrototypeOf(foo, {someStupidProperty: 666});
+console.log(foo.someStupidProperty);
+
+switch(()=>{return 29;}) {
+    case () => 29:
+        console.log("This is weird");
+        break;
+}
+console.log("After switch");*/
+// https://pastebin.com/WWzVuZ1p
+
+function retard() {
+    for(let x = 9; x < 81; x = x * 9) {
+        for(let y of [1,2,5]) {
+            function idiot() {
+                for(let i = 0; i < 10; ++i)
+                    return 600;
+            }
+            return idiot();
+        }
+    }
+}
+console.log(retard());
+
+/*function retard() {
+    for(let j = 30; j > 0; --j) {
+        for(let i = 0; i < 10; ++i)
+            return 29;
+    }
+}
+console.log(retard());*/

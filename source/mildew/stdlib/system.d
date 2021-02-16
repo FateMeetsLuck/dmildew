@@ -1,9 +1,9 @@
 /**
-This module implements functions in the System namespace such as currentTimeMillis.
-Most applications wanting to embed DMildew probably do not want to load this library.
-This can be achieved by loading each individual desired library or using the
-standard load libraries method and setting System to ScriptAny.UNDEFINED.
+This module implements functions in the System namespace such as currentTimeMillis
+and getenv.
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -29,10 +29,10 @@ import mildew.interpreter;
 import mildew.types;
 
 /**
- * Initializes the System namespace, which contains the following items:
- * - currentTimeMillis():integer—returns the current time as milliseconds.
- * - gc()—attempt to run a D garbage collection cycle.
- * - getenv():object—returns a hash map of all shell environment variables such as HOME.
+ * Initializes the System namespace. Documentation for this library can be found at
+ * https://pillager86.github.io/dmildew/
+ * Params:
+ *  interpreter = The Interpreter instance to load the System namespace into.
  */
 void initializeSystemLib(Interpreter interpreter)
 {

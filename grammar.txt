@@ -1,3 +1,4 @@
+# This seriously needs to be updated
 # OPERATOR PRECEDENCE
 20  DOT, FUNCTION_CALL
 

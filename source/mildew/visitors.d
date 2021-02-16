@@ -1,7 +1,9 @@
 /**
 This module defines the interfaces that work with statement and expression nodes. Interpreter and Compiler
-implements all of these interfaces.
+implements all of these interfaces, although Interpreter will soon not implement these interfaces.
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 

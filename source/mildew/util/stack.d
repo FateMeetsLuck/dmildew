@@ -1,6 +1,8 @@
 /**
 This module implements Stack
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -63,7 +65,7 @@ public:
         return _data.length = sz;
     }
 
-    /// direct access to array
+    /// direct access to array. TODO: replace with an opIndex and opIndexAssign
     auto array() { return _data; }
 
     /// calls reserve on array

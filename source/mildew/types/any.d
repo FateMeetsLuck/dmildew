@@ -1,6 +1,8 @@
 /**
 This module implements the ScriptAny struct, which can hold any value type usable in the scripting language.
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -21,7 +23,7 @@ import std.conv: to;
 import std.traits;
 
 /**
- * This variant holds primitive values as well as ScriptObject types.
+ * This variant holds primitive values as well as ScriptObject derived complex reference types.
  */
 struct ScriptAny
 {
@@ -31,7 +33,7 @@ struct ScriptAny
 public:
     /**
      * Enumeration of what type is held by a ScriptAny. Note that a function, array, or string can be used
-     * as an object.
+     * as an object, so the best way to check if a ScriptAny is a ScriptObject is to use isObject.
      */
     enum Type 
     {
@@ -71,11 +73,14 @@ public:
 
     /**
      * Implements binary math operations between two ScriptAnys and returns a ScriptAny. For
-     * certain operations that make no sense the result will be NaN or UNDEFINED
+     * certain operations that make no sense the result will be NaN or UNDEFINED. Addition
+     * involving any number of ScriptStrings will always coerce the values to string and
+     * perform a concatenation, as per DMildew language semantics.
      */
     auto opBinary(string op)(auto ref const ScriptAny rhs) const
     {
-        // if either value is undefined return undefined
+        // if either value is undefined return undefined. Might want to coerce UNDEFINED
+        // to string "undefined" in some cases...
         if(_type == Type.UNDEFINED || rhs._type == Type.UNDEFINED)
             return UNDEFINED;
         
@@ -122,7 +127,7 @@ public:
         else static if(op == "&" || op == "|" || op == "^" || op == "<<" || op == ">>" || op == ">>>")
         {
             if(!(this.isNumber && rhs.isNumber))
-                return ScriptAny(0);
+                return ScriptAny.UNDEFINED;
             mixin("return ScriptAny(toValue!long" ~ op ~ "rhs.toValue!long);");
         }
         else
@@ -290,6 +295,8 @@ public:
         // bit not only works on integers
         else static if(op == "~")
         {
+            if(!isNumber)
+                return ScriptAny.UNDEFINED;
             return ScriptAny(~toValue!long);
         }
         else // increment and decrement have to be handled by the scripting environment
@@ -343,9 +350,7 @@ public:
     }
 
     /**
-     * The comparison operations. Note that this only returns a meaningful, usable value if the values
-     * are similar enough in type to be compared. For the purpose of the scripting language, invalid
-     * comparisons do not throw an exception but they return a meaningless incorrect result.
+     * The comparison operations.
      */
     int opCmp(const ScriptAny other) const
     {
@@ -421,7 +426,7 @@ public:
 
     /**
      * This allows ScriptAny to be used as a key index in a table, however the scripting language currently
-     * only uses strings.
+     * only uses strings. In the future a Map class will take advantage of this.
      */
     size_t toHash() const nothrow
     {
@@ -471,9 +476,11 @@ public:
     /**
      * This implements the '===' and '!==' operators. Objects must be exactly the same in type and value.
      * This operator should not be used on numerical primitives because true === 1 will return false.
+     * Same with 1.0 === 1.
      */
     bool strictEquals(const ScriptAny other)
     {
+        import mildew.types.array: ScriptArray;
         if(_type != other._type)
             return false;
         
@@ -489,8 +496,11 @@ public:
             case Type.DOUBLE:
                 return _asDouble == other._asDouble;
             case Type.STRING:
+                return toString() == other.toString();
             case Type.ARRAY:
-            case Type.FUNCTION: 
+                return cast(ScriptArray)_asObject == cast(ScriptArray)other._asObject;
+            case Type.FUNCTION:
+                return cast(ScriptFunction)_asObject == cast(ScriptFunction)other._asObject;
             case Type.OBJECT:
                 return _asObject == other._asObject;
         }
@@ -498,7 +508,8 @@ public:
 
     /**
      * Returns the read-only type property. This should always be checked before using the
-     * toValue or checkValue template to retrieve the stored D value.
+     * toValue or checkValue template to retrieve the stored D value. Unless one is casting
+     * to primitives and does not care about the value being 0 or false.
      */
     auto type() const nothrow @nogc { return _type; }
 
@@ -508,7 +519,9 @@ public:
     auto isUndefined() const nothrow @nogc { return _type == Type.UNDEFINED; }
 
     /**
-     * Returns true if the type is NULL or if it an object or function whose stored value is null
+     * Returns true if the type is NULL or if it an object or function whose stored value is null. Note
+     * that the second condition should be impossible as receiving a null object value sets the type
+     * to NULL anyway.
      */
     auto isNull() const nothrow @nogc 
     { 
@@ -570,6 +583,16 @@ public:
         if(!isObject)
             return cast(T)null;
         return _asObject.nativeObject!T;
+    }
+
+    /**
+     * Shorthand for testing if this is a ScriptObject containing a native D object of a specific type.
+     */
+    bool isNativeObjectType(T)() const
+    {
+        if(!isObject)
+            return false;
+        return _asObject.nativeObject!T !is null;
     }
 
     /// For use with the scripting language's typeof operator

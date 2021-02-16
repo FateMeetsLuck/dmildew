@@ -1,7 +1,9 @@
 /**
 This module is for convenient use by the scripting language internals. Host applications should
 only import func.d, object.d, and any.d most of the time.
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 

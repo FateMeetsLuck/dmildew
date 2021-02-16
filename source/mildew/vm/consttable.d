@@ -1,5 +1,7 @@
 /** This module implements the ConstTable class
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -33,6 +35,8 @@ public:
     /// add a possibly new value to table and return its index.
     size_t addValue(ScriptAny value)
     {
+        if(_isSealed)
+            throw new Exception("Attempt to add to sealed const table");
         // already in table?
         if(value in _lookup)
         {
@@ -73,6 +77,16 @@ public:
         return result;
     }
 
+    /**
+     * Seal the const table so that no more constants can be added.
+     */
+    void seal() 
+    {
+        _isSealed = true;
+        destroy(_lookup);
+        _lookup = null;
+    }
+
     /// convert const table to ubytes
     ubyte[] serialize()
     {
@@ -98,4 +112,5 @@ public:
 private:
     ScriptAny[] _constants;
     size_t[ScriptAny] _lookup;
+    bool _isSealed = false;
 }

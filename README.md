@@ -1,10 +1,10 @@
 # DMildew
 
-A scripting language for the D programming language inspired by Lua and JavaScript. While there are other scripting languages for D such as Lua, one cannot use D delegates as C function pointers in those languages. Other languages require modification of the D class in order to bind. With Mildew, bindings for any public method or property can be written without touching the original D class module. The downside is that there are no ways to trivialize this binding process with metaprogramming yet. The prototype inheritance system of Mildew allows scripts to extend D classes in powerful ways.
+A scripting language for the D programming language inspired by Lua and JavaScript. While there are other scripting languages for D such as Lua, one cannot easily use D delegates as C function pointers in those languages. Other languages require modification of the D class in order to bind. With Mildew, bindings for any public method or property can be written without touching the original D class module. The downside is that there are no ways to trivialize this binding process with metaprogramming yet. The prototype inheritance system of Mildew allows scripts to extend D classes in powerful ways.
 
 This software is licensed under the GNU General Public License version 3.0 so that it may be used in free and open software. For a commercial software usage license, please contact the author.
 
-Note: this is still very much a work in progress and the API is subject to change at any time.
+This is still very much a work in progress and the API is subject to change at any time.
 
 ## Usage
 
@@ -28,7 +28,7 @@ A script can be compiled with `dub run dmildew:bccompiler -- <name of script fil
 
 In a terminal in the main project directory run `dub run dmildew:run -- examples/<nameofexample>.mds`. To try out the interactive shell simply type `dub run dmilew:run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after. One can also store anonymous class expressions in a global variable such as `var Foo = class {};`.
 
-A VM option is now available and selected with the --usevm command line argument. An additional argument -v can be specified to see highly verbose execution of bytecode.
+A VM option is now available and selected with the --usevm command line argument. An additional argument -v can be specified to see highly verbose execution of bytecode. Soon the VM and bytecode compilation option will be the default and tree walking will be removed.
 
 ## Binding
 
@@ -38,7 +38,7 @@ Binding structs can only be done by wrapping the struct inside a class and stori
 
 The function or delegate signature that can be wrapped inside a ScriptAny (and thus ScriptFunction) is `ScriptAny function(Context, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError);` And such a function is wrapped by `ScriptAny(new ScriptFunction("name of function", &nativeFunction))`. This is analogous to how Lua bindings work.
 
-`bindingexample2.zip` in the examples folder contains a simple program that binds a class and its public methods and properties. D classes that are bound can be extended by the script as long as the native function constructor checks that the `thisObj` parameter is an object and assigns the native object to its `nativeObject` field.
+`bindingexample2.zip` in the examples folder contains a simple program that binds a class and its public methods and properties. D classes that are bound can be extended by the script as long as the native function constructor checks that the `thisObj` parameter is an object and assigns the native object to its `nativeObject` field. `bindingexample3.zip` shows a more advanced example of binding D classes that have an inheritance hierarchy. The power of DMildew is that methods written for the base class will automatically work on the bound subclasses.
 
 ## Caveats
 
@@ -46,7 +46,7 @@ This language is stricter than JavaScript. Global variables cannot be redeclared
 
 Since all programs are run in a scope, the `var` keyword declares variables that are stored in the global scope, while `let` and `const` work the same as in ES6. This is more similar to Lua.
 
-In interpreted mode, for-in loops cannot iterate over chars in a string so one has to write a regular for-loop that checks the length.
+In interpreted mode, for-in loops cannot iterate over chars in a string so one has to write a regular for-loop that checks the length. In VM mode, for-in loops over strings iterate for each unicode code point.
 
 To declare a function to be stored in an object, one must write `objectName.fieldName = function(...)...` because `function objectName.fieldName(...)...` declarations do not work.
 
@@ -58,7 +58,7 @@ The "super" keyword cannot be used to access static base class methods.
 
 DMildew is not optimized for computationally heavy tasks. The design of the language focuses on interoperability with D native functions and CPU intensive operations should be moved to native implementations and called from the scripting language.
 
-DMildew has only been tested on Windows and Linux x86_64 operating systems. Please test on other operating systems to report problems. Note that compiled bytecode is platform dependent (byte order matters) and bytecode scripts must be compiled for each platform, similar to Lua.
+DMildew has only been tested on Windows and Linux x86_64 operating systems. Please test on other operating systems to report problems. Note that compiled bytecode is platform dependent (byte order matters) and bytecode scripts must be compiled for each type of CPU, similar to Lua.
 
 ## Help
 
@@ -66,12 +66,11 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 
 ## Current Goals
 
-* Refactor code to easily implement all math assignment operators (such as `*=`).
+* Refactor code to easily implement all math assignment operators (such as `*=`). This will be done once tree walking is removed.
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
 * Implement ES6 destructuring declaration and assignments of arrays and objects into variables.
-* Implement lambda functions.
 * Implement a regular expression library. Regex literals will probably never be supported.
 * Bind native classes and functions with one line of code with mixins and template metaprogramming. Or write software that will analyze D source files and generate bindings.
 * Write a more complete and robust standard library for the scripting language.
 * Allow unicode support for source code text.
-* Implement yield keyword and Generators. Yield may not become an expression.
+* Implement yield keyword and Generators. Yield may or may not become an expression.

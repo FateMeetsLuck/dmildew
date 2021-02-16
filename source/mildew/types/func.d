@@ -1,7 +1,9 @@
 /**
 This module implements the ScriptFunction class, which holds script defined functions as well as native D
 functions or delegates with the correct signature.
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -29,6 +31,8 @@ import mildew.vm;
  * the last reference parameter should be set to the appropriate enum value.
  * A specific exception can be thrown by setting the flag to RETURN_VALUE_IS_EXCEPTION and
  * returning a string.
+ * If an exception is thrown directly inside a native function, the user will not be able to
+ * see a traceback of the script source code lines where the error occurred.
  */
 enum NativeFunctionError 
 {
@@ -112,6 +116,16 @@ public:
         return false;
     }
 
+    /**
+     * Binds a specific this to be used no matter what. Internal users of ScriptFunction such as
+     * mildew.vm.virtualmachine.VirtualMachine must manually check the boundThis property and set this up.
+     * Unbinding is done by passing UNDEFINED as the parameter.
+     */
+    void bind(ScriptAny thisObj)
+    {
+        _boundThis = thisObj;
+    }
+
     /// Returns a string representing the type and name.
     override string toString() const
     {
@@ -122,10 +136,12 @@ public:
     auto type() const { return _type; }
     /// Returns the name of the function
     auto functionName() const { return _functionName; }
-    /// Property argNames
+    /// Property argNames. Note: native functions do not have this.
     auto argNames() { return _argNames; }
     /// Compiled form cached
     ubyte[] compiled() { return _compiled; }
+    /// bound this property. change with bind()
+    ScriptAny boundThis() { return _boundThis; }
 
     int opCmp(const ScriptFunction other) const
     {
@@ -237,7 +253,7 @@ package(mildew):
     }
 
     /**
-     * Method to copy fresh compiled functions with the correct context
+     * Method to copy fresh compiled functions with the correct environment
      */
     ScriptFunction copyCompiled(Environment env, bool isClass=false)
     {
@@ -279,7 +295,7 @@ package(mildew):
     auto isClass() const { return _isClass; }
 
     /// used by the parser for missing constructors in classes that don't extend
-    static ScriptFunction emptyFunction(in string name, bool isClass)
+    static deprecated ScriptFunction emptyFunction(in string name, bool isClass)
     {
         return new ScriptFunction(name, &native_EMPTY_FUNCTION, isClass);
     }
@@ -289,6 +305,7 @@ private:
     string _functionName;
     string[] _argNames;
     StatementNode[] _statementNodes;
+    ScriptAny _boundThis;
 	Environment _closure = null;
 	bool _isClass = false;
     union {
@@ -306,7 +323,7 @@ private:
 
 }
 
-private ScriptAny native_EMPTY_FUNCTION(Environment e, ScriptAny* thisObj, ScriptAny[] args, 
+deprecated private ScriptAny native_EMPTY_FUNCTION(Environment e, ScriptAny* thisObj, ScriptAny[] args, 
                                         ref NativeFunctionError nfe)
 {
     return ScriptAny.UNDEFINED;

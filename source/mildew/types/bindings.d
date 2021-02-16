@@ -1,7 +1,9 @@
 /**
 This module implements the __proto__ field given to each special object such as ScriptObject, ScriptFunction,
 ScriptArray, and ScriptString, as well as the static methods for Object, Array, Function, and String
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -26,11 +28,12 @@ import mildew.types.func;
 import mildew.types.string;
 import mildew.types.object;
 
-package(mildew):
-
 /**
  * Initializes the bindings of builtin types such as Object, Function, String, and Array. This function is not
  * required because these objects already have their __proto__ set correctly when constructed.
+ * Documentation for all these classes' methods can be found at https://pillager86.github.io/dmildew/
+ * Params:
+ *  interpreter = The Interpreter instance to load the constructor-namespaces into.
  */
 void initializeTypesLibrary(Interpreter interpreter)
 {
@@ -38,11 +41,24 @@ void initializeTypesLibrary(Interpreter interpreter)
     Object_ctor["prototype"] = getObjectPrototype();
     Object_ctor["prototype"]["constructor"] = Object_ctor;
     // static Object methods
+    Object_ctor["assign"] = new ScriptFunction("Object.assign", &native_Object_s_assign);
     Object_ctor["create"] = new ScriptFunction("Object.create", &native_Object_s_create);
+    Object_ctor["defineProperties"] = new ScriptFunction("Object.defineProperties",
+            &native_Object_s_defineProperties);
+    Object_ctor["defineProperty"] = new ScriptFunction("Object.defineProperty",
+            &native_Object_s_defineProperty);
     Object_ctor["entries"] = new ScriptFunction("Object.entries", &native_Object_s_entries);
+    Object_ctor["fromEntries"] = new ScriptFunction("Object.fromEntries", &native_Object_s_fromEntries);
     Object_ctor["getOwnPropertyDescriptor"] = new ScriptFunction("Object.getOwnPropertyDescriptor", 
             &native_Object_s_getOwnPropertyDescriptor);
+    Object_ctor["getOwnPropertyDescriptors"] = new ScriptFunction("Object.getOwnPropertyDescriptors",
+            &native_Object_s_getOwnPropertyDescriptors);
+    Object_ctor["getOwnPropertyNames"] = new ScriptFunction("Object.getOwnPropertyNames", 
+            &native_Object_s_getOwnPropertyNames);
+    Object_ctor["getPrototypeOf"] = new ScriptFunction("Object.getPrototypeOf", &native_Object_s_getPrototypeOf);
+    Object_ctor["is"] = new ScriptFunction("Object.is", &native_Object_s_is);
     Object_ctor["keys"] = new ScriptFunction("Object.keys", &native_Object_s_keys);
+    Object_ctor["setPrototypeOf"] = new ScriptFunction("Object.setPrototypeOf", &native_Object_s_setPrototypeOf);
     Object_ctor["values"] = new ScriptFunction("Object.values", &native_Object_s_values);
 
     ScriptAny Array_ctor = new ScriptFunction("Array", &native_Array_ctor, true);
@@ -69,12 +85,18 @@ void initializeTypesLibrary(Interpreter interpreter)
     interpreter.forceSetGlobal("String", String_ctor, false);
 }
 
+package(mildew):
+
 ScriptObject getObjectPrototype()
 {
     if(_objectPrototype is null)
     {
         _objectPrototype = new ScriptObject("object"); // this is the base prototype for all objects
-        _objectPrototype["toString"] = new ScriptFunction("Object.toString", &native_Object_toString);
+        _objectPrototype["hasOwnProperty"] = new ScriptFunction("Object.prototype.hasOwnProperty",
+                &native_Object_hasOwnProperty);
+        _objectPrototype["isPrototypeOf"] = new ScriptFunction("Object.prototype.isPrototypeOf",
+                &native_Object_isPrototypeOf);
+        _objectPrototype["toString"] = new ScriptFunction("Object.prototype.toString", &native_Object_toString);
     }
     return _objectPrototype;
 }
@@ -129,6 +151,7 @@ ScriptObject getFunctionPrototype()
     {
         _functionPrototype = new ScriptObject("function", null);
         _functionPrototype["apply"] = new ScriptFunction("Function.prototype.apply", &native_Function_apply);
+        _functionPrototype["bind"] = new ScriptFunction("Function.prototype.bind", &native_Function_bind);
         _functionPrototype["call"] = new ScriptFunction("Function.prototype.call", &native_Function_call);
     }
     return _functionPrototype;
@@ -178,8 +201,14 @@ private ScriptObject _stringPrototype;
 
 // Helper methods
 
-private ScriptAny getLocalThis(Environment env)
+private ScriptAny getLocalThis(Environment env, ScriptAny func=ScriptAny.UNDEFINED)
 {
+    if(func && func.type == ScriptAny.Type.FUNCTION)
+    {
+        auto fn = func.toValue!ScriptFunction;
+        if(fn.boundThis != ScriptAny.UNDEFINED)
+            return fn.boundThis;
+    }
     bool _; // @suppress(dscanner.suspicious.unmodified)
     ScriptAny* thisObj = env.lookupVariableOrConst("this", _);
     if(thisObj == null)
@@ -191,7 +220,7 @@ private ScriptAny getLocalThis(Environment env)
 // Object methods /////////////////////////////////////////////////////////////
 //
 
-private ScriptAny native_Object_constructor(Environment c, ScriptAny* thisObj, ScriptAny[] args, 
+private ScriptAny native_Object_constructor(Environment env, ScriptAny* thisObj, ScriptAny[] args, 
         ref NativeFunctionError nfe)
 {
     if(args.length >= 1)
@@ -202,11 +231,35 @@ private ScriptAny native_Object_constructor(Environment c, ScriptAny* thisObj, S
     return ScriptAny.UNDEFINED;
 }
 
+private ScriptAny native_Object_s_assign(Environment env, ScriptAny* thisObj,
+                                       ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(args.length < 2)
+        return ScriptAny.UNDEFINED;
+    if(!args[0].isObject || !args[1].isObject)
+        return ScriptAny.UNDEFINED;
+    auto objA = args[0].toValue!ScriptObject;
+    auto objB = args[1].toValue!ScriptObject;
+    foreach(k, v ; objB.dictionary)
+    {
+        objA.assignField(k, v);
+    }
+    foreach(k, v ; objB.getters)
+    {
+        objA.addGetterProperty(k, v);
+    }    
+    foreach(k, v ; objB.setters)
+    {
+        objA.addSetterProperty(k, v);
+    }
+    return ScriptAny(objA);
+}
+
 /**
  * Object.create: This can be called by the script to create a new object whose prototype is the
  * parameter.
  */
-private ScriptAny native_Object_s_create(Environment context,  // @suppress(dscanner.style.phobos_naming_convention)
+private ScriptAny native_Object_s_create(Environment env,
                                         ScriptAny* thisObj, 
                                         ScriptAny[] args, 
                                         ref NativeFunctionError nfe)
@@ -228,8 +281,97 @@ private ScriptAny native_Object_s_create(Environment context,  // @suppress(dsca
     return ScriptAny(newObj);
 }
 
+private ScriptAny native_Object_s_defineProperties(Environment env, ScriptAny* thisObj,
+                                                   ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(args.length < 2 || !args[0].isObject || !args[1].isObject)
+        return ScriptAny.UNDEFINED;
+    auto obj = args[0].toValue!ScriptObject;
+    auto propDesc = args[1].toValue!ScriptObject;
+    foreach(k,v ; propDesc.dictionary)
+    {
+        if(v.isObject)
+        {
+            auto data = v.toValue!ScriptObject;
+            if(data.hasOwnFieldOrProperty("value"))
+            {
+                obj[k] = data["value"];
+            }
+            else
+            {
+                if(data.hasOwnFieldOrProperty("get"))
+                {
+                    auto getter = data["get"].toValue!ScriptFunction;
+                    if(getter is null)
+                    {
+                        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+                        return ScriptAny.UNDEFINED;
+                    }
+                    obj.addGetterProperty(k, getter);
+                }
+                if(data.hasOwnFieldOrProperty("set"))
+                {
+                    auto setter = data["set"].toValue!ScriptFunction;
+                    if(setter is null)
+                    {
+                        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+                        return ScriptAny.UNDEFINED;
+                    }
+                    obj.addSetterProperty(k, setter);
+                }
+            }
+        }
+        else
+        {
+            nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+            return ScriptAny.UNDEFINED;
+        }
+    }
+    return ScriptAny(obj);
+}
+
+private ScriptAny native_Object_s_defineProperty(Environment env, ScriptAny* thisObj,
+                                                 ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(args.length < 3 || !args[0].isObject || !args[2].isObject)
+        return ScriptAny.UNDEFINED;
+    auto obj = args[0].toValue!ScriptObject;
+    auto propName = args[1].toString();
+    auto propDef = args[2].toValue!ScriptObject;
+
+    if(propDef.hasOwnFieldOrProperty("value"))
+    {
+        obj[propName] = propDef["value"];
+    }
+    else
+    {
+        if(propDef.hasOwnFieldOrProperty("get"))
+        {
+            auto fn = propDef["get"].toValue!ScriptFunction;
+            if(fn is null)
+            {
+                nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+                return ScriptAny.UNDEFINED;
+            }
+            obj.addGetterProperty(propName, fn);
+        }
+        if(propDef.hasOwnFieldOrProperty("set"))
+        {
+            auto fn = propDef["set"].toValue!ScriptFunction;
+            if(fn is null)
+            {
+                nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+                return ScriptAny.UNDEFINED;
+            }
+            obj.addSetterProperty(propName, fn);
+        }
+    }
+
+    return ScriptAny(obj);
+}
+
 /// Returns an array of 2-element arrays representing the key and value of each dictionary entry
-private ScriptAny native_Object_s_entries(Environment context,
+private ScriptAny native_Object_s_entries(Environment env,
                                         ScriptAny* thisObj,
                                         ScriptAny[] args,
                                         ref NativeFunctionError nfe)
@@ -248,8 +390,31 @@ private ScriptAny native_Object_s_entries(Environment context,
     return ScriptAny(entries);
 }
 
-/// Returns a possible getter or setter for an object
-private ScriptAny native_Object_s_getOwnPropertyDescriptor(Environment context,
+// TODO s_freeze, which will require a redo of VM mechanics. May be done once interpreted mode is removed.
+
+private ScriptAny native_Object_s_fromEntries(Environment env, ScriptAny* thisObj,
+                                              ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(args.length < 1 || args[0].type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto arr = args[0].toValue!(ScriptAny[]);
+    auto obj = new ScriptObject("object", null);
+    foreach(element ; arr)
+    {
+        if(element.type == ScriptAny.Type.ARRAY)
+        {
+            auto keyValue = element.toValue!(ScriptAny[]);
+            if(keyValue.length >= 2)
+            {
+                obj[keyValue[0].toString()] = keyValue[1];
+            }
+        }
+    }
+    return ScriptAny(obj);
+}
+
+/// Returns a possible getter or setter or value for an object
+private ScriptAny native_Object_s_getOwnPropertyDescriptor(Environment env,
                                                         ScriptAny* thisObj,
                                                         ScriptAny[] args,
                                                         ref NativeFunctionError nfe)
@@ -259,11 +424,88 @@ private ScriptAny native_Object_s_getOwnPropertyDescriptor(Environment context,
     if(!args[0].isObject)
         return ScriptAny.UNDEFINED;
     auto propName = args[1].toString();
-    return ScriptAny(args[0].toValue!ScriptObject.getOwnPropertyDescriptor(propName));
+    return ScriptAny(args[0].toValue!ScriptObject.getOwnPropertyOrFieldDescriptor(propName));
 }
 
+private ScriptAny native_Object_s_getOwnPropertyDescriptors(Environment env, ScriptAny* thisObj,
+                                                            ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(args.length < 1 || !args[0].isObject)
+        return ScriptAny.UNDEFINED;
+    auto obj = args[0].toValue!ScriptObject;
+    return ScriptAny(obj.getOwnFieldOrPropertyDescriptors());
+}
+
+private ScriptAny native_Object_s_getOwnPropertyNames(Environment env, ScriptAny* thisObj,
+                                                      ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(args.length < 1 || !args[0].isObject)
+        return ScriptAny.UNDEFINED;
+    auto obj = args[0].toValue!ScriptObject;
+    bool[string] map;
+    foreach(k,v ; obj.dictionary)
+        map[k] = true;
+    foreach(k,v ; obj.getters)
+        map[k] = true;
+    foreach(k,v ; obj.setters)
+        map[k] = true;
+    return ScriptAny(map.keys);
+}
+
+// not sure about Object.getOwnPropertySymbols
+
+private ScriptAny native_Object_s_getPrototypeOf(Environment env, ScriptAny* thisObj,
+                                                 ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(args.length < 1 || !args[0].isObject)
+        return ScriptAny.UNDEFINED;
+    auto obj = args[0].toValue!ScriptObject;
+    return ScriptAny(obj.prototype);
+}
+
+private ScriptAny native_Object_hasOwnProperty(Environment env, ScriptAny* thisObj,
+                                               ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(!thisObj.isObject)
+        return ScriptAny.UNDEFINED;
+    auto obj = thisObj.toValue!ScriptObject;
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+    auto propName = args[0].toString();
+    return ScriptAny(obj.hasOwnFieldOrProperty(propName));
+}
+
+private ScriptAny native_Object_s_is(Environment env, ScriptAny* thisObj,
+                                     ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    /// Two non-reference values can never "is" each other
+    if(args.length < 2 || !args[0].isObject || !args[1].isObject)
+        return ScriptAny(false);
+    auto objA = args[0].toValue!ScriptObject;
+    auto objB = args[1].toValue!ScriptObject;
+    return ScriptAny(objA is objB);
+}
+
+// Object.isExtensible doesn't fit the design yet
+
+// Object.isFrozen doesn't fit the design yet
+
+private ScriptAny native_Object_isPrototypeOf(Environment env, ScriptAny* thisObj,
+                                              ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(!thisObj.isObject)
+        return ScriptAny(false);
+    if(args.length < 1 || !args[0].isObject)
+        return ScriptAny(false);
+    auto objProto = thisObj.toValue!ScriptObject;
+    auto objWithProto = args[0].toValue!ScriptObject;
+    return ScriptAny(objProto is objWithProto.prototype);
+}
+
+// Object.isSealed doesn't really apply yet
+
 /// returns an array of keys of an object (or function)
-private ScriptAny native_Object_s_keys(Environment context,
+private ScriptAny native_Object_s_keys(Environment env,
                                     ScriptAny* thisObj,
                                     ScriptAny[] args,
                                     ref NativeFunctionError nfe)
@@ -279,6 +521,24 @@ private ScriptAny native_Object_s_keys(Environment context,
     return keys;
 }
 
+// Object.preventExtensions doesn't really apply yet
+
+// Object.prototype.propertyIsEnumerable doesn't really apply, and may never will
+
+// Object.seal doesn't really apply yet
+
+private ScriptAny native_Object_s_setPrototypeOf(Environment env, ScriptAny* thisObj,
+                                                 ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(args.length < 2 || !args[0].isObject)
+        return ScriptAny.UNDEFINED;
+    auto objToSet = args[0].toValue!ScriptObject;
+    auto newProto = args[1].toValue!ScriptObject; // @suppress(dscanner.suspicious.unmodified)
+    // this may set a null prototype if newProto is null
+    objToSet.prototype = newProto;
+    return args[0];
+}
+
 private ScriptAny native_Object_toString(Environment env, ScriptAny* thisObj,
                                          ScriptAny[] args, ref NativeFunctionError nfe)
 {
@@ -287,8 +547,11 @@ private ScriptAny native_Object_toString(Environment env, ScriptAny* thisObj,
     return ScriptAny(thisObj.toString());
 }
 
+// Object.valueOf does not apply and will NEVER apply because we do not allow the "boxing" of primitive
+//  values for no reason.
+
 /// returns an array of values of an object (or function)
-private ScriptAny native_Object_s_values(Environment context,
+private ScriptAny native_Object_s_values(Environment env,
                                         ScriptAny* thisObj,
                                         ScriptAny[] args,
                                         ref NativeFunctionError nfe)
@@ -341,7 +604,8 @@ private ScriptAny native_Array_at(Environment env, ScriptAny* thisObj,
     return array[index];
 }
 
-private ScriptAny native_Array_concat(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+private ScriptAny native_Array_concat(Environment env, ScriptAny* thisObj, 
+                                      ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(thisObj.type != ScriptAny.Type.ARRAY)
         return ScriptAny.UNDEFINED;
@@ -400,7 +664,7 @@ private ScriptAny native_Array_every(Environment env, ScriptAny* thisObj,
         return ScriptAny(false);
     if(args[0].type != ScriptAny.Type.FUNCTION)
         return ScriptAny(false);
-    auto theThisArg = args.length > 1 ? args[1] : getLocalThis(env);
+    auto theThisArg = args.length > 1 ? args[1] : getLocalThis(env, args[0]);
     bool result = true;
     size_t counter = 0;
     foreach(element ; arr.array)
@@ -445,7 +709,7 @@ private ScriptAny native_Array_filter(Environment env, ScriptAny* thisObj,
         return *thisObj;
     if(args[0].type != ScriptAny.Type.FUNCTION)
         return *thisObj;
-    ScriptAny thisToUse = args.length > 1 ? args[1] : getLocalThis(env);
+    ScriptAny thisToUse = args.length > 1 ? args[1] : getLocalThis(env, args[0]);
     ScriptAny[] result;
     size_t counter = 0;
     foreach(element ; arr)
@@ -471,7 +735,7 @@ private ScriptAny native_Array_find(Environment env, ScriptAny* thisObj,
         return ScriptAny.UNDEFINED;
     if(args[0].type != ScriptAny.Type.FUNCTION)
         return ScriptAny.UNDEFINED;
-    auto thisToUse = args.length > 1 ? args[1] : getLocalThis(env);
+    auto thisToUse = args.length > 1 ? args[1] : getLocalThis(env, args[0]);
     for(size_t i = 0; i < arr.length; ++i)
     {
         auto temp = native_Function_call(env, &args[0], 
@@ -548,7 +812,7 @@ private ScriptAny native_Array_flatMap(Environment env, ScriptAny* thisObj,
         return *thisObj;
     if(args[0].type != ScriptAny.Type.FUNCTION)
         return *thisObj;
-    ScriptAny thisToUse = args.length > 1 ? args[1] : getLocalThis(env);
+    ScriptAny thisToUse = args.length > 1 ? args[1] : getLocalThis(env, args[0]);
     for(size_t i = 0; i < arr.length; ++i)
     {
         auto temp = native_Function_call(env, &args[0], [thisToUse, arr[i], ScriptAny(i), *thisObj], nfe);
@@ -573,7 +837,7 @@ private ScriptAny native_Array_forEach(Environment env, ScriptAny* thisObj,
         return ScriptAny.UNDEFINED;
     if(args[0].type != ScriptAny.Type.FUNCTION)
         return ScriptAny.UNDEFINED;
-    auto thisToUse = args.length > 1 ? args[1] : getLocalThis(env);
+    auto thisToUse = args.length > 1 ? args[1] : getLocalThis(env, args[0]);
     for(size_t i = 0; i < arr.length; ++i)
     {
         auto temp = native_Function_call(env, &args[0],
@@ -590,7 +854,7 @@ private ScriptAny native_Array_s_from(Environment env, ScriptAny* thisObj,
     if(args.length < 1)
         return ScriptAny(cast(ScriptAny[])[]);
     ScriptAny func = args.length > 1 ? args[1] : ScriptAny.UNDEFINED;
-    auto thisToUse = args.length > 2 ? args[2] : getLocalThis(env);
+    auto thisToUse = args.length > 2 ? args[2] : getLocalThis(env, func);
     
     ScriptAny[] result;
     if(args[0].type == ScriptAny.Type.ARRAY)
@@ -806,10 +1070,11 @@ private ScriptAny native_Array_reduce(Environment env, ScriptAny* thisObj,
     if(args.length < 0 || args[0].type != ScriptAny.Type.FUNCTION)
         return ScriptAny.UNDEFINED;
     ScriptAny accumulator = args.length > 1 ? args[1] : (arr.length > 0? arr[0] : ScriptAny.UNDEFINED);
-    for(size_t i = 0; i < arr.length; ++i)
+    immutable start = accumulator == ScriptAny.UNDEFINED ? 0 : 1;
+    for(size_t i = start; i < arr.length; ++i)
     {
         accumulator = native_Function_call(env, &args[0], 
-            [getLocalThis(env), accumulator, arr[i], ScriptAny(i), *thisObj], nfe);
+            [getLocalThis(env, args[0]), accumulator, arr[i], ScriptAny(i), *thisObj], nfe);
         if(nfe != NativeFunctionError.NO_ERROR)
             return accumulator;
     }
@@ -825,10 +1090,13 @@ private ScriptAny native_Array_reduceRight(Environment env, ScriptAny* thisObj,
     if(args.length < 0 || args[0].type != ScriptAny.Type.FUNCTION)
         return ScriptAny.UNDEFINED;
     ScriptAny accumulator = args.length > 1 ? args[1] : (arr.length > 0? arr[arr.length-1] : ScriptAny.UNDEFINED);
-    for(size_t i = arr.length; i > 0; --i)
+    immutable long start = accumulator == ScriptAny.UNDEFINED ? arr.length : cast(long)arr.length - 1;
+    if(start < 0)
+        return ScriptAny.UNDEFINED;
+    for(size_t i = start; i > 0; --i)
     {
         accumulator = native_Function_call(env, &args[0], 
-            [getLocalThis(env), accumulator, arr[i-1], ScriptAny(i-1), *thisObj], nfe);
+            [getLocalThis(env, args[0]), accumulator, arr[i-1], ScriptAny(i-1), *thisObj], nfe);
         if(nfe != NativeFunctionError.NO_ERROR)
             return accumulator;
     }
@@ -885,7 +1153,7 @@ private ScriptAny native_Array_some(Environment env, ScriptAny* thisObj,
     if(args.length < 1 || args[0].type != ScriptAny.Type.FUNCTION)
         return ScriptAny.UNDEFINED;
     auto arr = thisObj.toValue!ScriptArray.array;
-    ScriptAny thisToUse = args.length > 1 ? args[1] : getLocalThis(env);
+    ScriptAny thisToUse = args.length > 1 ? args[1] : getLocalThis(env, args[0]);
     for(size_t i = 0; i < arr.length; ++i)
     {
         auto temp = native_Function_call(env, &args[0], 
@@ -917,7 +1185,7 @@ private ScriptAny native_Array_sort(Environment env, ScriptAny* thisObj,
             for(size_t j = 0; j < arr.length - i - 1; ++j)
             {
                 auto temp = native_Function_call(env, &args[0], 
-                    [getLocalThis(env), arr.array[j], arr.array[j+1]], nfe);
+                    [getLocalThis(env, args[0]), arr.array[j], arr.array[j+1]], nfe);
                 if(nfe != NativeFunctionError.NO_ERROR)
                     return temp;
                 if(temp.toValue!int > 0)
@@ -932,7 +1200,8 @@ private ScriptAny native_Array_sort(Environment env, ScriptAny* thisObj,
     return *thisObj;
 }
 
-private ScriptAny native_Array_splice(Environment c, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+private ScriptAny native_Array_splice(Environment env, ScriptAny* thisObj, 
+                                      ScriptAny[] args, ref NativeFunctionError nfe)
 {
     import std.algorithm: min;
     if(thisObj.type != ScriptAny.Type.ARRAY)
@@ -977,6 +1246,69 @@ private ScriptAny native_Array_unshift(Environment env, ScriptAny* thisObj,
 // Function methods ///////////////////////////////////////////////////////////
 //
 
+private ScriptAny native_Function_apply(Environment env, ScriptAny* thisIsFn, ScriptAny[] args,
+                                        ref NativeFunctionError nfe)
+{
+    import mildew.exceptions: ScriptRuntimeException;
+    // minimum args is 2 because first arg is the this to use and the second is an array
+    if(args.length < 2)
+    {
+        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
+        return ScriptAny.UNDEFINED;
+    }
+    // get the function
+    if(thisIsFn.type != ScriptAny.Type.FUNCTION)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    auto fn = thisIsFn.toValue!ScriptFunction;
+    // set up the "this" to use
+    auto thisToUse = args[0];
+    // set up the arg array
+    if(args[1].type != ScriptAny.Type.ARRAY)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    auto argList = args[1].toValue!(ScriptAny[]);
+    try 
+    {
+        auto interpreter = env.interpreter;
+        if(interpreter is null)
+        {
+            nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+            return ScriptAny("Interpreter was improperly created without global environment");
+        }
+        if(interpreter.usingVM)
+        {
+            if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
+                return interpreter.vm.runFunction(fn, thisToUse, args);
+            else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
+                return fn.nativeFunction()(env, &thisToUse, argList, nfe);
+            else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
+                return fn.nativeDelegate()(env, &thisToUse, argList, nfe);
+        }
+        return interpreter.callFunction(fn, thisToUse, argList);
+    }
+    catch(ScriptRuntimeException ex)
+    {
+        nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+        return ScriptAny(ex.msg);
+    }
+}
+
+private ScriptAny native_Function_bind(Environment env, ScriptAny* thisObj,
+                                       ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.FUNCTION)
+        return ScriptAny.UNDEFINED;
+    auto fn = thisObj.toValue!ScriptFunction;
+    ScriptAny newBinding = args.length > 0 ? args[0] : ScriptAny.UNDEFINED;
+    fn.bind(newBinding);
+    return ScriptAny.UNDEFINED;
+}
+
 /**
  * This function provides a way for Mildew functions to be called with arbitrary "this"
  * objects. This function is public so that there is a common interface for calling ScriptFunctions
@@ -1017,6 +1349,11 @@ ScriptAny native_Function_call(Environment env, ScriptAny* thisIsFn, ScriptAny[]
     try 
     {
         auto interpreter = env.interpreter;
+        if(interpreter is null)
+        {
+            nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+            return ScriptAny("Interpreter was improperly created without global environment");
+        }
         if(interpreter.usingVM)
         {
             if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
@@ -1026,60 +1363,7 @@ ScriptAny native_Function_call(Environment env, ScriptAny* thisIsFn, ScriptAny[]
             else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
                 return fn.nativeDelegate()(env, &thisToUse, args, nfe);
         }
-        if(env !is null)
-            return interpreter.callFunction(fn, thisToUse, args);
-        else
-            return ScriptAny.UNDEFINED;
-    }
-    catch(ScriptRuntimeException ex)
-    {
-        nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
-        return ScriptAny(ex.msg);
-    }
-}
-
-private ScriptAny native_Function_apply(Environment c, ScriptAny* thisIsFn, ScriptAny[] args,
-                                        ref NativeFunctionError nfe)
-{
-    import mildew.exceptions: ScriptRuntimeException;
-    // minimum args is 2 because first arg is the this to use and the second is an array
-    if(args.length < 2)
-    {
-        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
-        return ScriptAny.UNDEFINED;
-    }
-    // get the function
-    if(thisIsFn.type != ScriptAny.Type.FUNCTION)
-    {
-        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
-        return ScriptAny.UNDEFINED;
-    }
-    auto fn = thisIsFn.toValue!ScriptFunction;
-    // set up the "this" to use
-    auto thisToUse = args[0];
-    // set up the arg array
-    if(args[1].type != ScriptAny.Type.ARRAY)
-    {
-        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
-        return ScriptAny.UNDEFINED;
-    }
-    auto argList = args[1].toValue!(ScriptAny[]);
-    try 
-    {
-        auto interpreter = c.interpreter;
-        if(interpreter.usingVM)
-        {
-            if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
-                return interpreter.vm.runFunction(fn, thisToUse, args);
-            else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
-                return fn.nativeFunction()(c, &thisToUse, argList, nfe);
-            else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
-                return fn.nativeDelegate()(c, &thisToUse, argList, nfe);
-        }
-        if(interpreter !is null)
-            return interpreter.callFunction(fn, thisToUse, argList);
-        else
-            return ScriptAny.UNDEFINED;
+        return interpreter.callFunction(fn, thisToUse, args);
     }
     catch(ScriptRuntimeException ex)
     {
@@ -1105,7 +1389,7 @@ private ScriptAny native_String_ctor(Environment env, ScriptAny* thisObj,
     return ScriptAny.UNDEFINED;
 }
 
-private ScriptAny native_String_charAt(Environment c, ScriptAny* thisObj,
+private ScriptAny native_String_charAt(Environment env, ScriptAny* thisObj,
                                        ScriptAny[] args, ref NativeFunctionError nfe)
 {
     import std.utf: UTFException;

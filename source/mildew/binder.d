@@ -1,7 +1,10 @@
 /**
 Contains functions to mixin to simplify code reuse. For these to work, the parameters of a native function
-must be called context, thisObj, args, and nfe.
+must be called context, thisObj, args, and nfe. If placed in if-statement they MUST be surrounded by
+braces.
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 

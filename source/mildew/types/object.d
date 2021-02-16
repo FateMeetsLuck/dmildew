@@ -1,6 +1,8 @@
 /**
 This module implements ScriptObject, the base class for builtin Mildew objects.
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -94,7 +96,7 @@ public:
 
     /**
      * Looks up a field through the prototype chain. Note that this does not call any getters because
-     * it is not possible to pass a Environment to opIndex.
+     * it is not possible to pass an Environment to opIndex.
      */
     ScriptAny lookupField(in string name)
     {
@@ -222,7 +224,11 @@ public:
         }
     }
 
-    ScriptObject getOwnPropertyDescriptor(in string propName)
+    /**
+     * Returns a property descriptor without searching the prototype chain. The object returned is
+     * an object possibly containing get, set, or value fields.
+     */
+    ScriptObject getOwnPropertyOrFieldDescriptor(in string propName)
     {
         ScriptObject property = new ScriptObject("property", null);
         // find the getter
@@ -231,8 +237,51 @@ public:
             property["get"] = objectToSearch._getters[propName];
         if(propName in objectToSearch._setters)
             property["set"] = objectToSearch._setters[propName];
+        if(propName in objectToSearch._dictionary)
+            property["value"] = _dictionary[propName];
         objectToSearch = objectToSearch._prototype;
         return property;
+    }
+
+    ScriptObject getOwnFieldOrPropertyDescriptors()
+    {
+        auto property = new ScriptObject("descriptors", null);
+        foreach(k,v ; _dictionary)
+        {
+            auto descriptor = new ScriptObject("descriptor", null);
+            descriptor["value"] = v;
+            property[k] = descriptor;
+        }
+        foreach(k,v ; _getters)
+        {
+            auto descriptor = new ScriptObject("descriptor", null);
+            descriptor["get"] = v;
+            property[k] = descriptor;
+        }
+        foreach(k, v ; _setters)
+        {
+            auto descriptor = property[k].toValue!ScriptObject;
+            if(descriptor is null)
+                descriptor = new ScriptObject("descriptor", null);
+            descriptor["set"] = v;
+            property[k] = descriptor;
+        }
+        return property;
+    }
+
+    /**
+     * Tests whether or not a property or field exists in this object without searching the
+     * __proto__ chain.
+     */
+    bool hasOwnFieldOrProperty(in string propOrFieldName)
+    {
+        if(propOrFieldName in _dictionary)
+            return true;
+        if(propOrFieldName in _getters)
+            return true;
+        if(propOrFieldName in _setters)
+            return true;
+        return false;
     }
 
     /**
@@ -249,7 +298,9 @@ public:
     }
 
     /**
-     * Native object can also be written in case of inheritance by script
+     * Native object can also be written because this is how binding works. Constructors
+     * receive a premade ScriptObject as the "this" with the name and prototype already set.
+     * Native D constructor functions have to set this property.
      */
     T nativeObject(T)(T obj)
     {

@@ -1,7 +1,9 @@
 /**
 This module implements the Parser struct, which generates Nodes from tokens. The resulting syntax tree
 is processed by Interpreter, or Interpreter and Compiler.
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -320,6 +322,7 @@ package:
 
 private:
 
+    // very weird way of doing things but it works, may need rework to allow undefined to be a case
     ScriptAny evaluateCTFE(ExpressionNode expr)
     {
         import mildew.environment: Environment;
@@ -506,6 +509,7 @@ private:
                 // first check if this is a lambda
                 auto lookahead = peekTokens(3);
                 if(lookahead[1].type == Token.Type.COMMA ||
+                   lookahead[1].type == Token.Type.ARROW ||
                    lookahead[2].type == Token.Type.ARROW)
                 {
                     left = parseLambda(true);

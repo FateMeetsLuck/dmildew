@@ -1,6 +1,8 @@
 /**
 This module implements the Environment class.
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -74,15 +76,15 @@ public:
         auto environment = this;
         while(environment !is null)
         {
-            if(varName in environment._varTable)
-            {
-                isConst = false;
-                return (varName in environment._varTable);
-            }
             if(varName in environment._constTable)
             {
                 isConst = true;
                 return (varName in environment._constTable);
+            }
+            if(varName in environment._varTable)
+            {
+                isConst = false;
+                return (varName in environment._varTable);
             }
             environment = environment._parent;
         }
@@ -148,9 +150,9 @@ public:
         auto environment = this;
         while(environment !is null)
         {
-            if(name in environment._varTable)
-                return true;
             if(name in environment._constTable)
+                return true;
+            if(name in environment._varTable)
                 return true;
             environment = environment._parent;
         }
@@ -232,7 +234,7 @@ public:
     }
 
     /// inserts a label into the list of valid labels
-    void insertLabel(string label)
+    deprecated void insertLabel(string label)
     {
         _labelList.insert(label);
     }
@@ -251,7 +253,7 @@ public:
     }
 
     /// checks environment stack for a label
-    bool labelExists(string label)
+    deprecated bool labelExists(string label)
     {
         auto environment = this;
         while(environment !is null)
@@ -264,7 +266,7 @@ public:
     }
 
     /// removes a label from the existing environment
-    void removeLabelFromCurrent(string label)
+    deprecated void removeLabelFromCurrent(string label)
     {
         _labelList.removeKey(label);
     }
@@ -275,7 +277,7 @@ public:
         return _parent;
     }
 
-    /// depth property how far from root
+    /// Returns the depth from this Environment to the root Environment
     size_t depth()
     {
         size_t d = 0;
@@ -300,7 +302,7 @@ public:
         return "Environment: " ~ _name;
     }
 
-    /// Returns the level of depth, 0-N for a variable location, or -1 if not found
+    /// Returns the level of depth, relative to this Environment, 0-N for a variable location, or -1 if not found
     int varDepth(string varName, out bool isConst)
     {
         int depth = 0;
