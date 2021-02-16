@@ -1,3 +1,6 @@
+/*
+Lambdas work as expected. Unlike JavaScript, lambdas in Mildew can be used as constructors. 
+ */
 const array = [10,20,30,40,50,60];
 console.log(array.reduceRight((ac,num) => ac + num)); // 210
 console.log([].reduce((a,b)=>a * b)); // undefined
@@ -6,3 +9,7 @@ const words = ["This","can","be","joined","by","a","lambda"];
 const joiner = (w1, w2) => w1 + ' ' + w2;
 console.log(words.reduce(joiner));
 console.log(`Backwards: ${words.reduceRight(joiner)}`);
+
+const Foo = ()=> { this.a = 99; };
+console.log(new Foo());
+

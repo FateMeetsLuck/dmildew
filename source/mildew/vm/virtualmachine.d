@@ -1720,6 +1720,7 @@ class VirtualMachine
             auto oldEnv = _environment; // @suppress(dscanner.suspicious.unmodified)
             _environment = new Environment(func.closure);
             _environment.forceSetVarOrConst("this", thisObj, false);
+            _environment.forceSetVarOrConst("arguments", ScriptAny(args), false);
             for(size_t i = 0; i < func.argNames.length; ++i)
             {
                 if(i >= args.length)

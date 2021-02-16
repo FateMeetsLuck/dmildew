@@ -5,13 +5,10 @@ cross function boundaries with a break or continue statement.
 foo:
 while(true) {
     let a = 9;
-    console.log("I declared a");
     while(true) {
         let b = 6;
-        console.log("I declared b");
         while(true) {
             let c = 29;
-            console.log("I delared c");
             break foo;
         }
     }
@@ -21,7 +18,6 @@ bar:
 for(;;) {
     do {
         while(1 + 1) {
-            console.log("Breaking bar");
             break bar;
         }
     } while(true);
@@ -33,12 +29,10 @@ while(5 == 5) {
     while(1) {
         label3:
         for(;;) {
-            console.log("Breaking label3");
             break label3;
         }
         break label2;
     }
     break label1;
 }
-// As of Dec 30 17:40 2020 This program exits correctly
-// As of 2/11/2021 17:10 The VM runs this program correctly
+// As of Feb 16 01:49 2021 This program exits correctly

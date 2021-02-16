@@ -59,6 +59,7 @@ public:
     /// compile code into chunk usable by vm
     Chunk compile(string source)
     {
+        import core.memory: GC;
         import std.string: splitLines;
         _currentSource = source;
         _chunk = new Chunk();
@@ -70,6 +71,8 @@ public:
         auto block = parser.parseProgram();
         block.accept(this);
         destroy(block);
+        GC.free(cast(void*)block);
+        block = null;
         Chunk send = _chunk;
         _chunk.debugMap[_chunk.bytecode.idup] = _debugInfoStack.pop();
         _chunk = null; // ensure node functions cannot be used by outsiders at all

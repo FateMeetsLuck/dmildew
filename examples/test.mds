@@ -1,4 +1,4 @@
-/*class Foo {
+class Foo {
     doSomething() {
         console.log("a Foo is doing something on " + this);
     }
@@ -57,26 +57,16 @@ switch(()=>{return 29;}) {
         console.log("This is weird");
         break;
 }
-console.log("After switch");*/
+console.log("After switch");
 // https://pastebin.com/WWzVuZ1p
 
-function retard() {
-    for(let x = 9; x < 81; x = x * 9) {
-        for(let y of [1,2,5]) {
-            function idiot() {
-                for(let i = 0; i < 10; ++i)
-                    return 600;
-            }
-            return idiot();
-        }
-    }
+function randomInt(max) {
+    return Math.floor(Math.random() * max);
 }
-console.log(retard());
+const randomInts = [];
+for(let i = 0; i < 10; ++i) {
+    randomInts.push(randomInt(1000)+32);
+}
+const randomString = String.fromCodePoint.apply(null, randomInts);
+console.log(randomString);
 
-/*function retard() {
-    for(let j = 30; j > 0; --j) {
-        for(let i = 0; i < 10; ++i)
-            return 29;
-    }
-}
-console.log(retard());*/
