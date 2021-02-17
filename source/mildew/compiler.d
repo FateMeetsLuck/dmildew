@@ -117,6 +117,9 @@ public:
             _chunk.bytecode ~= OpCode.CONST_1;
         else
             _chunk.bytecode ~= OpCode.CONST ~ encodeConst(lnode.value);
+
+        if(lnode.literalToken.type == Token.Type.REGEX)
+            _chunk.bytecode ~= OpCode.REGEX;
         return Variant(null);
     }
 

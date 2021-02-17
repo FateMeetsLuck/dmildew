@@ -29,6 +29,8 @@ struct ScriptAny
 {
     import mildew.types.object: ScriptObject;
     import mildew.types.func: ScriptFunction;
+    import mildew.vm.chunk: Chunk;
+    import mildew.vm.consttable: ConstTable;
 
 public:
     /**

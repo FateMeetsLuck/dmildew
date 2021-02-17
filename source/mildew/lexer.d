@@ -20,6 +20,7 @@ this program.  If not, see <https://www.gnu.org/licenses/>.
 module mildew.lexer;
 
 import mildew.exceptions: ScriptCompileException;
+import mildew.util.regex;
 
 import std.ascii; // temp until unicode support
 import std.container.rbtree;
@@ -70,7 +71,7 @@ struct Token
      */
     enum Type 
     {
-        EOF, KEYWORD, INTEGER, DOUBLE, STRING, IDENTIFIER, 
+        EOF, KEYWORD, INTEGER, DOUBLE, STRING, IDENTIFIER, REGEX,
         NOT, AND, OR, GT, GE, LT, LE,
         EQUALS, NEQUALS, STRICT_EQUALS, STRICT_NEQUALS,
         ASSIGN, PLUS_ASSIGN, DASH_ASSIGN,
@@ -121,7 +122,7 @@ struct Token
         {
         case Type.EOF:
             return "\0";
-        case Type.KEYWORD: case Type.INTEGER: case Type.DOUBLE: case Type.STRING: case Type.IDENTIFIER:
+        case Type.KEYWORD: case Type.INTEGER: case Type.DOUBLE: case Type.STRING: case Type.IDENTIFIER: case Type.REGEX:
             return text;
         case Type.NOT: return "!";
         case Type.AND: return "&&";
@@ -372,6 +373,36 @@ private:
             return _text[_index + 1];
         else
             return '\0';
+    }
+
+    bool canMakeRegex(Token[] tokens)
+    {
+        if(tokens.length == 0)
+            return true;
+        switch(tokens[$-1].type)
+        {
+        case Token.Type.IDENTIFIER:
+        case Token.Type.INTEGER:
+        case Token.Type.DOUBLE:
+        case Token.Type.STRING:
+        case Token.Type.RBRACKET:
+        case Token.Type.RPAREN:
+        case Token.Type.INC:
+        case Token.Type.DEC:
+            return false;
+        case Token.Type.KEYWORD:
+            switch(tokens[$-1].text)
+            {
+            case "null":
+            case "true":
+            case "false":
+                return false;
+            default:
+                return true;
+            }
+        default:
+            return true;
+        }
     }
 
     Token makeIdKwOrLabel()
@@ -698,6 +729,62 @@ private:
             {
                 advanceChar();
             }
+        }
+        else if(canMakeRegex(tokens))
+        {
+            string accum = "";
+            auto startPos = _position;
+            accum ~= currentChar;
+            bool gettingFlags = false;
+            advanceChar();
+            while(currentChar)
+            {
+                if(!gettingFlags)
+                {
+                    if(currentChar == '\\')
+                    {
+                        accum ~= currentChar;
+                        advanceChar();
+                        if(currentChar)
+                        {
+                            accum ~= currentChar;
+                            advanceChar();
+                        }
+                    }
+                    else if(currentChar == '/')
+                    {
+                        accum ~= currentChar;
+                        advanceChar();
+                        gettingFlags = true;
+                    }
+                    else
+                    {
+                        accum ~= currentChar;
+                        advanceChar();
+                    }
+                }
+                else
+                {
+                    if(!isAlpha(currentChar))
+                        break;
+                    accum ~= currentChar;
+                    advanceChar();
+                }
+            }
+            --_index;
+            bool valid;
+            try 
+            {
+                auto extracted = extract(accum);
+                valid = isValid(extracted[0], extracted[1]);
+            }
+            catch(Exception ex)
+            {
+                throw new ScriptCompileException("Malformed regex literal", Token.createInvalidToken(startPos, accum));
+            }
+            if(!valid)
+                throw new ScriptCompileException("Invalid regex literal", Token.createInvalidToken(startPos, accum));
+            tokens ~= Token(Token.Type.REGEX, startPos, accum);
         }
         else
         {

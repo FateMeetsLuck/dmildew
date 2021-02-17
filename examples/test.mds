@@ -20,7 +20,7 @@ class Bar extends Foo {
 
 let bar = new Bar;
 console.log(bar.__proto__.constructor.__proto__.prototype.doSomething);
-//  the super non-constructor expression should translate to "this.__proto__.constructor.__proto__.prototype"
+// the super non-constructor expression should translate to "this.__proto__.constructor.__proto__.prototype"
 console.log(bar.__super__.doSomething);
 
 bar.doSuper();
@@ -70,3 +70,24 @@ for(let i = 0; i < 10; ++i) {
 const randomString = String.fromCodePoint.apply(null, randomInts);
 console.log(randomString);
 
+String.prototype.centeredText = function(width, decorator) {
+    decorator = decorator || "<>";
+    let padLeft = width / 2 + this.length / 2;
+    return this.padStart(padLeft, decorator).padEnd(width, decorator);
+};
+
+// "This text should be nicely centered".centeredText(80);
+
+function capitalizeFirstLetter(str) {
+    if(str.length < 1)
+        return "";
+    return str[0].toUpperCase() + str.slice(1);
+}
+let sentence = "this is a title header".split(' ').map(word => capitalizeFirstLetter(word)).join(' ').centeredText(80, "<*>");
+console.log(sentence);
+
+let env = System.getenv();
+let sortedVarNames = Object.keys(env).sort();
+for(let eachVarName in sortedVarNames) {
+    console.log(`${eachVarName}: ${env[eachVarName]}`);
+}

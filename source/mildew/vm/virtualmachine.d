@@ -25,11 +25,13 @@ import std.typecons;
 
 import mildew.environment;
 import mildew.exceptions;
-import mildew.vm.chunk;
-import mildew.vm.consttable;
+import mildew.stdlib.regexp;
 import mildew.types;
 import mildew.util.encode;
+import mildew.util.regex: extract;
 import mildew.util.stack;
+import mildew.vm.chunk;
+import mildew.vm.consttable;
 
 /// 8-bit opcodes
 enum OpCode : ubyte 
@@ -51,6 +53,7 @@ enum OpCode : ubyte
             // third arg is how many setter pairs, 4th arg is static method pairs, and at stack[-1] base class.
             // the finalized class constructor is pushed after all those values are popped. String group before method group
             // stack[-2] is constructor
+    REGEX, // creates a regex from a string at stack[-1] such as /foo/g
     ITER, // pushes a function that returns {value:..., done:bool} performed on pop()
     DEL, // delete member stack[-1]:string from object stack[2]. pops 2
     NEW, // similar to call(uint) except only func, arg1, arg2, etc.
@@ -175,6 +178,11 @@ private int throwRuntimeError(in string message, VirtualMachine vm, Chunk chunk,
             vm._ip = tryData.catchGoto;
             return 1;
         }
+    }
+    if(vm._parent)
+    {
+        vm._parent._exc = vm._exc;
+        return 1;
     }
     // there is no available script exception handler found so clear stack and throw the exception
     vm._stack.size = 0;
@@ -365,6 +373,17 @@ private int opClass(VirtualMachine vm, Chunk chunk)
     vm._stack.push(ScriptAny(constructor));
 
     vm._ip += 1 + 4 * ubyte.sizeof;
+    return 0;
+}
+
+pragma(inline, true)
+private int opRegex(VirtualMachine vm, Chunk chunk)
+{
+    auto regexString = vm._stack.pop().toString();
+    auto parts = extract(regexString);
+    auto regexResult = ScriptAny(new ScriptObject("RegExp", getRegExpProto, new ScriptRegExp(parts[0], parts[1])));
+    vm._stack.push(regexResult);
+    ++vm._ip;
     return 0;
 }
 
@@ -1249,6 +1268,7 @@ class VirtualMachine
         _ops[OpCode.ARRAY] = &opArray;
         _ops[OpCode.OBJECT] = &opObject;
         _ops[OpCode.CLASS] = &opClass;
+        _ops[OpCode.REGEX] = &opRegex;
         _ops[OpCode.ITER] = &opIter;
         _ops[OpCode.DEL] = &opDel;
         _ops[OpCode.NEW] = &opNew;
@@ -1771,6 +1791,21 @@ class VirtualMachine
         return result;
     }
 
+    /**
+     * For coroutines and threads.
+     */
+    VirtualMachine copy(bool copyStack = false)
+    {
+        auto vm = new VirtualMachine(_globals);
+        vm._environment = _environment;
+        vm._currentConstTable = _currentConstTable;
+        vm._ops = _ops;
+        if(copyStack)
+            vm._stack = _stack;
+        vm._parent = this;
+        return vm;
+    }
+
 private:
 
     enum FuncCallType { NORMAL, NEW }
@@ -1810,6 +1845,8 @@ private:
     OpCodeFunction[ubyte.max + 1] _ops;
     Stack!ScriptAny _stack;
     TryData[] _tryData;
+    VirtualMachine _parent = null; // the VM that spawned this VM
+
     /// stops the machine
     bool _stopped;
 }
@@ -1836,6 +1873,7 @@ class VMException : Exception
 unittest
 {
     auto vm = new VirtualMachine(new Environment(null, "<global>"));
+    vm = vm.copy();
     auto chunk = new Chunk();
 
     ubyte[] getConst(T)(T value)

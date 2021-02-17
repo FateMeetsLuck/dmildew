@@ -1888,6 +1888,160 @@ index number of times. If the index is out of range, returns undefined.
     
 
     
+    <h4 class="name" id="match"><span class="type-signature"></span>match<span class="signature">(regex)</span><span class="type-signature"> &rarr; {<a href="Array.html">Array</a>.&lt;<a href="String.html">String</a>>}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Returns the result of calling the RegExp parameter on this String
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>regex</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="RegExp.html">RegExp</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">A RegExp object</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    The match result
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="Array.html">Array</a>.&lt;<a href="String.html">String</a>></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
     <h4 class="name" id="padEnd"><span class="type-signature"></span>padEnd<span class="signature">(totalLength, padding<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {<a href="String.html">String</a>}</span></h4>
     
 
@@ -2469,8 +2623,7 @@ a new String
 
 
 <div class="description">
-    Replace the first occurrence of a string in this String that matches the given pattern and return
-the result.
+    Replace substrings in a String and return the result of the replacement.
 </div>
 
 
@@ -2513,6 +2666,9 @@ the result.
             
                 
 <span class="param-type"><a href="String.html">String</a></span>
+|
+
+<span class="param-type"><a href="RegExp.html">RegExp</a></span>
 
 
             
@@ -2522,7 +2678,7 @@ the result.
 
             
 
-            <td class="description last">For now must be a String, in the future Regex objects will be implemented</td>
+            <td class="description last">Either a substring representing what to replace, or a regular expression.</td>
         </tr>
 
     
@@ -2536,6 +2692,9 @@ the result.
             
                 
 <span class="param-type"><a href="String.html">String</a></span>
+|
+
+<span class="param-type">function</span>
 
 
             
@@ -2545,7 +2704,8 @@ the result.
 
             
 
-            <td class="description last">The string to replace a matching substring with.</td>
+            <td class="description last">The string to replace substrings with, or a function that takes the matching substring
+and returns a string value to replace the match with.</td>
         </tr>
 
     
@@ -2610,7 +2770,7 @@ the result.
 
         
 <div class="param-desc">
-    A new String with the replaced substring.
+    A new String with the replaced substrings.
 </div>
 
 
@@ -3812,13 +3972,13 @@ of the 32-bit form of the string.
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="console.html">console</a></li><li><a href="Math.html">Math</a></li><li><a href="System.html">System</a></li></ul><h3>Classes</h3><ul><li><a href="Array.html">Array</a></li><li><a href="boolean.html">boolean</a></li><li><a href="Date.html">Date</a></li><li><a href="double.html">double</a></li><li><a href="Function.html">Function</a></li><li><a href="integer.html">integer</a></li><li><a href="Object.html">Object</a></li><li><a href="String.html">String</a></li></ul><h3>Global</h3><ul><li><a href="global.html#isdefined">isdefined</a></li><li><a href="global.html#isFinite">isFinite</a></li><li><a href="global.html#isNaN">isNaN</a></li><li><a href="global.html#parseFloat">parseFloat</a></li><li><a href="global.html#parseInt">parseInt</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="console.html">console</a></li><li><a href="Math.html">Math</a></li><li><a href="System.html">System</a></li></ul><h3>Classes</h3><ul><li><a href="Array.html">Array</a></li><li><a href="boolean.html">boolean</a></li><li><a href="Date.html">Date</a></li><li><a href="double.html">double</a></li><li><a href="Function.html">Function</a></li><li><a href="integer.html">integer</a></li><li><a href="Object.html">Object</a></li><li><a href="RegExp.html">RegExp</a></li><li><a href="String.html">String</a></li></ul><h3>Global</h3><ul><li><a href="global.html#isdefined">isdefined</a></li><li><a href="global.html#isFinite">isFinite</a></li><li><a href="global.html#isNaN">isNaN</a></li><li><a href="global.html#parseFloat">parseFloat</a></li><li><a href="global.html#parseInt">parseInt</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Tue Feb 16 2021 00:59:55 GMT-0500 (Eastern Standard Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Wed Feb 17 2021 14:21:19 GMT-0500 (Eastern Standard Time)
 </footer>
 
 <script> prettyPrint(); </script>

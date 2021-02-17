@@ -559,6 +559,10 @@ private:
                     left = parseTemplateStringNode();
                 nextToken();
                 break;
+            case Token.Type.REGEX:
+                left = new LiteralNode(_currentToken, ScriptAny(_currentToken.text));
+                nextToken();
+                break;
             case Token.Type.KEYWORD:
                 if(_currentToken.text == "true" || _currentToken.text == "false")
                 {

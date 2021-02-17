@@ -2,9 +2,7 @@
 
 A scripting language for the D programming language inspired by Lua and JavaScript. While there are other scripting languages for D such as Lua, one cannot easily use D delegates as C function pointers in those languages. Other languages require modification of the D class in order to bind. With Mildew, bindings for any public method or property can be written without touching the original D class module. The downside is that there are no ways to trivialize this binding process with metaprogramming yet. The prototype inheritance system of Mildew allows scripts to extend D classes in powerful ways.
 
-This software is licensed under the GNU General Public License version 3.0 so that it may be used in free and open software. For a commercial software usage license, please contact the author.
-
-This is still very much a work in progress and the API is subject to change at any time.
+This software is licensed under the GNU General Public License version 3.0 so that it may be used in free and open software. For a commercial software usage license, please contact the author. In the future, the license will be changed to LGPL3 when the software is more stable and ready for production use.
 
 ## Usage
 
@@ -69,8 +67,7 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Refactor code to easily implement all math assignment operators (such as `*=`). This will be done once tree walking is removed.
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
 * Implement ES6 destructuring declaration and assignments of arrays and objects into variables.
-* Implement a regular expression library. Regex literals will probably never be supported.
 * Bind native classes and functions with one line of code with mixins and template metaprogramming. Or write software that will analyze D source files and generate bindings.
-* Write a more complete and robust standard library for the scripting language.
+* Write a more complete and robust standard library for the scripting language. (In progress.)
 * Allow unicode support for source code text.
 * Implement yield keyword and Generators. Yield may or may not become an expression.
