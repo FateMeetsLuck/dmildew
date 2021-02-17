@@ -534,6 +534,8 @@ private:
                     advanceChar();
                     string accum = "";
                     bool usingBraces = false;
+                    int limitCounter;
+                    immutable LIMIT = 4; // without the braces
                     if(currentChar == '{')
                     {
                         advanceChar();
@@ -541,8 +543,12 @@ private:
                     }
                     while(currentChar.charIsValidDigit(Token.LiteralFlag.HEXADECIMAL))
                     {
+                        if(limitCounter >= LIMIT && !usingBraces)
+                            break;
                         accum ~= currentChar;
                         advanceChar();
+                        if(!usingBraces)
+                            ++limitCounter;
                     }
                     if(currentChar == '}' && usingBraces)
                         advanceChar();
@@ -556,7 +562,7 @@ private:
                     }
                     catch(Exception ex)
                     {
-                        throw new ScriptCompileException("Invalid UTF-8 sequence in escape char", 
+                        throw new ScriptCompileException("Invalid UTF sequence in \\u char", 
                             Token.createInvalidToken(_position, accum));
                     }
                 }
@@ -574,7 +580,7 @@ private:
                     }
                     catch(Exception ex)
                     {
-                        throw new ScriptCompileException("Invalid hex character sequence",
+                        throw new ScriptCompileException("Invalid hexadecimal number in \\x char",
                             Token.createInvalidToken(_position, accum));
                     }
                 }
