@@ -1,0 +1,18 @@
+// courtesy of https://flaviocopes.com/javascript-unicode/
+const s1 = '\u00E9';
+const s2 = '\u0065\u0301';
+console.log(s1, s2); // é é
+console.log(s1.length, s2.length); // 2 and 3 because Mildew stores strings as UTF-8 not UTF-16 like JavaScript
+const s3 = 'e\u0301'; 
+console.log(s3.length == 3); // true
+console.log(s2 === s3); // true
+console.log(s1 !== s3); // true
+console.log(s1.normalize() === s3.normalize()); // true
+const s4 = '🐶';
+console.log(s4 === '\u{1F436}'); // true
+console.log('👩‍❤️‍👩'.length); // 20!
+// can't combine \u's to make a single emoji but one can directly embed the emoji in text.
+// The lexer has no way to determine if code points should be combined to make an emoji
+for(let i = 0; i < s4.length; ++i)
+    console.put(s4.charCodeAt(i) + ' ');
+console.log();

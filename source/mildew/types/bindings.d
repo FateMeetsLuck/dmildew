@@ -177,6 +177,8 @@ ScriptObject getStringPrototype()
         _stringPrototype.addGetterProperty("length", new ScriptFunction("String.prototype.length", 
                 &native_String_p_length));
         _stringPrototype["match"] = new ScriptFunction("String.prototype.match", &native_String_match);
+        _stringPrototype["normalize"] = new ScriptFunction("String.prototype.normalize",
+                &native_String_normalize);
         _stringPrototype["padEnd"] = new ScriptFunction("String.prototype.padEnd", &native_String_padEnd);
         _stringPrototype["padStart"] = new ScriptFunction("String.prototype.padStart",
                 &native_String_padStart);
@@ -1580,7 +1582,26 @@ private ScriptAny native_String_match(Environment env, ScriptAny* thisObj,
     return ScriptAny(regExp.match(thisObj.toString()));
 }
 
-// TODO matchAll once generators and RegExp.matchAll are. 
+// TODO matchAll once generators and RegExp.matchAll are.
+
+private ScriptAny native_String_normalize(Environment env, ScriptAny* thisObj,
+                                          ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.uni: normalize, NFC, NFD, NFKC, NFKD;
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    if(args.length < 1)
+        return ScriptAny(normalize(thisObj.toString()));
+    auto form = args[0].toString(); // @suppress(dscanner.suspicious.unmodified)
+    if(form == "NFD")
+        return ScriptAny(normalize!NFD(thisObj.toString()));
+    else if(form == "NFKC")
+        return ScriptAny(normalize!NFKC(thisObj.toString()));
+    else if(form == "NFKD")
+        return ScriptAny(normalize!NFKD(thisObj.toString()));
+    else
+        return ScriptAny(normalize!NFC(thisObj.toString())); 
+}
 
 private ScriptAny native_String_padEnd(Environment env, ScriptAny* thisObj,
                                        ScriptAny[] args, ref NativeFunctionError nfe)
@@ -1624,7 +1645,7 @@ private ScriptAny native_String_padStart(Environment env, ScriptAny* thisObj,
     return ScriptAny(frontString ~ str);
 }
 
-// TODO not add String.raw but add C# @`...` for true literal strings
+// String.raw is a Lexer directive not a method
 
 private ScriptAny native_String_repeat(Environment env, ScriptAny* thisObj,
                                        ScriptAny[] args, ref NativeFunctionError nfe)

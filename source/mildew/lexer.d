@@ -522,7 +522,7 @@ private:
                 throw new ScriptCompileException("Missing close quote for string literal", 
                     Token.createInvalidToken(_position, text));
             else if(currentChar == '\n' && lflag != Token.LiteralFlag.TEMPLATE_STRING)
-                throw new ScriptCompileException("Line breaks inside string literal are not allowed", 
+                throw new ScriptCompileException("Line breaks inside regular string literals are not allowed", 
                     Token.createInvalidToken(_position, text));
             else if(currentChar == '\\' && escapeChars) // TODO handle \u0000 and \u00 sequences
             {
