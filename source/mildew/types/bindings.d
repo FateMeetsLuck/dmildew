@@ -1642,7 +1642,70 @@ private ScriptAny native_String_repeat(Environment env, ScriptAny* thisObj,
 private ScriptAny native_String_replace(Environment env, ScriptAny* thisObj,
                                         ScriptAny[] args, ref NativeFunctionError nfe)
 {
-    import std.array: replace;
+    import std.array: replaceFirst;
+    import std.string: indexOf;
+
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    if(args.length < 2)
+        return *thisObj;
+    
+    auto thisString = thisObj.toString();
+
+    if(args[0].isNativeObjectType!ScriptRegExp)
+    {
+        auto regex = args[0].toNativeObject!ScriptRegExp;
+        if(args[1].type == ScriptAny.Type.FUNCTION)
+        {
+            auto match = regex.match(thisString);
+            foreach(mat ; match)
+            {
+                auto send = [getLocalThis(env, args[1]), ScriptAny(mat)];
+                send ~= ScriptAny(thisString.indexOf(mat));
+                send ~= ScriptAny(thisString);
+                auto replacement = native_Function_call(env, &args[1], send, nfe);
+                if(nfe != NativeFunctionError.NO_ERROR)
+                    return replacement;
+                thisString = replaceFirst(thisString, mat, replacement.toString());
+            }
+            return ScriptAny(thisString);
+        }
+        else
+        {
+            auto substr = args[1].toString();
+            return ScriptAny(regex.replaceFirst(thisString, substr));
+        }
+    }
+    else
+    {
+        auto substr = args[0].toString;
+        if(args[1].type == ScriptAny.Type.FUNCTION)
+        {
+            immutable index = thisString.indexOf(substr);
+            if(index == -1)
+                return ScriptAny(thisString);
+            auto replacement = native_Function_call(env, &args[1], [
+                    getLocalThis(env, args[1]),
+                    ScriptAny(substr),
+                    ScriptAny(index),
+                    ScriptAny(thisString)
+            ], nfe);
+            if(nfe != NativeFunctionError.NO_ERROR)
+                return replacement;
+            thisString = replaceFirst(thisString, substr, replacement.toString);
+            return ScriptAny(thisString);
+        }
+        else
+        {
+            return ScriptAny(replaceFirst(thisObj.toString, substr, args[1].toString));
+        }
+    }
+}
+
+private ScriptAny native_String_replaceAll(Environment env, ScriptAny* thisObj,
+                                        ScriptAny[] args, ref NativeFunctionError nfe)
+{
+import std.array: replace;
     import std.string: indexOf;
 
     if(thisObj.type != ScriptAny.Type.STRING)
@@ -1707,22 +1770,6 @@ private ScriptAny native_String_replace(Environment env, ScriptAny* thisObj,
             return ScriptAny(replace(thisObj.toString, substr, args[1].toString));
         }
     }
-}
-
-// TODO handle regex as first argument once implemented
-// TODO handle second argument as possible function
-private ScriptAny native_String_replaceAll(Environment env, ScriptAny* thisObj,
-                                        ScriptAny[] args, ref NativeFunctionError nfe)
-{
-    import std.array: replace;
-    if(thisObj.type != ScriptAny.Type.STRING)
-        return ScriptAny.UNDEFINED;
-    if(args.length < 2)
-        return *thisObj;
-    auto str = thisObj.toString();
-    auto pattern = args[0].toString();
-    auto replacement = args[1].toString();
-    return ScriptAny(str.replace(pattern, replacement));    
 }
 
 // TODO String.prototype.search(someRegex)

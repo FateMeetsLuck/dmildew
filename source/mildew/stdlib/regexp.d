@@ -106,21 +106,11 @@ public:
     /// returns match
     auto match(string str)
     {
+        auto m = std.regex.match(str, _regex);
         string[] result;
-        if(!global)
-        {
-            auto m = std.regex.matchFirst(str, _regex);
-            foreach(mat ; m)
-                result ~= mat;
-            return result;
-        }
-        else
-        {
-            auto m = std.regex.matchAll(str, _regex);
-            foreach(mat ; m)
-                result ~= mat.hit;
-            return result;
-        }
+        foreach(mat ; m)
+            result ~= mat.hit;
+        return result;
     }
 
     /// matchAll - The Script will implement this as an iterator once generators are a thing
@@ -133,7 +123,16 @@ public:
     /// replace
     auto replace(string str, string fmt)
     {
-        string r = std.regex.replace(str, _regex, fmt);
+        if(global)
+            return std.regex.replaceAll(str, _regex, fmt);
+        else
+            return std.regex.replaceFirst(str, _regex, fmt);
+    }
+
+    /// replace only the first occurrence.
+    auto replaceFirst(string str, string fmt)
+    {
+        string r = std.regex.replaceFirst(str, _regex, fmt);
         return r;
     }
 
@@ -373,7 +372,7 @@ private ScriptAny native_RegExp_match(Environment env, ScriptAny* thisObj,
     }
     auto str = args[0].toString();
     auto result = regExp.match(str); // @suppress(dscanner.suspicious.unmodified)
-    return ScriptAny(regExp.match(str));
+    return ScriptAny(result);
 }
 
 // TODO matchAll once iterators are implemented

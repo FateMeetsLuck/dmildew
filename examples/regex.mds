@@ -17,4 +17,4 @@ let newStr = str.replace(/\w+/g, function(match) {
 });
 console.log(newStr);
 
-console.log("DMildew".replace(/dmildew/gi, "md"));
+console.log("DMildew DMildew".replaceAll(/dmildew/gi, "md"));
