@@ -26,6 +26,7 @@ import std.ascii; // temp until unicode support
 import std.container.rbtree;
 import std.conv: to;
 import std.format: format;
+import std.utf: encode;
 
 /**
  * This struct represents the line and column number of a token, starting at 1.
@@ -528,6 +529,29 @@ private:
                 advanceChar();
                 if(currentChar in ESCAPE_CHARS)
                     text ~= ESCAPE_CHARS[currentChar];
+                else if(currentChar == 'u')
+                {
+                    advanceChar();
+                    string accum = "";
+                    while(currentChar.charIsValidDigit(Token.LiteralFlag.HEXADECIMAL))
+                    {
+                        accum ~= currentChar;
+                        advanceChar();
+                    }
+                    --_index;
+                    try 
+                    {
+                        dchar result = cast(dchar)to!uint(accum, 16);
+                        char[] buf;
+                        encode(buf, result);
+                        text ~= buf;
+                    }
+                    catch(Exception ex)
+                    {
+                        throw new ScriptCompileException("Invalid UTF-8 sequence in escape char", 
+                            Token.createInvalidToken(_position, accum));
+                    }
+                }
                 else
                     throw new ScriptCompileException("Unknown escape character " ~ currentChar, 
                         Token.createInvalidToken(_position));
