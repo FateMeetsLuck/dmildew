@@ -268,7 +268,7 @@ public:
             else if(currentChar.isDigit)
                 tokens ~= makeIntOrDoubleToken();
             else if(currentChar == '\'' || currentChar == '"' || currentChar == '`')
-                tokens ~= makeStringToken();
+                tokens ~= makeStringToken(tokens);
             else if(currentChar == '>')
                 tokens ~= makeRAngleBracketToken();
             else if(currentChar == '<')
@@ -495,12 +495,23 @@ private:
         return resultToken;
     }
 
-    Token makeStringToken()
+    Token makeStringToken(ref Token[] previous)
     {
         immutable closeQuote = currentChar;
         auto startpos = _position;
         advanceChar();
         string text = "";
+        bool escapeChars = true;
+        if(previous.length >= 3)
+        {
+            if(previous[$-1].isIdentifier("raw") &&
+               previous[$-2].type == Token.Type.DOT &&
+               previous[$-3].isIdentifier("String"))
+            {
+                escapeChars = false;
+                previous = previous[0.. $-3];
+            }
+        }
         Token.LiteralFlag lflag = Token.LiteralFlag.NONE;
         if(closeQuote == '`')
             lflag = Token.LiteralFlag.TEMPLATE_STRING;
@@ -512,7 +523,7 @@ private:
             else if(currentChar == '\n' && lflag != Token.LiteralFlag.TEMPLATE_STRING)
                 throw new ScriptCompileException("Line breaks inside string literal are not allowed", 
                     Token.createInvalidToken(_position, text));
-            else if(currentChar == '\\') // TODO handle \u0000 and \u00 sequences
+            else if(currentChar == '\\' && escapeChars) // TODO handle \u0000 and \u00 sequences
             {
                 advanceChar();
                 if(currentChar in ESCAPE_CHARS)

@@ -12,9 +12,11 @@ let str = "This is a test string";
 let matchArr = str.match(/\w+/g);
 console.log(matchArr.length); // 5
 
+// here the global flag is obeyed
 let newStr = str.replace(/\w+/g, function(match) {
     return match.split("").reverse().join("");
 });
 console.log(newStr);
 
+// D's implementation of std.regex.replace doesn't seem to obey the global flag
 console.log("DMildew DMildew".replaceAll(/dmildew/gi, "md"));
