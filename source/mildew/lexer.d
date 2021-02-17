@@ -533,11 +533,19 @@ private:
                 {
                     advanceChar();
                     string accum = "";
+                    bool usingBraces = false;
+                    if(currentChar == '{')
+                    {
+                        advanceChar();
+                        usingBraces = true;
+                    }
                     while(currentChar.charIsValidDigit(Token.LiteralFlag.HEXADECIMAL))
                     {
                         accum ~= currentChar;
                         advanceChar();
                     }
+                    if(currentChar == '}' && usingBraces)
+                        advanceChar();
                     --_index;
                     try 
                     {
@@ -549,6 +557,24 @@ private:
                     catch(Exception ex)
                     {
                         throw new ScriptCompileException("Invalid UTF-8 sequence in escape char", 
+                            Token.createInvalidToken(_position, accum));
+                    }
+                }
+                else if(currentChar == 'x')
+                {
+                    advanceChar();
+                    string accum = "";
+                    accum ~= currentChar;
+                    advanceChar();
+                    accum ~= currentChar;
+                    try 
+                    {
+                        char result = cast(char)to!ubyte(accum, 16);
+                        text ~= result;
+                    }
+                    catch(Exception ex)
+                    {
+                        throw new ScriptCompileException("Invalid hex character sequence",
                             Token.createInvalidToken(_position, accum));
                     }
                 }
