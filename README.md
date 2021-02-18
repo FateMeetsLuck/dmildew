@@ -95,7 +95,6 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 
 ## Current Goals
 
-* Implement all math assignment operators (such as `*=`).
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
 * Implement ES6 destructuring declaration and assignments of arrays and objects into variables.
 * Bind native classes and functions with one line of code with mixins and template metaprogramming. Or write software that will analyze D source files and generate bindings.
