@@ -112,8 +112,18 @@ private int binaryOpPrecedence(Token opToken)
         case Token.Type.QUESTION:
             return 4;
         case Token.Type.ASSIGN:
+        case Token.Type.POW_ASSIGN:
+        case Token.Type.STAR_ASSIGN:
+        case Token.Type.FSLASH_ASSIGN:
+        case Token.Type.PERCENT_ASSIGN:
         case Token.Type.PLUS_ASSIGN:
         case Token.Type.DASH_ASSIGN:
+        case Token.Type.BAND_ASSIGN:
+        case Token.Type.BXOR_ASSIGN:
+        case Token.Type.BOR_ASSIGN:
+        case Token.Type.BLS_ASSIGN:
+        case Token.Type.BRS_ASSIGN:
+        case Token.Type.BURS_ASSIGN:
             return 3;
         default:
             return 0;
@@ -165,8 +175,18 @@ private bool isBinaryOpLeftAssociative(in Token opToken)
         case Token.Type.QUESTION:
             return false;
         case Token.Type.ASSIGN:
+        case Token.Type.POW_ASSIGN:
+        case Token.Type.STAR_ASSIGN:
+        case Token.Type.FSLASH_ASSIGN:
+        case Token.Type.PERCENT_ASSIGN:
         case Token.Type.PLUS_ASSIGN:
         case Token.Type.DASH_ASSIGN:
+        case Token.Type.BAND_ASSIGN:
+        case Token.Type.BXOR_ASSIGN:
+        case Token.Type.BOR_ASSIGN:
+        case Token.Type.BLS_ASSIGN:
+        case Token.Type.BRS_ASSIGN:
+        case Token.Type.BURS_ASSIGN:
             return false;
         default:
             return false;

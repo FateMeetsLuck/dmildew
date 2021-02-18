@@ -1305,6 +1305,30 @@ private:
         {
         case Token.Type.ASSIGN:
             return original; // nothing to do
+        case Token.Type.POW_ASSIGN:
+            return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
+                    original.leftNode, 
+                    new BinaryOpNode(Token.createFakeToken(Token.Type.POW,""),
+                            original.leftNode, original.rightNode)
+            );
+        case Token.Type.STAR_ASSIGN:
+            return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
+                    original.leftNode, 
+                    new BinaryOpNode(Token.createFakeToken(Token.Type.STAR,""),
+                            original.leftNode, original.rightNode)
+            );
+        case Token.Type.FSLASH_ASSIGN:
+            return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
+                    original.leftNode, 
+                    new BinaryOpNode(Token.createFakeToken(Token.Type.FSLASH,""),
+                            original.leftNode, original.rightNode)
+            );
+        case Token.Type.PERCENT_ASSIGN:
+            return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
+                    original.leftNode, 
+                    new BinaryOpNode(Token.createFakeToken(Token.Type.PERCENT,""),
+                            original.leftNode, original.rightNode)
+            );
         case Token.Type.PLUS_ASSIGN:
             return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
                     original.leftNode, 
@@ -1315,6 +1339,42 @@ private:
             return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
                     original.leftNode, 
                     new BinaryOpNode(Token.createFakeToken(Token.Type.DASH,""),
+                            original.leftNode, original.rightNode)
+            );
+        case Token.Type.BAND_ASSIGN:
+            return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
+                    original.leftNode, 
+                    new BinaryOpNode(Token.createFakeToken(Token.Type.BIT_AND,""),
+                            original.leftNode, original.rightNode)
+            );
+        case Token.Type.BXOR_ASSIGN:
+            return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
+                    original.leftNode, 
+                    new BinaryOpNode(Token.createFakeToken(Token.Type.BIT_XOR,""),
+                            original.leftNode, original.rightNode)
+            );
+        case Token.Type.BOR_ASSIGN:
+            return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
+                    original.leftNode, 
+                    new BinaryOpNode(Token.createFakeToken(Token.Type.BIT_OR,""),
+                            original.leftNode, original.rightNode)
+            );
+        case Token.Type.BLS_ASSIGN:
+            return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
+                    original.leftNode, 
+                    new BinaryOpNode(Token.createFakeToken(Token.Type.BIT_LSHIFT,""),
+                            original.leftNode, original.rightNode)
+            );
+        case Token.Type.BRS_ASSIGN:
+            return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
+                    original.leftNode, 
+                    new BinaryOpNode(Token.createFakeToken(Token.Type.BIT_RSHIFT,""),
+                            original.leftNode, original.rightNode)
+            );
+        case Token.Type.BURS_ASSIGN:
+            return new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, ""), 
+                    original.leftNode, 
+                    new BinaryOpNode(Token.createFakeToken(Token.Type.BIT_URSHIFT,""),
                             original.leftNode, original.rightNode)
             );
         default:

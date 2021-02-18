@@ -75,7 +75,12 @@ struct Token
         EOF, KEYWORD, INTEGER, DOUBLE, STRING, IDENTIFIER, REGEX,
         NOT, AND, OR, GT, GE, LT, LE,
         EQUALS, NEQUALS, STRICT_EQUALS, STRICT_NEQUALS,
-        ASSIGN, PLUS_ASSIGN, DASH_ASSIGN,
+
+        ASSIGN, 
+        POW_ASSIGN, STAR_ASSIGN, FSLASH_ASSIGN, PERCENT_ASSIGN,
+        PLUS_ASSIGN, DASH_ASSIGN,
+        BAND_ASSIGN, BXOR_ASSIGN, BOR_ASSIGN, BLS_ASSIGN, BRS_ASSIGN, BURS_ASSIGN,
+
         PLUS, DASH, STAR, FSLASH, PERCENT, POW, DOT,
         INC, DEC, // ++ and --
         BIT_AND, BIT_XOR, BIT_OR, BIT_NOT, BIT_LSHIFT, BIT_RSHIFT, BIT_URSHIFT,
@@ -137,8 +142,18 @@ struct Token
         case Type.STRICT_EQUALS: return "===";
         case Type.STRICT_NEQUALS: return "!==";
         case Type.ASSIGN: return "=";
+        case Type.POW_ASSIGN: return "**=";
+        case Type.STAR_ASSIGN: return "*=";
+        case Type.FSLASH_ASSIGN: return "/=";
+        case Type.PERCENT_ASSIGN: return "%=";
         case Type.PLUS_ASSIGN: return "+=";
         case Type.DASH_ASSIGN: return "-=";
+        case Type.BAND_ASSIGN: return "&=";
+        case Type.BXOR_ASSIGN: return "^=";
+        case Type.BOR_ASSIGN: return "|=";
+        case Type.BLS_ASSIGN: return "<<=";
+        case Type.BRS_ASSIGN: return ">>=";
+        case Type.BURS_ASSIGN: return ">>>=";
         case Type.PLUS: return "+";
         case Type.DASH: return "-";
         case Type.STAR: return "*";
@@ -192,7 +207,20 @@ struct Token
      */
     bool isAssignmentOperator()
     {
-        return (type == Type.ASSIGN || type == Type.PLUS_ASSIGN || type == Type.DASH_ASSIGN);
+        return (type == Type.ASSIGN || 
+                type == Type.POW_ASSIGN ||
+                type == Type.STAR_ASSIGN ||
+                type == Type.FSLASH_ASSIGN ||
+                type == Type.PERCENT_ASSIGN ||
+                type == Type.PLUS_ASSIGN || 
+                type == Type.DASH_ASSIGN ||
+                type == Type.BAND_ASSIGN ||
+                type == Type.BXOR_ASSIGN ||
+                type == Type.BOR_ASSIGN ||
+                type == Type.BLS_ASSIGN ||
+                type == Type.BRS_ASSIGN ||
+                type == Type.BURS_ASSIGN
+        );
     }
 
     /**
@@ -291,9 +319,9 @@ public:
             else if(currentChar == '/')
                 tokens = handleFSlash(tokens);
             else if(currentChar == '%')
-                tokens ~= Token(Token.Type.PERCENT, _position);
+                tokens ~= makePercentToken();
             else if(currentChar == '^')
-                tokens ~= Token(Token.Type.BIT_XOR, _position);
+                tokens ~= makeXorToken();
             else if(currentChar == '~')
                 tokens ~= Token(Token.Type.BIT_NOT, _position);
             else if(currentChar == '(')
@@ -620,7 +648,20 @@ private:
             if(peekChar == '>')
             {
                 advanceChar();
-                return Token(Token.Type.BIT_URSHIFT, startpos);
+                if(peekChar == '=')
+                {
+                    advanceChar();
+                    return Token(Token.Type.BURS_ASSIGN, startpos);
+                }
+                else
+                {
+                    return Token(Token.Type.BIT_URSHIFT, startpos);
+                }
+            }
+            else if(peekChar == '=')
+            {
+                advanceChar();
+                return Token(Token.Type.BRS_ASSIGN, startpos);
             }
             else
             {
@@ -644,7 +685,15 @@ private:
         else if(peekChar == '<')
         {
             advanceChar();
-            return Token(Token.Type.BIT_LSHIFT, startpos);
+            if(peekChar == '=')
+            {
+                advanceChar();
+                return Token(Token.Type.BLS_ASSIGN);
+            }
+            else
+            {
+                return Token(Token.Type.BIT_LSHIFT, startpos);
+            }
         }
         else
         {
@@ -709,7 +758,12 @@ private:
             advanceChar();
             return Token(Token.Type.AND, startpos);
         }
-        else
+        else if(peekChar == '=')
+        {            
+            advanceChar();
+            return Token(Token.Type.BAND_ASSIGN, startpos);   
+        }
+        else 
         {
             return Token(Token.Type.BIT_AND, startpos);
         }
@@ -722,6 +776,11 @@ private:
         {
             advanceChar();
             return Token(Token.Type.OR, startpos);
+        }
+        else if(peekChar == '=')
+        {
+            advanceChar();
+            return Token(Token.Type.BOR_ASSIGN, startpos);
         }
         else
         {
@@ -773,7 +832,20 @@ private:
         if(peekChar == '*')
         {
             advanceChar();
-            return Token(Token.Type.POW, startpos);
+            if(peekChar == '=')
+            {
+                advanceChar();
+                return Token(Token.Type.POW_ASSIGN, startpos);
+            }
+            else
+            {
+                return Token(Token.Type.POW, startpos);
+            }
+        }
+        else if(peekChar == '=')
+        {
+            advanceChar();
+            return Token(Token.Type.STAR_ASSIGN, startpos);
         }
         else
         {
@@ -781,9 +853,37 @@ private:
         }
     }
 
+    Token makePercentToken()
+    {
+        if(peekChar == '=')
+        {
+            immutable startpos = _position;
+            advanceChar();
+            return Token(Token.Type.PERCENT_ASSIGN, startpos);
+        }
+        else
+        {
+            return Token(Token.Type.PERCENT, _position);
+        }
+    }
+
+    Token makeXorToken()
+    {
+        if(peekChar == '=')
+        {
+            immutable startpos = _position;
+            advanceChar();
+            return Token(Token.Type.BXOR_ASSIGN, startpos);
+        }
+        else
+        {
+            return Token(Token.Type.BIT_XOR, _position);
+        }
+    }
+
     Token[] handleFSlash(Token[] tokens)
     {
-        if(peekChar == '*')
+        if(peekChar == '*') // block comment
         {
             advanceChar();
             while(peekChar != '\0')
@@ -798,7 +898,7 @@ private:
             }
             advanceChar();
         }
-        else if(peekChar == '/')
+        else if(peekChar == '/') // comment
         {
             advanceChar();
             while(peekChar != '\n' && peekChar != '\0')
@@ -861,6 +961,12 @@ private:
             if(!valid)
                 throw new ScriptCompileException("Invalid regex literal", Token.createInvalidToken(startPos, accum));
             tokens ~= Token(Token.Type.REGEX, startPos, accum);
+        }
+        else if(peekChar == '=')
+        {
+            immutable startpos = _position;
+            advanceChar();
+            tokens ~= Token(Token.Type.FSLASH_ASSIGN, startpos);
         }
         else
         {
