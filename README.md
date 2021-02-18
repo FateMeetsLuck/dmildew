@@ -13,6 +13,7 @@ This software is licensed under the GNU General Public License version 3.0 so th
 4. [Compiling and Running Bytecode Files](#compiling-and-running-bytecode-files)
 
 <div id="usage"></div>
+
 ## Usage 
 
 The `examples/` folder contains example scripts. It should look familiar to anyone who knows JavaScript. However, Mildew is not a full feature ES6 JavaScript implementation.
@@ -20,16 +21,19 @@ The `examples/` folder contains example scripts. It should look familiar to anyo
 This project is in its early stages so one should probably use the ~main version to get the latest bug fixes. The release tags are only so that it is usable in dub.
 
 <div id="mildew-standard-library-documentation"></div>
+
 ## Mildew Standard Library Documentation 
 
 The documentation for the standard library, which is only loaded if the host application chooses to do so, can be found [here](https://pillager86.github.io/dmildew/).
 
 <div id="building"></div>
+
 ## Building 
 
 Building the library is as simple as writing `dub build` in a terminal in the main project directory. To build the REPL and script runner one can write `dub build Mildew:run` in the same directory as the main project. Add `-b release` to the build commands to generate an optimized binary that performs slightly better than the default debugging build.
 
 <div id="compiling-and-running-bytecode-files"></div>
+
 ## Compiling and Running Bytecode Files
 
 A script can be compiled with `dub run Mildew:bccompiler -- <name of script file.mds> -o <name of binary.mdc>` and the resulting binary bytecode file can be run directly with the REPL as if it were a normal text file of source code.
