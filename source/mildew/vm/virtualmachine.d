@@ -25,6 +25,7 @@ import std.typecons;
 
 import mildew.environment;
 import mildew.exceptions;
+import mildew.stdlib.generator;
 import mildew.stdlib.regexp;
 import mildew.types;
 import mildew.util.encode;
@@ -182,7 +183,6 @@ private int throwRuntimeError(in string message, VirtualMachine vm, Chunk chunk,
     if(vm._parent)
     {
         vm._parent._exc = vm._exc;
-        return 1;
     }
     // there is no available script exception handler found so clear stack and throw the exception
     vm._stack.size = 0;
@@ -1725,7 +1725,8 @@ class VirtualMachine
 
     /// For calling script functions with call or apply. Ugly hackish function that needs
     /// to be reworked.
-    package(mildew) ScriptAny runFunction(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args)
+    package(mildew) ScriptAny runFunction(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args, 
+                                          ScriptAny yieldFunc=ScriptAny.UNDEFINED) // this parameter is temporary
     {
         ScriptAny result;
         NativeFunctionError nfe;
@@ -1739,6 +1740,10 @@ class VirtualMachine
             immutable oldIP = _ip;
             auto oldEnv = _environment; // @suppress(dscanner.suspicious.unmodified)
             _environment = new Environment(func.closure);
+            // THIS IS TEMPORARY
+            if(yieldFunc != ScriptAny.UNDEFINED)
+                _environment.forceSetVarOrConst("__yield__", yieldFunc, true);
+            // THAT WAS TEMPORARY
             _environment.forceSetVarOrConst("this", thisObj, false);
             _environment.forceSetVarOrConst("arguments", ScriptAny(args), false);
             for(size_t i = 0; i < func.argNames.length; ++i)

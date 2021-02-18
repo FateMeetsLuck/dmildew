@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Namespace: console</title>
+    <title>JSDoc: Class: Generator</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Namespace: console</h1>
+    <h1 class="page-title">Class: Generator</h1>
 
     
 
@@ -28,7 +28,12 @@
 
 <header>
     
-        <h2>console</h2>
+        <h2><span class="attribs"><span class="type-signature"></span></span>Generator<span class="signature">(func, &hellip;args)</span><span class="type-signature"></span></h2>
+        
+            <div class="class-description">Generators are the Mildew implementation of coroutines. They are created from a Function and a list of arguments. It is an error
+to run a Generator whose last iteration return value contained a done=true field. There is no "throw" method because
+Generators with uncaught errors are considered unusable and marked as finished. The error is propagated to the call site of
+next() and even if caught there, another error will be thrown if the Generator is resumed.</div>
         
     
 </header>
@@ -37,10 +42,125 @@
     <div class="container-overview">
     
         
-            <div class="description">The console namespace contains functions for writing to standard output.</div>
+
+    
+    <h2>Constructor</h2>
+    
+
+    
+    <h4 class="name" id="Generator"><span class="type-signature"></span>new Generator<span class="signature">(func, &hellip;args)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Creates a new Generator from a given Function and its arguments.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
         
 
         
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>func</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last">A Function that contains yields.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>args</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                    &lt;repeatable><br>
+                
+                </td>
+            
+
+            
+
+            <td class="description last">The arguments that will be passed to the Function</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
 
 
 <dl class="details">
@@ -79,7 +199,24 @@
 </dl>
 
 
-        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
     </div>
 
@@ -96,6 +233,69 @@
     
 
     
+        <h3 class="subsection-title">Members</h3>
+
+        
+            
+<h4 class="name" id="returnValue"><span class="type-signature"></span>returnValue<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    This property has nothing to do with the return method. In Mildew, deviating from other languages, Generator functions may
+have return statements and a return value. This property extracts the return value once the Generator is finished, otherwise 
+it returns undefined.
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+    
 
     
         <h3 class="subsection-title">Methods</h3>
@@ -106,7 +306,7 @@
     
 
     
-    <h4 class="name" id=".error"><span class="type-signature">(static) </span>error<span class="signature">(&hellip;var_args)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="next"><span class="type-signature"></span>next<span class="signature">(value)</span><span class="type-signature"> &rarr; {<a href="Object.html">Object</a>}</span></h4>
     
 
     
@@ -114,8 +314,7 @@
 
 
 <div class="description">
-    Works the same as console.log except it prints to standard error stream rather than standard out.
-This function does not throw an error.
+    Run the generator one time and get the next yield.
 </div>
 
 
@@ -139,8 +338,6 @@ This function does not throw an error.
         <th>Type</th>
 
         
-        <th>Attributes</th>
-        
 
         
 
@@ -153,7 +350,7 @@ This function does not throw an error.
 
         <tr>
             
-                <td class="name"><code>var_args</code></td>
+                <td class="name"><code>value</code></td>
             
 
             <td class="type">
@@ -166,20 +363,10 @@ This function does not throw an error.
             </td>
 
             
-                <td class="attributes">
-                
-
-                
-
-                
-                    &lt;repeatable><br>
-                
-                </td>
-            
 
             
 
-            <td class="description last">Items to print to stderr.</td>
+            <td class="description last">If yield is used as the right hand side of an assignment, this value will be the result.</td>
         </tr>
 
     
@@ -240,6 +427,29 @@ This function does not throw an error.
 
 
 
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    An Object containing the following fields: <value>, which is the last yielded value, or could be undefined
+if the Generator is done, and <done>, a boolean of true or false indicating whether or not the Generator can be run any further.
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="Object.html">Object</a></span>
+
+
+    </dd>
+</dl>
+
+    
 
 
 
@@ -251,7 +461,7 @@ This function does not throw an error.
     
 
     
-    <h4 class="name" id=".log"><span class="type-signature">(static) </span>log<span class="signature">(&hellip;var_args)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="return"><span class="type-signature"></span>return<span class="signature">(value)</span><span class="type-signature"> &rarr; {<a href="Object.html">Object</a>}</span></h4>
     
 
     
@@ -259,8 +469,7 @@ This function does not throw an error.
 
 
 <div class="description">
-    Takes a list of items as parameters, converts them to String, and prints them with spaces in between
-each item. Prints a new line at the end.
+    Runs the Generator to completion and returns the value that was sent.
 </div>
 
 
@@ -284,8 +493,6 @@ each item. Prints a new line at the end.
         <th>Type</th>
 
         
-        <th>Attributes</th>
-        
 
         
 
@@ -298,7 +505,7 @@ each item. Prints a new line at the end.
 
         <tr>
             
-                <td class="name"><code>var_args</code></td>
+                <td class="name"><code>value</code></td>
             
 
             <td class="type">
@@ -311,20 +518,10 @@ each item. Prints a new line at the end.
             </td>
 
             
-                <td class="attributes">
-                
-
-                
-
-                
-                    &lt;repeatable><br>
-                
-                </td>
-            
 
             
 
-            <td class="description last">Items to print</td>
+            <td class="description last">The value to serve as the "value" field in the return value Object.</td>
         </tr>
 
     
@@ -385,150 +582,28 @@ each item. Prints a new line at the end.
 
 
 
-
-
-
-
+<h5>Returns:</h5>
 
         
-            
-
-    
-
-    
-    <h4 class="name" id=".put"><span class="type-signature">(static) </span>put<span class="signature">(&hellip;var_args)</span><span class="type-signature"></span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    Similar to console.log except the newline is omitted at the end.
+<div class="param-desc">
+    An object containing a <value> field set to the parameter, and <done> which is always set to true.
 </div>
 
 
 
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
         
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-        <th>Attributes</th>
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>var_args</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">*</span>
+<span class="param-type"><a href="Object.html">Object</a></span>
 
 
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                    &lt;repeatable><br>
-                
-                </td>
-            
-
-            
-
-            <td class="description last">Items to print</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
+    </dd>
 </dl>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
 
 
 

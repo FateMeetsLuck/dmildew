@@ -83,7 +83,8 @@ public:
     {
         // if either value is undefined return undefined. Might want to coerce UNDEFINED
         // to string "undefined" in some cases...
-        if(_type == Type.UNDEFINED || rhs._type == Type.UNDEFINED)
+        if((_type == Type.UNDEFINED || rhs._type == Type.UNDEFINED) && 
+           (_type != Type.STRING && rhs._type != Type.STRING))
             return UNDEFINED;
         
         static if(op == "+")
@@ -708,6 +709,7 @@ public:
             foreach(arg ; func.argNames)
                 data ~= encode(arg);
             data ~= func.isClass ? 1 : 0;
+            data ~= func.isGenerator ? 1 : 0;
             data ~= encode(func.compiled);
             break;
         }
@@ -788,10 +790,12 @@ public:
             }
             bool isClass = cast(bool)stream[0];
             stream = stream[1..$];
+            bool isGenerator = cast(bool)stream[0];
+            stream = stream[1..$];
             auto compiled = decode!(ubyte[])(stream);
             stream = stream[size_t.sizeof..$];
             stream = stream[compiled.length..$];
-            value._asObject = new ScriptFunction(fnname.to!string, args, compiled, isClass);
+            value._asObject = new ScriptFunction(fnname.to!string, args, compiled, isClass, isGenerator);
             break;
         }
         case Type.OBJECT:
@@ -868,7 +872,7 @@ private:
             if(_asObject is null)
                 _type = Type.NULL;
         }
-        else static if(is(T == ScriptAny) || is(T == immutable(ScriptAny)))
+        else static if(is(T == ScriptAny) || is(T == immutable(ScriptAny)) || is(T == const(ScriptAny)))
         {
             this._type = value._type;
             final switch(value._type)

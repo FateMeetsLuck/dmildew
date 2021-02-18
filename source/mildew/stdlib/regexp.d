@@ -204,6 +204,7 @@ private:
     std.regex.Regex!char _regex;
 }
 
+/// Initializes the RegExp namespace. Not necessary if regex literals are used.
 void initializeRegExpLibrary(Interpreter interpreter)
 {
     ScriptAny ctor = new ScriptFunction("RegExp", &native_RegExp_ctor, true);
@@ -213,6 +214,7 @@ void initializeRegExpLibrary(Interpreter interpreter)
     interpreter.forceSetGlobal("RegExp", ctor, false);
 }
 
+/// Get the RegExp prototype. This is public because the VM needs it.
 ScriptObject getRegExpProto()
 {
     if(_regExpProto is null)

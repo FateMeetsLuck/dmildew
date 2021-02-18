@@ -1,0 +1,24 @@
+function foo(a, b) {
+    __yield__(this);
+    __yield__(100);
+    __yield__(a);
+    let something = __yield__(a + b);
+    console.log("In generator something=",something);
+    return -2;
+}
+
+let myGen = new Generator(foo, 69, 1200);
+console.log("Getting the first yield...");
+let result = myGen.next(69);
+while(!result.done) {
+    console.log(result.value);
+    console.log("Getting the next yield...");
+    result = myGen.next(69);
+}
+console.log("Last result: " + result);
+console.log("The generator is done");
+console.log("The return value is ", myGen.returnValue);
+console.log(myGen + " is finished");
+return 3000;
+
+

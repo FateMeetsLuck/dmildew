@@ -140,6 +140,7 @@ public:
         _chunk.bytecode ~= OpCode.RETURN;
         // create function
         ScriptAny func;
+        // HERE check for generator flag
         if(!flnode.isClass)
             func = new ScriptFunction(
                 flnode.optionalName == "" ? "<anonymous function>" : flnode.optionalName, 

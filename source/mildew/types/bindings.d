@@ -22,6 +22,7 @@ module mildew.types.bindings;
 
 import mildew.environment;
 import mildew.interpreter;
+import mildew.stdlib.generator;
 import mildew.stdlib.regexp;
 import mildew.types.any;
 import mildew.types.array;
@@ -154,6 +155,12 @@ ScriptObject getFunctionPrototype()
         _functionPrototype["apply"] = new ScriptFunction("Function.prototype.apply", &native_Function_apply);
         _functionPrototype["bind"] = new ScriptFunction("Function.prototype.bind", &native_Function_bind);
         _functionPrototype["call"] = new ScriptFunction("Function.prototype.call", &native_Function_call);
+        _functionPrototype.addGetterProperty("isGenerator", new ScriptFunction("Function.prototype.isGenerator",
+                &native_Function_p_isGenerator));
+        _functionPrototype.addGetterProperty("length", new ScriptFunction("Function.prototype.length",
+                &native_Function_p_length));
+        _functionPrototype.addGetterProperty("name", new ScriptFunction("Function.prototype.name",
+                &native_Function_p_name));
     }
     return _functionPrototype;
 }
@@ -1374,6 +1381,33 @@ ScriptAny native_Function_call(Environment env, ScriptAny* thisIsFn, ScriptAny[]
         nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
         return ScriptAny(ex.msg);
     }
+}
+
+private ScriptAny native_Function_p_isGenerator(Environment env, ScriptAny* thisObj,
+                                                ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.FUNCTION)
+        return ScriptAny(false);
+    auto func = thisObj.toValue!ScriptFunction;
+    return ScriptAny(func.isGenerator);
+}
+
+private ScriptAny native_Function_p_length(Environment env, ScriptAny* thisObj,
+                                           ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.FUNCTION)
+        return ScriptAny(0);
+    auto func = thisObj.toValue!ScriptFunction;
+    return ScriptAny(func.argNames.length);
+}
+
+private ScriptAny native_Function_p_name(Environment env, ScriptAny* thisObj,
+                                         ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.FUNCTION)
+        return ScriptAny("");
+    auto func = thisObj.toValue!ScriptFunction;
+    return ScriptAny(func.functionName);
 }
 
 //

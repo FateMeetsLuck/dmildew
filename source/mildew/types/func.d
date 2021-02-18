@@ -142,6 +142,8 @@ public:
     ubyte[] compiled() { return _compiled; }
     /// bound this property. change with bind()
     ScriptAny boundThis() { return _boundThis; }
+    /// isGenerator property. used by various pieces
+    bool isGenerator() const { return _isGenerator; }
 
     int opCmp(const ScriptFunction other) const
     {
@@ -221,7 +223,7 @@ package(mildew):
     /**
      * Constructor for creating script defined functions.
      */
-    this(string fnname, string[] args, StatementNode[] statementNodes, Environment clos, 
+    deprecated this(string fnname, string[] args, StatementNode[] statementNodes, Environment clos, 
             bool isClass=false)
     {
         import mildew.types.bindings: getFunctionPrototype;
@@ -239,7 +241,7 @@ package(mildew):
     /**
      * Constructor for functions created from compilation of statements.
      */
-    this(string fnname, string[] args, ubyte[] bc, bool isClass = false)
+    this(string fnname, string[] args, ubyte[] bc, bool isClass = false, bool isGenerator = false)
     {
         import mildew.types.bindings: getFunctionPrototype;
         immutable tname = isClass? "class" : "function";
@@ -248,6 +250,7 @@ package(mildew):
         _argNames = args;
         _compiled = bc;
         _isClass = isClass;
+        _isGenerator = isGenerator;
         initializePrototypeProperty();
         _type = Type.SCRIPT_FUNCTION;
     }
@@ -308,6 +311,7 @@ private:
     ScriptAny _boundThis;
 	Environment _closure = null;
 	bool _isClass = false;
+    bool _isGenerator = false;
     union {
         NativeFunction _nativeFunction;
         NativeDelegate _nativeDelegate;

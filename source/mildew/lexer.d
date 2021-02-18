@@ -265,7 +265,7 @@ public:
             while(currentChar.isWhite())
                 advanceChar();
             if(currentChar.startsKeywordOrIdentifier)
-                tokens ~= makeIdKwOrLabel();
+                tokens ~= makeIdKwOrLabel(tokens);
             else if(currentChar.isDigit)
                 tokens ~= makeIntOrDoubleToken();
             else if(currentChar == '\'' || currentChar == '"' || currentChar == '`')
@@ -406,7 +406,7 @@ private:
         }
     }
 
-    Token makeIdKwOrLabel()
+    Token makeIdKwOrLabel(Token[] tokens)
     {
         immutable start = _index;
         immutable startpos = _position;
@@ -416,6 +416,14 @@ private:
         auto text = _text[start.._index];
         --_index; // UGLY but IDK what else to do
         // first check for keyword, that can't be a label
+
+        // return is a special case after "."
+        if(text == "return")
+        {
+            if(tokens.length > 0 && tokens[$-1].type == Token.Type.DOT)
+                return Token(Token.Type.IDENTIFIER, startpos, text);
+        }
+
         if(text in KEYWORDS)
         {
             return Token(Token.Type.KEYWORD, startpos, text);
