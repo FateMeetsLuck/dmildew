@@ -2,6 +2,16 @@ function foo(a, b) {
     __yield__(this);
     __yield__(100);
     __yield__(a);
+    function test() {
+        __yield__("test");
+    }
+    for(let i = 0; i < 4; ++i) {
+        console.log("Trying to yield " + i * i);
+        __yield__(i * i);
+    }
+    test();
+    __yield__("after test");
+    __yield__("after test again");
     let something = __yield__(a + b);
     console.log("In generator something=",something);
     return -2;
@@ -19,6 +29,7 @@ console.log("Last result: " + result);
 console.log("The generator is done");
 console.log("The return value is ", myGen.returnValue);
 console.log(myGen + " is finished");
+console.log(isdefined("__yield__")); // always false outside of Generator functions
 return 3000;
 
 

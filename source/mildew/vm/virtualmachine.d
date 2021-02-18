@@ -1702,13 +1702,21 @@ class VirtualMachine
         _stopped = false;
         _exc = null;
         _currentConstTable = chunk.constTable;
+        int retCSCallDepth = 1;
         while(_ip < chunk.bytecode.length && !_stopped)
         {
             op = chunk.bytecode[_ip];
             // handle runFunction
-            if(retCS && op == OpCode.RETURN)
+            if(retCS)
             {
-                return _stack.pop();
+                if(op == OpCode.RETURN)
+                {
+                    --retCSCallDepth;
+                    if(retCSCallDepth <= 0)
+                        return _stack.pop();
+                }
+                else if(op == OpCode.CALL || op == OpCode.NEW)
+                    ++retCSCallDepth;
             }
             if(printDebugInfo)
                 printInstruction(_ip, chunk);
@@ -1756,6 +1764,7 @@ class VirtualMachine
             try
             {
                 result = run(chunk, _environment.getGlobalEnvironment.interpreter.printVMDebugInfo, true);
+
             }
             catch(ScriptRuntimeException ex)
             {
