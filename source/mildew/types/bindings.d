@@ -1299,16 +1299,14 @@ private ScriptAny native_Function_apply(Environment env, ScriptAny* thisIsFn, Sc
                 nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
                 return ScriptAny("Interpreter was improperly created without global environment");
             }
-            if(interpreter.usingVM)
-            {
-                if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
-                    return interpreter.vm.runFunction(fn, thisToUse, args);
-                else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
-                    return fn.nativeFunction()(env, &thisToUse, argList, nfe);
-                else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
-                    return fn.nativeDelegate()(env, &thisToUse, argList, nfe);
-            }
-            return interpreter.callFunction(fn, thisToUse, argList);
+            if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
+                return interpreter.vm.runFunction(fn, thisToUse, args);
+            else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
+                return fn.nativeFunction()(env, &thisToUse, argList, nfe);
+            else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
+                return fn.nativeDelegate()(env, &thisToUse, argList, nfe);
+            else
+                return ScriptAny.UNDEFINED; // impossible state
         }
     }
     catch(ScriptRuntimeException ex)
@@ -1382,16 +1380,14 @@ ScriptAny native_Function_call(Environment env, ScriptAny* thisIsFn, ScriptAny[]
                 nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
                 return ScriptAny("Interpreter was improperly created without global environment");
             }
-            if(interpreter.usingVM)
-            {
-                if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
-                    return interpreter.vm.runFunction(fn, thisToUse, args);
-                else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
-                    return fn.nativeFunction()(env, &thisToUse, args, nfe);
-                else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
-                    return fn.nativeDelegate()(env, &thisToUse, args, nfe);
-            }
-            return interpreter.callFunction(fn, thisToUse, args);
+            if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
+                return interpreter.vm.runFunction(fn, thisToUse, args);
+            else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
+                return fn.nativeFunction()(env, &thisToUse, args, nfe);
+            else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
+                return fn.nativeDelegate()(env, &thisToUse, args, nfe);
+            else
+                return ScriptAny.UNDEFINED; // impossible state
         }
     }
     catch(ScriptRuntimeException ex)

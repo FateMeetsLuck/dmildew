@@ -53,8 +53,9 @@ private void printUsage()
 {
     stderr.writeln("Usage: dmildew_run <scriptfile> [options]");
     stderr.writeln("       dmildew_run [options]");
-    stderr.writeln("Options: -usevm : Use bytecode generation instead of tree walker (experimental)");
-    stderr.writeln("         -h     : Print this usage message");
+    stderr.writeln("Options: -v|--verbose Prints very verbose bytecode execution information");
+    stderr.writeln("         -d|--disasm  Prints the disassembly of bytecode before execution");
+    stderr.writeln("         -h|--help    Print this usage message");
 }
 
 /**
@@ -64,14 +65,12 @@ private void printUsage()
 int main(string[] args)
 {
     auto terminal = Terminal(ConsoleOutputType.linear);
-    bool useVM = false;
     bool printVMDebugInfo = false;
     bool printDisasm = false;
 
     try 
     {
         auto options = cast(immutable)getopt(args, 
-                "usevm|u", &useVM,
                 "verbose|v", &printVMDebugInfo,
                 "disasm|d", &printDisasm);
         if(options.helpWanted) 
@@ -86,7 +85,7 @@ int main(string[] args)
         return 64;
     }
 
-    auto interpreter = new Interpreter(useVM, printVMDebugInfo);
+    auto interpreter = new Interpreter(printVMDebugInfo);
     interpreter.initializeStdlib();
 
     if(args.length > 1)

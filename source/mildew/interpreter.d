@@ -51,16 +51,13 @@ public:
      *  useVM = whether or not compilation to bytecode and the VM should be used instead of tree walking.
      *  printVMDebugInfo = if useVM is true, this option prints very verbose data while executing bytecode.
      */
-    this(bool useVM = false, bool printVMDebugInfo = true)
+    this(bool printVMDebugInfo = true)
     {
         _globalEnvironment = new Environment(this);
         _currentEnvironment = _globalEnvironment;
-        if(useVM)
-        {
-            _compiler = new Compiler();
-            _printVMDebugInfo = printVMDebugInfo;
-            _vm = new VirtualMachine(_globalEnvironment);
-        }
+        _compiler = new Compiler();
+        _printVMDebugInfo = printVMDebugInfo;
+        _vm = new VirtualMachine(_globalEnvironment);
     }
 
     /**
@@ -197,12 +194,6 @@ public:
     bool printVMDebugInfo() const 
     {
         return _printVMDebugInfo;
-    }
-	
-    /// whether or not VM option was set when created
-    bool usingVM() const 
-    {
-        return _vm !is null;
     }
 
 // The next functions are internal and deprecated and only public due to D language constraints.
