@@ -1,8 +1,8 @@
 // This program is more optimized if one uses a direct constant instead of assigning one
-let start = System.currentTimeMillis();
+let start = Date.now();
 for(let i=0; i < 1000000; ++i) {
 
 }
-let totalms = System.currentTimeMillis() - start;
+let totalms = Date.now() - start;
 console.log(`It took ${totalms} ms to count to 1000000`);
-// As of Feb 16 11:48 2021 it takes ~1409 ms in VM mode and ~1889 ms in interpreted mode
+// As of Feb 18 15:51 2021 it takes ~1430 ms to execute the for loop in a debug build and ~1276 ms in the release build

@@ -3,4 +3,4 @@ var foo = 9;
 console.log(foo * foo == 81 ? "Correct" : "Something's wrong");
 console.log(foo - foo + 1? "Correct" : "Something wrong");
 console.log(5 + 5 == 4 + 6 ? "Correct" : "Something is wrong with ==");
-// This program is working correctly in both VM and interpreted mode
+// As of Feb 18 15:49 2021 This program produces the correct output

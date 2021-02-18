@@ -14,5 +14,4 @@ class Bar extends Foo {
 
 console.log(Bar.add(1,20)); // 21
 console.log(Bar.sub(5,6.1)); // -1.1
-// As of Dec 30 00:55 2020 This program produces the correct output
-// As of 2/11/2021 17:22 The VM runs this program correctly
+// As of Feb 18 15:57 2021 This program produces the correct output

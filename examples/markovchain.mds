@@ -1,4 +1,5 @@
 // This example program generates random text from the United States constitution.
+// Interesting to note, Node.js can also run this file and does it faster.
 
 /**
  * Generates random text based on input. This function was ported to Mildew from Java at
@@ -287,4 +288,4 @@ No law, varying the compensation for the services of the Senators and Representa
 
 var sampleText = markovChain(text, 2, 300);
 console.log(sampleText);
-// As of 2/11/2021 18:40 This program appears to work in both VM and interpreted mode.
+// As of Feb 18 15:45 2021 This program produces the expected randomized output

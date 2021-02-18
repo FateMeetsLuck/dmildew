@@ -1,6 +1,7 @@
 /*
 Old school JavaScript inheritance works the same in Mildew. Functions have a prototype field that becomes an
-object's __proto__ field when instantiated with new.
+object's __proto__ field when instantiated with new. Note that a for-in loop query of an Object does not
+recursively search the __proto__ chain.
  */
 function Person(name, age) {
     this.name = name;
@@ -33,5 +34,4 @@ console.log(e2.__proto__);
 var p1 = new Person("Joseph Stalin", 74);
 p1.greet();
 console.log(p1.__proto__);
-// As of Dec 30 00:48 2020 This program produces the correct output.
-// As of 2/11/2021 16:12 The VM runs this program correctly, with correct function names
+// As of Feb 18 15:36 2021 This program produces the correct output

@@ -1,3 +1,4 @@
+// Special characters in Strings are encoded as UTF-8 and have a length property greater than 1
 // courtesy of https://flaviocopes.com/javascript-unicode/
 const s1 = '\u00E9';
 const s2 = '\u0065\u0301';
@@ -16,3 +17,4 @@ console.log('👩‍❤️‍👩'.length); // 20!
 for(let i = 0; i < s4.length; ++i)
     console.put(s4.charCodeAt(i) + ' ');
 console.log();
+// As of Feb 18 16:04 2021 This program produces the expected output

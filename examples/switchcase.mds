@@ -23,20 +23,19 @@ function test2(value) {
         case 21:
             console.log("Got 21");
         case [1,2,3]:
-            console.log("Also might have gotten got 1,2,3");
+            console.log("Also might have gotten 1,2,3");
     }
     console.log("End of test2");
 }
 
-test(0);
-test(1);
-test(5);
-test(6);
-test("foo");
-test("bar");
-test(69);
-test2("foo");
-test2([1,2,3]);
-test2(21);
-// As of Jan 3 17:14 2021 This program produces the correct output
-// As of 2/11/2021 17:23 The VM can run this program
+test(0); // Value was 0
+test(1); // Value was something else
+test(5); // Value was 5
+test(6); // Value was something else
+test("foo"); // Value was foo or 69
+test("bar"); // Value was something else
+test(69); // Value was foo or 69
+test2("foo"); // End of test2
+test2([1,2,3]); // Also might have gotten 1,2,3 \n End of test2
+test2(21); // Got 21 \n Also might have gotten 1,2,3 \n End of test2
+// As of Feb 18 16:00 This program produces the correct output

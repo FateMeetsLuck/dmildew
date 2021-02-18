@@ -15,5 +15,4 @@ var bar = new Bar();
 console.log(bar instanceof Unrelated); // false
 console.log(bar instanceof Bar); // true
 console.log(bar instanceof Foo); // true
-// As of Dec 30 00:51 2020 This program produces the correct output
-// As of 2/11/2021 16:29 The VM runs this program correctly
+// As of Feb 18 15:39 2021 This program produces the correct output

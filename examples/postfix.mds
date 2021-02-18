@@ -11,4 +11,4 @@ console.log(foo); // 2
 let obj = {a: 25};
 console.log(obj.a--); // 25 but obj.a is now 24
 console.log(obj.a); // 24
-// As of 2/11/2021 17:19 The VM runs this program correctly
+// As of Feb 18 15:50 This program produces the correct output

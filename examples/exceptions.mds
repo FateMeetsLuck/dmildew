@@ -1,6 +1,6 @@
 /*
-ScriptRuntimeException can be caught and thrown by the script. For example, accessing an undeclared variable is a 
-runtime error. However, compiler exceptions cannot be caught.
+ScriptRuntimeException can be caught and thrown by the script. For example, accessing or assigning an undeclared variable is a 
+runtime error. However, lexer, parser, and compiler exceptions cannot be caught.
  */
 try {
     foo = 22;
@@ -22,4 +22,4 @@ try {
     console.log("Always do this");
 }
 
-// As of 2/11/2021 16:04 This program runs as intended in both VM and interpreted mode.
+// As of Feb 18 15:30 2021 This program runs as intended.

@@ -9,5 +9,4 @@ console.log("Getting 10 random numbers between 1 and 10");
 for(let i = 0; i < 10; i += 1) {
     console.log(getRandomNumber(1, 10));
 }
-// As of Dec 30 00:55 2020 This program produces the expected output
-// As of 2/11/2021 17:21 The VM runs this program correctly
+// As of Feb 18 15:53 2021 This program appears to produce the expected output

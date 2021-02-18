@@ -1,4 +1,9 @@
-// courtesy of https://www.freecodecamp.org/news/javascript-regex-match-use-replace-on-string/
+/*
+Regular expressions can be created with regex literals or with the RegExp constructor. When using the constructor, a raw unescaped string
+can be written as String.raw`/\s\./` for example. String.raw is not a function but a Lexer directive.
+
+This example code was provided by https://www.freecodecamp.org/news/javascript-regex-match-use-replace-on-string/
+*/
 function isValidEmail(email) {
     return /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(email);
 }
@@ -18,5 +23,6 @@ let newStr = str.replace(/\w+/g, function(match) {
 });
 console.log(newStr);
 
-// D's implementation of std.regex.replace doesn't seem to obey the global flag
 console.log("DMildew DMildew".replaceAll(/dmildew/gi, "md"));
+
+// As of Feb 18 15:55 2021 This program produces the expected output.

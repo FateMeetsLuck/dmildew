@@ -1,6 +1,7 @@
+// This file is a scratchpad for implementing and testing VM features.
+
 /**
- * This function takes roughly 1024 ms on --usevm in release mode, and
- * roughly 1724 ms without --usevm in release mode.
+ * This has been moved to its own file in profile.mds
  */
 function profile()
 {

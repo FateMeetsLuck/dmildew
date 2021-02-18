@@ -1,3 +1,6 @@
+/*
+This file is just a scratchpad for testing Mildew implementation features.
+*/
 class Foo {
     doSomething() {
         console.log("a Foo is doing something on " + this);

@@ -13,5 +13,4 @@ var manyKeys = {
 console.log(Object.keys(manyKeys));
 console.log(Object.values(manyKeys));
 console.log(Object.entries(manyKeys));
-// As of Jan 02 07:50 2021 This program produces the correct output
-// As of 2/11/2021 17:17 The VM runs this program correctly
+// As of Feb 18 15:49 2021 This program produces the correct output

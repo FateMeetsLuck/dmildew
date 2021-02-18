@@ -38,6 +38,7 @@ import mildew.types;
 void initializeDateLibrary(Interpreter interpreter)
 {
     auto Date_ctor = new ScriptFunction("Date", &native_Date_ctor, true);
+    Date_ctor["now"] = new ScriptFunction("Date.now", &native_Date_s_now);
     Date_ctor["prototype"]["getDate"] = new ScriptFunction("Date.prototype.getDate", &native_Date_getDate);
     Date_ctor["prototype"]["getDay"] = new ScriptFunction("Date.prototype.getDay", &native_Date_getDay);
     Date_ctor["prototype"]["getFullYear"] = new ScriptFunction("Date.prototype.getFullYear", 
@@ -114,8 +115,22 @@ public:
     /// This string has to be formatted as "2020-Jan-01 00:00:00" for example. Anything different throws an exception
     this(in string str)
     {
-        auto dt = DateTime.fromSimpleString(str);
-        _sysTime = SysTime(dt, UTC());
+        try 
+        {
+            auto dt = DateTime.fromSimpleString(str);
+            _sysTime = SysTime(dt, UTC());
+        }
+        catch(DateTimeException)
+        {
+            auto dt = DateTime.fromISOString(str);
+            _sysTime = SysTime(dt, UTC());
+        }
+    }
+
+    static long now() 
+    {
+        immutable start = SysTime.fromUnixTime(0);
+        return (Clock.currTime - start).total!"msecs";
     }
 
     /// returns day of month
@@ -284,6 +299,14 @@ ScriptAny native_Date_ctor(Environment env, ScriptAny* thisObj, ScriptAny[] args
         return ScriptAny(tex.msg);
     }
     return ScriptAny.UNDEFINED;
+}
+
+ScriptAny native_Date_s_now(Environment environment,
+                                          ScriptAny* thisObj,
+                                          ScriptAny[] args,
+                                          ref NativeFunctionError nfe)
+{
+    return ScriptAny(ScriptDate.now());
 }
 
 ScriptAny native_Date_getDate(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)

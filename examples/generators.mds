@@ -1,5 +1,5 @@
 /*
-Introducing Generators, a feature that brings coroutines from Lua and ES6 to Mildew. Generators can be declared using 
+Introducing Generators, a feature that brings coroutines from Lua and JavaScript to Mildew. Generators can be declared using 
 an asterisk after the function keyword for a function that contains yield expressions, or created from any arbitrary
 function with the Generator constructor. For-of loops work on Generator objects as well!
 */
@@ -48,5 +48,4 @@ const otherGen = gen2(20);
 for(let value of otherGen) {
     console.log("value is", value);
 }
-
-
+// As of Feb 18 15:34 2021 This program produces the correct values but the output is out of sync with yield
