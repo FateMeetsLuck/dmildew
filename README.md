@@ -14,7 +14,7 @@ This project is in its early stages so one should probably use the ~main version
 
 ## Mildew Standard Library Documentation
 
-The documentation for the standard library, which is only loaded if the host application chooses to do so, can be found [here](https://pillager86.github.io/Mildew/).
+The documentation for the standard library, which is only loaded if the host application chooses to do so, can be found [here](https://pillager86.github.io/dmildew/).
 
 ## Building
 
