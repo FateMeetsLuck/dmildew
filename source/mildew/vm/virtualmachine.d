@@ -454,27 +454,36 @@ private int opIter(VirtualMachine vm, Chunk chunk)
     }
     else if(objToIterate.isObject)
     {
-        auto obj = objToIterate.toValue!ScriptObject;
-        auto generator = new Generator!(Tuple!(string, ScriptAny))({
-            foreach(k, v ; obj.dictionary)
-                yield(tuple(k,v));
-        });
-        vm._stack.push(ScriptAny(new ScriptFunction("next", 
-            delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError){
-                auto retVal = new ScriptObject("iteration", null, null);
-                if(generator.empty)
-                {
-                    retVal.assignField("done", ScriptAny(true));
-                }
-                else
-                {
-                    auto result = generator.front();
-                    retVal.assignField("key", ScriptAny(result[0]));
-                    retVal.assignField("value", result[1]);
-                    generator.popFront();
-                }
-                return ScriptAny(retVal);
-        })));
+        if(objToIterate.isNativeObjectType!ScriptGenerator)
+        {
+            auto func = new ScriptFunction("next", &native_Generator_next, false);
+            func.bind(objToIterate);
+            vm._stack.push(ScriptAny(func));
+        }
+        else
+        {
+            auto obj = objToIterate.toValue!ScriptObject;
+            auto generator = new Generator!(Tuple!(string, ScriptAny))({
+                foreach(k, v ; obj.dictionary)
+                    yield(tuple(k,v));
+            });
+            vm._stack.push(ScriptAny(new ScriptFunction("next", 
+                delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError){
+                    auto retVal = new ScriptObject("iteration", null, null);
+                    if(generator.empty)
+                    {
+                        retVal.assignField("done", ScriptAny(true));
+                    }
+                    else
+                    {
+                        auto result = generator.front();
+                        retVal.assignField("key", ScriptAny(result[0]));
+                        retVal.assignField("value", result[1]);
+                        generator.popFront();
+                    }
+                    return ScriptAny(retVal);
+            })));
+        }
     }
     ++vm._ip;
     return 0;
@@ -513,6 +522,8 @@ private int opNew(VirtualMachine vm, Chunk chunk)
     {
         if(func.compiled.length == 0)
             throw new VMException("Empty script function cannot be called", vm._ip, OpCode.CALL);
+        if(func.isGenerator)
+            return throwRuntimeError("Cannot use new with a Generator Function", vm, chunk);
         vm._callStack.push(VirtualMachine.CallData(VirtualMachine.FuncCallType.NEW, chunk.bytecode, 
                 vm._ip, vm._environment, vm._tryData));
         vm._environment = new Environment(func.closure, func.functionName);
@@ -840,28 +851,40 @@ private int opCall(VirtualMachine vm, Chunk chunk)
     {
         if(func.compiled.length == 0)
             throw new VMException("Empty script function cannot be called", vm._ip, OpCode.CALL);
-        vm._callStack.push(VirtualMachine.CallData(VirtualMachine.FuncCallType.NORMAL, chunk.bytecode, 
-                vm._ip, vm._environment, vm._tryData));
-        vm._environment = new Environment(func.closure, func.functionName);
-        vm._ip = 0;
-        chunk.bytecode = func.compiled;
-        vm._tryData = [];
-        // set this
-        vm._environment.forceSetVarOrConst("this", thisObj, true);
-        // set args
-        for(size_t i = 0; i < func.argNames.length; ++i)
+        
+        if(!func.isGenerator) // only script functions can be marked as generators
         {
-            if(i >= args.length)
-                vm._environment.forceSetVarOrConst(func.argNames[i], ScriptAny.UNDEFINED, false);
-            else
-                vm._environment.forceSetVarOrConst(func.argNames[i], args[i], false);
+            vm._callStack.push(VirtualMachine.CallData(VirtualMachine.FuncCallType.NORMAL, chunk.bytecode, 
+                    vm._ip, vm._environment, vm._tryData));
+            vm._environment = new Environment(func.closure, func.functionName);
+            vm._ip = 0;
+            chunk.bytecode = func.compiled;
+            vm._tryData = [];
+            // set this
+            vm._environment.forceSetVarOrConst("this", thisObj, true);
+            // set args
+            for(size_t i = 0; i < func.argNames.length; ++i)
+            {
+                if(i >= args.length)
+                    vm._environment.forceSetVarOrConst(func.argNames[i], ScriptAny.UNDEFINED, false);
+                else
+                    vm._environment.forceSetVarOrConst(func.argNames[i], args[i], false);
+            }
+            // set arguments variable
+            vm._environment.forceSetVarOrConst("arguments", ScriptAny(args), false);
+            // check exc in case exception was thrown during call or apply
+            if(vm._exc)
+                return throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
+            return 0;
         }
-        // set arguments variable
-        vm._environment.forceSetVarOrConst("arguments", ScriptAny(args), false);
-        // check exc in case exception was thrown during call or apply
-        if(vm._exc)
-            throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
-        return 0;
+        else
+        {
+            ScriptObject newGen = new ScriptObject("Generator", getGeneratorPrototype,
+                    new ScriptGenerator(vm._environment, func, args, thisObj));
+            vm._stack.push(ScriptAny(newGen));
+            vm._ip += 1 + uint.sizeof;
+            return 0;
+        }
     }
     else if(func.type == ScriptFunction.Type.NATIVE_FUNCTION)
     {
@@ -1734,7 +1757,7 @@ class VirtualMachine
     /// For calling script functions with call or apply. Ugly hackish function that needs
     /// to be reworked.
     package(mildew) ScriptAny runFunction(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args, 
-                                          ScriptAny yieldFunc=ScriptAny.UNDEFINED) // this parameter is temporary
+                                          ScriptAny yieldFunc=ScriptAny.UNDEFINED) // this parameter is necessary
     {
         ScriptAny result;
         NativeFunctionError nfe;
@@ -1748,10 +1771,14 @@ class VirtualMachine
             immutable oldIP = _ip;
             auto oldEnv = _environment; // @suppress(dscanner.suspicious.unmodified)
             _environment = new Environment(func.closure);
-            // THIS IS TEMPORARY
+            // THIS MAY NOT BE TEMPORARY
             if(yieldFunc != ScriptAny.UNDEFINED)
+            {
+                _environment.forceSetVarOrConst("yield", yieldFunc, true);
+                // allow for __yield__ syntax inside of manually created Generators
                 _environment.forceSetVarOrConst("__yield__", yieldFunc, true);
-            // THAT WAS TEMPORARY
+            }
+            // ^
             _environment.forceSetVarOrConst("this", thisObj, false);
             _environment.forceSetVarOrConst("arguments", ScriptAny(args), false);
             for(size_t i = 0; i < func.argNames.length; ++i)
@@ -1796,10 +1823,10 @@ class VirtualMachine
             _exc = new ScriptRuntimeException(result.toString);
             break;
         case NativeFunctionError.WRONG_NUMBER_OF_ARGS:
-            _exc = new ScriptRuntimeException("Wrong number of args to native function");
+            _exc = new ScriptRuntimeException("Wrong number of argumentss to native function");
             break;
         case NativeFunctionError.WRONG_TYPE_OF_ARG:
-            _exc = new ScriptRuntimeException("Wrong type of args to native function");
+            _exc = new ScriptRuntimeException("Wrong type of arguments to native function");
             break;
         }
         return result;

@@ -337,7 +337,8 @@ public:
         "break", "continue", "return", 
         "function", "class", "super", "extends",
         "new", "delete", "typeof", "instanceof",
-        "throw", "try", "catch", "finally"
+        "throw", "try", "catch", "finally", 
+        "yield"
     );
 
     /// AA of look up for escape chars based on character after \

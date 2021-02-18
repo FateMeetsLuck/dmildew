@@ -45,6 +45,7 @@ interface IExpressionVisitor
 	Variant visitMemberAccessNode(MemberAccessNode manode);
 	Variant visitNewExpressionNode(NewExpressionNode nenode);
     Variant visitSuperNode(SuperNode snode);
+    Variant visitYieldNode(YieldNode ynode);
 }
 
 interface IStatementVisitor 

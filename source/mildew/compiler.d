@@ -140,11 +140,10 @@ public:
         _chunk.bytecode ~= OpCode.RETURN;
         // create function
         ScriptAny func;
-        // HERE check for generator flag
         if(!flnode.isClass)
             func = new ScriptFunction(
                 flnode.optionalName == "" ? "<anonymous function>" : flnode.optionalName, 
-                flnode.argList, _chunk.bytecode, false);
+                flnode.argList, _chunk.bytecode, false, flnode.isGenerator);
         else
             func = new ScriptFunction(
                 flnode.optionalName == "" ? "<anonymous class>" : flnode.optionalName,
@@ -560,6 +559,20 @@ public:
         _chunk.bytecode ~= OpCode.OBJGET;
         return Variant(null);
     }
+
+    /// handle yield statements.
+    Variant visitYieldNode(YieldNode ynode)
+    {
+        // it's just a function call to yield
+        _chunk.bytecode ~= OpCode.STACK_1; // disregard this
+        _chunk.bytecode ~= OpCode.GETVAR ~ encodeConst("yield");
+        if(ynode.yieldExpression)
+            ynode.yieldExpression.accept(this);
+        else
+            _chunk.bytecode ~= OpCode.STACK_1;
+        _chunk.bytecode ~= OpCode.CALL ~ encode!uint(1);
+        return Variant(null);
+    }
     
     /// Handle var declaration
     Variant visitVarDeclarationStatementNode(VarDeclarationStatementNode vdsnode)
@@ -946,7 +959,7 @@ public:
                     Token.createFakeToken(Token.Type.ASSIGN, ""),
                     new VarAccessNode(Token.createFakeToken(Token.Type.IDENTIFIER, fdsnode.name)),
                     new FunctionLiteralNode(
-                        fdsnode.argNames, fdsnode.statementNodes, fdsnode.name
+                        fdsnode.argNames, fdsnode.statementNodes, fdsnode.name, false, fdsnode.isGenerator
                     )
                 )
             ]

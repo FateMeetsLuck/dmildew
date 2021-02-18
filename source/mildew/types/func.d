@@ -260,7 +260,7 @@ package(mildew):
      */
     ScriptFunction copyCompiled(Environment env, bool isClass=false)
     {
-        auto newFunc = new ScriptFunction(_functionName, _argNames, _compiled, isClass);
+        auto newFunc = new ScriptFunction(_functionName, _argNames, _compiled, isClass, _isGenerator);
         newFunc._closure = env;
         return newFunc;
     }

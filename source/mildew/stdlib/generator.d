@@ -31,24 +31,26 @@ import mildew.vm;
 class ScriptGenerator : Generator!ScriptAny
 {
     /// ctor
-    this(Environment env, ScriptFunction func, ScriptAny[] args)
+    this(Environment env, ScriptFunction func, ScriptAny[] args, ScriptAny thisObj = ScriptAny.UNDEFINED)
     {
         // first get the thisObj
-        ScriptAny thisObj;
         bool _; // @suppress(dscanner.suspicious.unmodified)
-        if(func.boundThis)
+        if(thisObj == ScriptAny.UNDEFINED)
         {
-            thisObj = func.boundThis;
+            if(func.boundThis)
+            {
+                thisObj = func.boundThis;
+            }
+            if(func.closure && func.closure.variableOrConstExists("this"))
+            {
+                thisObj = *func.closure.lookupVariableOrConst("this", _);
+            }
+            else if(env.variableOrConstExists("this"))
+            {
+                thisObj = *env.lookupVariableOrConst("this", _);
+            }
+            // else it's undefined and that's ok
         }
-        if(func.closure && func.closure.variableOrConstExists("this"))
-        {
-            thisObj = *func.closure.lookupVariableOrConst("this", _);
-        }
-        else if(env.variableOrConstExists("this"))
-        {
-            thisObj = *env.lookupVariableOrConst("this", _);
-        }
-        // else it's undefined and that's ok
 
         // next get a VM copy that will live in the following closure
         if(env.getGlobalEnvironment.interpreter.vm is null)
@@ -58,7 +60,7 @@ class ScriptGenerator : Generator!ScriptAny
         _name = func.functionName;
 
         super({
-            _returnValue = vm.runFunction(func, thisObj, args, ScriptAny(new ScriptFunction("__yield__",
+            _returnValue = vm.runFunction(func, thisObj, args, ScriptAny(new ScriptFunction("yield",
                     &this.native_yield)));
         });
     }
@@ -75,7 +77,9 @@ private:
             .yield!ScriptAny(ScriptAny());
         else
             .yield!ScriptAny(args[0]);
-        return this._yieldValue;
+        auto result = this._yieldValue;
+        this._yieldValue = ScriptAny.UNDEFINED;
+        return result;
     }
 
     string _name;
@@ -101,6 +105,8 @@ ScriptObject getGeneratorPrototype()
     if(_generatorPrototype is null)
     {
         _generatorPrototype = new ScriptObject("Generator", null);
+        _generatorPrototype.addGetterProperty("name", new ScriptFunction("Generator.prototype.name",
+                &native_Generator_p_name));
         _generatorPrototype["next"] = new ScriptFunction("Generator.prototype.next",
                 &native_Generator_next);
         _generatorPrototype["return"] = new ScriptFunction("Generator.prototype.return",
@@ -129,7 +135,20 @@ private ScriptAny native_Generator_ctor(Environment env, ScriptAny* thisObj,
     return ScriptAny.UNDEFINED;
 }
 
-private ScriptAny native_Generator_next(Environment env, ScriptAny* thisObj,
+private ScriptAny native_Generator_p_name(Environment env, ScriptAny* thisObj,
+                                        ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto thisGen = thisObj.toNativeObject!ScriptGenerator;
+    if(thisGen is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    return ScriptAny(thisGen._name);
+}
+
+/// This is public for opIter
+ScriptAny native_Generator_next(Environment env, ScriptAny* thisObj,
                                         ScriptAny[] args, ref NativeFunctionError nfe)
 {
     auto thisGen = thisObj.toNativeObject!ScriptGenerator;

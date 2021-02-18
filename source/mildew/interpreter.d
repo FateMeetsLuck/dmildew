@@ -719,6 +719,11 @@ public:
         return Variant(VisitResult(thisObj["__super__"]));
     }
 	
+    deprecated Variant visitYieldNode(YieldNode ynode)
+    {
+        throw new Exception("Yield is not supported in interpreted mode");
+    }
+    
     /// handles var, let, and const declarations
 	deprecated Variant visitVarDeclarationStatementNode(VarDeclarationStatementNode vdsnode)
 	{

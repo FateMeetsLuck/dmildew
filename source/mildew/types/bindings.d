@@ -1285,22 +1285,31 @@ private ScriptAny native_Function_apply(Environment env, ScriptAny* thisIsFn, Sc
     auto argList = args[1].toValue!(ScriptAny[]);
     try 
     {
-        auto interpreter = env.interpreter;
-        if(interpreter is null)
+        if(fn.isGenerator)
         {
-            nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
-            return ScriptAny("Interpreter was improperly created without global environment");
+            auto obj = new ScriptObject("Generator", getGeneratorPrototype, new ScriptGenerator(
+                env, fn, argList, thisToUse));
+            return ScriptAny(obj);
         }
-        if(interpreter.usingVM)
+        else
         {
-            if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
-                return interpreter.vm.runFunction(fn, thisToUse, args);
-            else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
-                return fn.nativeFunction()(env, &thisToUse, argList, nfe);
-            else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
-                return fn.nativeDelegate()(env, &thisToUse, argList, nfe);
+            auto interpreter = env.interpreter;
+            if(interpreter is null)
+            {
+                nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+                return ScriptAny("Interpreter was improperly created without global environment");
+            }
+            if(interpreter.usingVM)
+            {
+                if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
+                    return interpreter.vm.runFunction(fn, thisToUse, args);
+                else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
+                    return fn.nativeFunction()(env, &thisToUse, argList, nfe);
+                else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
+                    return fn.nativeDelegate()(env, &thisToUse, argList, nfe);
+            }
+            return interpreter.callFunction(fn, thisToUse, argList);
         }
-        return interpreter.callFunction(fn, thisToUse, argList);
     }
     catch(ScriptRuntimeException ex)
     {
@@ -1359,22 +1368,31 @@ ScriptAny native_Function_call(Environment env, ScriptAny* thisIsFn, ScriptAny[]
     args = args[1..$];
     try 
     {
-        auto interpreter = env.interpreter;
-        if(interpreter is null)
+        if(fn.isGenerator)
         {
-            nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
-            return ScriptAny("Interpreter was improperly created without global environment");
+            auto obj = new ScriptObject("Generator", getGeneratorPrototype, new ScriptGenerator(
+                env, fn, args, thisToUse));
+            return ScriptAny(obj);
         }
-        if(interpreter.usingVM)
+        else
         {
-            if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
-                return interpreter.vm.runFunction(fn, thisToUse, args);
-            else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
-                return fn.nativeFunction()(env, &thisToUse, args, nfe);
-            else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
-                return fn.nativeDelegate()(env, &thisToUse, args, nfe);
+            auto interpreter = env.interpreter;
+            if(interpreter is null)
+            {
+                nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+                return ScriptAny("Interpreter was improperly created without global environment");
+            }
+            if(interpreter.usingVM)
+            {
+                if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
+                    return interpreter.vm.runFunction(fn, thisToUse, args);
+                else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
+                    return fn.nativeFunction()(env, &thisToUse, args, nfe);
+                else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
+                    return fn.nativeDelegate()(env, &thisToUse, args, nfe);
+            }
+            return interpreter.callFunction(fn, thisToUse, args);
         }
-        return interpreter.callFunction(fn, thisToUse, args);
     }
     catch(ScriptRuntimeException ex)
     {

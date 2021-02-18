@@ -581,7 +581,13 @@ private:
                 }
                 else if(_currentToken.text == "function") // function literal
                 {
+                    bool isGenerator = false;
                     nextToken();
+                    if(_currentToken.type == Token.Type.STAR)
+                    {
+                        isGenerator = true;
+                        nextToken();
+                    }
                     if(_currentToken.type != Token.Type.LPAREN)
                         throw new ScriptCompileException("Argument list expected after anonymous function", 
                             _currentToken);
@@ -602,12 +608,14 @@ private:
                     if(_currentToken.type != Token.Type.LBRACE)
                         throw new ScriptCompileException("Expected '{' before anonymous function body", _currentToken);
                     nextToken(); // eat the {
-                    _functionContextStack.push(FunctionContext(FunctionContextType.NORMAL, 0, 0, []));
+                    _functionContextStack.push(FunctionContext(
+                        isGenerator? FunctionContextType.GENERATOR : FunctionContextType.NORMAL, 
+                        0, 0, []));
                     auto statements = parseStatements(Token.Type.RBRACE);
                     _functionContextStack.pop();
                     nextToken();
                     // auto func = new ScriptFunction(name, argNames, statements, null);
-                    left = new FunctionLiteralNode(argNames, statements);
+                    left = new FunctionLiteralNode(argNames, statements, "", false, isGenerator);
                 }
                 else if(_currentToken.text == "class")
                 {
@@ -634,6 +642,20 @@ private:
                         throw new ScriptCompileException("Super expression only allowed in derived classes", stoken);
                     left = new SuperNode(stoken, _baseClassStack[$-1]);
                     nextToken();
+                }
+                else if(_currentToken.text == "yield")
+                {
+                    // check context stack
+                    if(_functionContextStack.top.fct != FunctionContextType.GENERATOR)
+                        throw new ScriptCompileException("Yield may only be used in Generator functions", 
+                            _currentToken);
+                    
+                    immutable ytoken = _currentToken;
+                    nextToken();
+                    ExpressionNode expr;
+                    if(_currentToken.type != Token.Type.RBRACE && _currentToken.type != Token.Type.SEMICOLON)
+                        expr = parseExpression();
+                    left = new YieldNode(ytoken, expr);
                 }
                 else
                     throw new ScriptCompileException("Unexpected keyword in primary expression", _currentToken);
@@ -1116,11 +1138,28 @@ private:
     {
         import std.algorithm: uniq, count;
         immutable lineNumber = _currentToken.position.line;
-        nextToken();
+        bool isGenerator = false;
+        nextToken(); // eat the function keyword
+
+        if(_currentToken.type == Token.Type.STAR)
+        {
+            isGenerator = true;
+            nextToken();
+        }
+
         if(_currentToken.type != Token.Type.IDENTIFIER)
             throw new ScriptCompileException("Expected identifier after function keyword", _currentToken);
         string name = _currentToken.text;
         nextToken();
+
+        if(_currentToken.type == Token.Type.STAR)
+        {
+            if(isGenerator)
+                throw new ScriptCompileException("Only one asterisk allowed to described Generators", _currentToken);
+            isGenerator = true;
+            nextToken();
+        }
+        
         if(_currentToken.type != Token.Type.LPAREN)
             throw new ScriptCompileException("Expected '(' after function name", _currentToken);
         nextToken();
@@ -1145,11 +1184,13 @@ private:
         if(_currentToken.type != Token.Type.LBRACE)
             throw new ScriptCompileException("Function definition must begin with '{'", _currentToken);
         nextToken();
-        _functionContextStack.push(FunctionContext(FunctionContextType.NORMAL, 0, 0, []));
+        _functionContextStack.push(FunctionContext(
+            isGenerator? FunctionContextType.GENERATOR: FunctionContextType.NORMAL, 
+            0, 0, []));
         auto statements = parseStatements(Token.Type.RBRACE);
         _functionContextStack.pop();
         nextToken(); // eat the }
-        return new FunctionDeclarationStatementNode(lineNumber, name, argNames, statements);
+        return new FunctionDeclarationStatementNode(lineNumber, name, argNames, statements, isGenerator);
     }
 
     TryCatchBlockStatementNode parseTryCatchBlockStatement()
@@ -1412,7 +1453,7 @@ private:
         return list;
     }
 
-    enum FunctionContextType {NORMAL, CONSTRUCTOR, METHOD}
+    enum FunctionContextType {NORMAL, CONSTRUCTOR, METHOD, GENERATOR}
 
     struct FunctionContext
     {

@@ -1,35 +1,52 @@
-function foo(a, b) {
-    __yield__(this);
-    __yield__(100);
-    __yield__(a);
-    function test() {
-        __yield__("test");
-    }
+/*
+Introducing Generators, a feature that brings coroutines from Lua and ES6 to Mildew. Generators can be declared using 
+an asterisk after the function keyword for a function that contains yield expressions, or created from any arbitrary
+function with the Generator constructor. For-of loops work on Generator objects as well!
+*/
+function *foo(a, b) {
+    yield a;
+    yield b;
     for(let i = 0; i < 4; ++i) {
-        console.log("Trying to yield " + i * i);
-        __yield__(i * i);
+        // printing is out of order, presumably due to D's implementation of yield()?
+        console.log(`foo: value of i*i is ${i*i}`);
+        yield i * i;
     }
-    test();
-    __yield__("after test");
-    __yield__("after test again");
-    let something = __yield__(a + b);
-    console.log("In generator something=",something);
-    return -2;
+    return -42;
 }
 
-let myGen = new Generator(foo, 69, 1200);
+let myGen = foo(69, 120);
 console.log("Getting the first yield...");
-let result = myGen.next(69);
+let result = myGen.next();
 while(!result.done) {
-    console.log(result.value);
-    console.log("Getting the next yield...");
-    result = myGen.next(69);
+    console.log(`Yielded value = ${result.value}`);
+    result = myGen.next();
 }
 console.log("Last result: " + result);
 console.log("The generator is done");
 console.log("The return value is ", myGen.returnValue);
 console.log(myGen + " is finished");
 console.log(isdefined("__yield__")); // always false outside of Generator functions
-return 3000;
+
+function works() {
+    __yield__(-1);
+    return 55555;
+}
+
+const worksGen = new Generator(works);
+console.log("Works gen");
+console.log(worksGen.returnValue);
+console.log(worksGen.next());
+console.log(worksGen.returnValue);
+
+const gen2 = function* (a) {
+    yield a;
+    yield a + 1;
+    yield a + 2;
+};
+
+const otherGen = gen2(20);
+for(let value of otherGen) {
+    console.log("value is", value);
+}
 
 

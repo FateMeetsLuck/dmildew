@@ -176,12 +176,13 @@ class LiteralNode : ExpressionNode
 
 class FunctionLiteralNode : ExpressionNode
 {
-    this(string[] args, StatementNode[] stmts, string optional = "", bool isC = false)
+    this(string[] args, StatementNode[] stmts, string optional = "", bool isC = false, bool isG=false)
     {
         argList = args;
         statements = stmts;
         optionalName = optional;
         isClass = isC;
+        isGenerator = isG;
     }
 
     override Variant accept(IExpressionVisitor visitor)
@@ -211,6 +212,7 @@ class FunctionLiteralNode : ExpressionNode
     StatementNode[] statements;
     string optionalName;
     bool isClass;
+    bool isGenerator;
 }
 
 class LambdaNode : ExpressionNode
@@ -599,6 +601,28 @@ class SuperNode : ExpressionNode
     ExpressionNode baseClass;
 }
 
+class YieldNode : ExpressionNode
+{
+    this(Token yToken, ExpressionNode expr)
+    {
+        yieldToken = yToken;
+        yieldExpression = expr;
+    }
+
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitYieldNode(this);
+    }
+
+    override string toString() const
+    {
+        return "yield " ~ (yieldExpression? yieldExpression.toString: "");
+    }
+
+    Token yieldToken;
+    ExpressionNode yieldExpression;
+}
+
 /// root class of all statement nodes
 abstract class StatementNode
 {
@@ -941,12 +965,13 @@ class ReturnStatementNode : StatementNode
 
 class FunctionDeclarationStatementNode : StatementNode
 {
-    this(size_t lineNo, string n, string[] args, StatementNode[] statements)
+    this(size_t lineNo, string n, string[] args, StatementNode[] statements, bool isG = false)
     {
         super(lineNo);
         name = n;
         argNames = args;
         statementNodes = statements;
+        isGenerator = isG;
     }
 
 	override Variant accept(IStatementVisitor visitor)
@@ -973,6 +998,7 @@ class FunctionDeclarationStatementNode : StatementNode
     string name;
     string[] argNames;
     StatementNode[] statementNodes;
+    bool isGenerator;
 }
 
 class ThrowStatementNode : StatementNode
