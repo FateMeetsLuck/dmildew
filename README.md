@@ -6,20 +6,30 @@ The ideal use case for this software is for embedding in D games needing a dynam
 
 This software is licensed under the GNU General Public License version 3.0 so that it may be used in free and open software. For a commercial software usage license, please contact the author. In the future, the license will be changed to LGPL3 when the software is more stable and ready for production use.
 
-## Usage
+## Table of Contents
+1. [Usage](#usage)
+2. [Mildew Standard Library Documentation](#mildew-standard-library-documentation)
+3. [Building](#building)
+4. [Compiling and Running Bytecode Files](#compiling-and-running-bytecode-files)
+
+<div id="usage"></div>
+## Usage 
 
 The `examples/` folder contains example scripts. It should look familiar to anyone who knows JavaScript. However, Mildew is not a full feature ES6 JavaScript implementation.
 
 This project is in its early stages so one should probably use the ~main version to get the latest bug fixes. The release tags are only so that it is usable in dub.
 
-## Mildew Standard Library Documentation
+<div id="mildew-standard-library-documentation"></div>
+## Mildew Standard Library Documentation 
 
 The documentation for the standard library, which is only loaded if the host application chooses to do so, can be found [here](https://pillager86.github.io/dmildew/).
 
-## Building
+<div id="building"></div>
+## Building 
 
 Building the library is as simple as writing `dub build` in a terminal in the main project directory. To build the REPL and script runner one can write `dub build Mildew:run` in the same directory as the main project. Add `-b release` to the build commands to generate an optimized binary that performs slightly better than the default debugging build.
 
+<div id="compiling-and-running-bytecode-files"></div>
 ## Compiling and Running Bytecode Files
 
 A script can be compiled with `dub run Mildew:bccompiler -- <name of script file.mds> -o <name of binary.mdc>` and the resulting binary bytecode file can be run directly with the REPL as if it were a normal text file of source code.
@@ -28,7 +38,7 @@ A script can be compiled with `dub run Mildew:bccompiler -- <name of script file
 
 In a terminal in the main project directory run `dub run Mildew:run -- examples/<nameofexample>.mds`. To try out the interactive shell simply type `dub run dmilew:run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after. One can also store anonymous class expressions in a global variable such as `var Foo = class {};`.
 
-A VM option is now available and selected with the --usevm command line argument. An additional argument -v can be specified to see highly verbose execution of bytecode. To see the bytecode disassembly of each program, use the -d option. Soon the VM and bytecode compilation option will be the default and tree walking will be removed.
+The option `-d` prints bytecode disassembly before running each chunk of code. The `-v` option prints highly verbose step by step execution of bytecode in the virtual machine.
 
 ## Binding
 
