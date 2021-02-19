@@ -608,6 +608,14 @@ private:
                         isGenerator = true;
                         nextToken();
                     }
+
+                    string optionalName = "";
+                    if(_currentToken.type == Token.Type.IDENTIFIER)
+                    {
+                        optionalName = _currentToken.text;
+                        nextToken();
+                    }
+
                     if(_currentToken.type != Token.Type.LPAREN)
                         throw new ScriptCompileException("Argument list expected after anonymous function", 
                             _currentToken);
@@ -635,7 +643,7 @@ private:
                     _functionContextStack.pop();
                     nextToken();
                     // auto func = new ScriptFunction(name, argNames, statements, null);
-                    left = new FunctionLiteralNode(argNames, statements, "", false, isGenerator);
+                    left = new FunctionLiteralNode(argNames, statements, optionalName, false, isGenerator);
                 }
                 else if(_currentToken.text == "class")
                 {
@@ -933,7 +941,12 @@ private:
     {
         immutable classToken = _currentToken;
         nextToken();
-        immutable className = "<anonymous class>";
+        string className = "<anonymous class>";
+        if(_currentToken.type == Token.Type.IDENTIFIER)
+        {
+            className = _currentToken.text;
+            nextToken();
+        }
         ExpressionNode baseClass = null;
         if(_currentToken.isKeyword("extends"))
         {

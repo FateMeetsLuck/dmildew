@@ -221,24 +221,6 @@ public:
 package(mildew):
 
     /**
-     * Constructor for creating script defined functions.
-     */
-    deprecated this(string fnname, string[] args, StatementNode[] statementNodes, Environment clos, 
-            bool isClass=false)
-    {
-        import mildew.types.bindings: getFunctionPrototype;
-        immutable tname = isClass? "class" : "function";
-        super(tname, getFunctionPrototype(), null);
-        _functionName = fnname;
-        _argNames = args;
-        _statementNodes = statementNodes;
-		_closure = clos;
-		_isClass = isClass;
-        initializePrototypeProperty();
-        _type = Type.SCRIPT_FUNCTION;
-    }
-
-    /**
      * Constructor for functions created from compilation of statements.
      */
     this(string fnname, string[] args, ubyte[] bc, bool isClass = false, bool isGenerator = false)
@@ -260,7 +242,7 @@ package(mildew):
      */
     ScriptFunction copyCompiled(Environment env, bool isClass=false)
     {
-        auto newFunc = new ScriptFunction(_functionName, _argNames, _compiled, isClass, _isGenerator);
+        auto newFunc = new ScriptFunction(_functionName, _argNames, _compiled, _isClass, _isGenerator);
         newFunc._closure = env;
         return newFunc;
     }

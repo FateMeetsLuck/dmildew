@@ -587,11 +587,17 @@ public:
             {
                 // if the right hand side is a function literal, we can rename it
                 if(auto flnode = cast(FunctionLiteralNode)bopnode.rightNode)
-                    flnode.optionalName = bopnode.leftNode.toString();
+                {
+                    if(flnode.optionalName == "")
+                        flnode.optionalName = bopnode.leftNode.toString();
+                }
                 else if(auto clsnode = cast(ClassLiteralNode)bopnode.rightNode)
                 {
-                    clsnode.classDefinition.constructor.optionalName = bopnode.leftNode.toString();
-                    clsnode.classDefinition.className = bopnode.leftNode.toString();
+                    if(clsnode.classDefinition.className == "<anonymous class>")
+                    {
+                        clsnode.classDefinition.constructor.optionalName = bopnode.leftNode.toString();
+                        clsnode.classDefinition.className = bopnode.leftNode.toString();
+                    }
                 }
                 auto van = cast(VarAccessNode)bopnode.leftNode;
                 bopnode.rightNode.accept(this); // push value to stack
