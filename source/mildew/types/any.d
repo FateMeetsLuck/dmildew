@@ -928,7 +928,8 @@ private:
             else if(_type == Type.ARRAY)
             {
                 auto arr = cast(ScriptArray)_asObject;
-                return arr.array.length != 0;
+                // return arr.array.length != 0;
+                return true;
             }
             else
                 return _asObject !is null;
