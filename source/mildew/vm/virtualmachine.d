@@ -595,6 +595,7 @@ pragma(inline, true)
 private int opOpenScope(VirtualMachine vm, Chunk chunk)
 {
     vm._environment = new Environment(vm._environment);
+    // debug writefln("Opening environment from parent %s", vm._environment.parent);
     // debug writefln("VM{ environment depth=%s", vm._environment.depth);
     ++vm._ip;
     return 0;
@@ -604,6 +605,7 @@ pragma(inline, true)
 private int opCloseScope(VirtualMachine vm, Chunk chunk)
 {
     vm._environment = vm._environment.parent;
+    // debug writefln("Closing environment: %s", vm._environment);
     // debug writefln("VM} environment depth=%s", vm._environment.depth);
     ++vm._ip;
     return 0;
@@ -651,7 +653,7 @@ private int opDeclConst(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opGetVar(VirtualMachine vm, Chunk chunk)
 {
-    auto constID = decode!uint(chunk.bytecode[vm._ip + 1..$]);
+    auto constID = decode!uint(chunk.bytecode[vm._ip + 1..$]);   
     auto varName = chunk.constTable.get(constID).toString();
     bool isConst; // @suppress(dscanner.suspicious.unmodified)
     auto valuePtr = vm._environment.lookupVariableOrConst(varName, isConst);
@@ -1214,63 +1216,11 @@ private int opHalt(VirtualMachine vm, Chunk chunk)
     return 0;
 }
 
-/*pragma(inline, true)
-private int startFunctionCall(VirtualMachine vm, Chunk chunk, ScriptFunction func, ScriptAny thisObj, ScriptAny[] args)
-{
-    NativeFunctionError nfe = NativeFunctionError.NO_ERROR;
-    if(func.type == ScriptFunction.Type.SCRIPT_FUNCTION)
-    {
-        if(func.compiled.length == 0)
-            throw new VMException("Empty script function cannot be called", vm._ip, OpCode.CALL);
-        vm._callStack.push(VirtualMachine.CallData(VirtualMachine.FuncCallType.NORMAL, chunk.bytecode, 
-                vm._ip, vm._environment, vm._tryData));
-        vm._environment = new Environment(func.closure, func.functionName);
-        vm._ip = 0;
-        chunk.bytecode = func.compiled;
-        vm._tryData = [];
-        // set this
-        vm._environment.forceSetVarOrConst("this", thisObj, true);
-        // set args
-        for(size_t i = 0; i < func.argNames.length; ++i)
-        {
-            if(i >= args.length)
-                vm._environment.forceSetVarOrConst(func.argNames[i], ScriptAny.UNDEFINED, false);
-            else
-                vm._environment.forceSetVarOrConst(func.argNames[i], args[i], false);
-        }
-        // set arguments variable
-        vm._environment.forceSetVarOrConst("arguments", ScriptAny(args), false);
-        // check exc in case exception was thrown during call or apply
-        if(vm._exc)
-            throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
-        return 0;
-    }
-    else if(func.type == ScriptFunction.Type.NATIVE_FUNCTION)
-    {
-        auto nativeFunc = func.nativeFunction;
-        vm._stack.push(nativeFunc(vm._environment, &thisObj, args, nfe));
-    }
-    else if(func.type == ScriptFunction.Type.NATIVE_DELEGATE)
-    {
-        auto nativeDelegate = func.nativeDelegate;
-        vm._stack.push(nativeDelegate(vm._environment, &thisObj, args, nfe));
-    }
-    final switch(nfe)
-    {
-    case NativeFunctionError.NO_ERROR:
-        break;
-    case NativeFunctionError.RETURN_VALUE_IS_EXCEPTION:
-        return throwRuntimeError(vm._stack.peek().toString(), vm, chunk);
-    case NativeFunctionError.WRONG_NUMBER_OF_ARGS:
-        return throwRuntimeError("Wrong number of arguments to native function", vm, chunk);
-    case NativeFunctionError.WRONG_TYPE_OF_ARG:
-        return throwRuntimeError("Wrong type of argument to native function", vm, chunk);
-    }
-    vm._ip += 1 + uint.sizeof;
-    return 0;
-}*/
-
-/// implements virtual machine
+/**
+ * This class implements a virtual machine that runs Chunks of bytecode. This class is not thread
+ * safe and a copy() of the VM should be instantiated to run scripts in multiple threads. The
+ * Environments are shallow copied and not guaranteed to be thread safe either.
+ */
 class VirtualMachine
 {
     /// ctor
@@ -1750,7 +1700,7 @@ class VirtualMachine
         // if something is on the stack, that's the return value
         if(_stack.size > 0)
             return _stack.pop();
-        _currentConstTable = null;
+        // _currentConstTable = null;
         return ScriptAny.UNDEFINED;
     }
 
@@ -1790,7 +1740,9 @@ class VirtualMachine
             }
             try
             {
-                result = run(chunk, _environment.getGlobalEnvironment.interpreter.printVMDebugInfo, true);
+                // debug writefln("_environment=%s", _environment);
+                // debug writefln("_environment.g.interpreter=%s", _environment.getGlobalEnvironment.interpreter);
+                result = run(chunk, _globals.interpreter.printVMDebugInfo, true);
 
             }
             catch(ScriptRuntimeException ex)

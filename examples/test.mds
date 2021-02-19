@@ -94,3 +94,5 @@ let sortedVarNames = Object.keys(env).sort();
 for(let eachVarName in sortedVarNames) {
     console.log(`${eachVarName}: ${env[eachVarName]}`);
 }
+
+var myExport = () => console.log(255);

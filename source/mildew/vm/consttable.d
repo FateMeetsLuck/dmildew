@@ -101,11 +101,18 @@ public:
     /// reads a ConstTable from an ubyte stream
     static ConstTable deserialize(ref ubyte[] stream)
     {
+        import mildew.types.func: ScriptFunction;
         auto ct = new ConstTable();
         ct._constants.length = decode!size_t(stream);
         stream = stream[size_t.sizeof..$];
         for(auto i = 0; i < ct._constants.length; ++i)
+        {
             ct._constants[i] = ScriptAny.deserialize(stream);
+            if(ct._constants[i].type == ScriptAny.Type.FUNCTION)
+            {
+                ct._constants[i].toValue!ScriptFunction().constTable = ct;
+            }
+        }
         return ct;
     }
 

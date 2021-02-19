@@ -29,7 +29,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/run/dmildew_run",
-            "args": ["--usevm", "examples/regex.mds"],
+            "args": ["-v", "examples/temp.mds"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

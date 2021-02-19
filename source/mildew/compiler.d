@@ -143,11 +143,11 @@ public:
         if(!flnode.isClass)
             func = new ScriptFunction(
                 flnode.optionalName == "" ? "<anonymous function>" : flnode.optionalName, 
-                flnode.argList, _chunk.bytecode, false, flnode.isGenerator);
+                flnode.argList, _chunk.bytecode, false, flnode.isGenerator, _chunk.constTable);
         else
             func = new ScriptFunction(
                 flnode.optionalName == "" ? "<anonymous class>" : flnode.optionalName,
-                flnode.argList, _chunk.bytecode, true);
+                flnode.argList, _chunk.bytecode, true, false, _chunk.constTable);
         _chunk.debugMap[_chunk.bytecode.idup] = _debugInfoStack.pop();
         _chunk.bytecode = oldChunk;
         _compDataStack.top.stackVariables.pop;

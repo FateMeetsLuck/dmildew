@@ -218,12 +218,17 @@ public:
         return opCmp(other) == 0;
     }
 
+    /// ct property
+    ConstTable constTable() { return _constTable; }
+    /// ct property
+    ConstTable constTable(ConstTable ct) { return _constTable = ct; }
+
 package(mildew):
 
     /**
      * Constructor for functions created from compilation of statements.
      */
-    this(string fnname, string[] args, ubyte[] bc, bool isClass = false, bool isGenerator = false)
+    this(string fnname, string[] args, ubyte[] bc, bool isClass = false, bool isGenerator = false, ConstTable ct = null)
     {
         import mildew.types.bindings: getFunctionPrototype;
         immutable tname = isClass? "class" : "function";
@@ -233,6 +238,7 @@ package(mildew):
         _compiled = bc;
         _isClass = isClass;
         _isGenerator = isGenerator;
+        _constTable = ct;
         initializePrototypeProperty();
         _type = Type.SCRIPT_FUNCTION;
     }
@@ -240,9 +246,9 @@ package(mildew):
     /**
      * Method to copy fresh compiled functions with the correct environment
      */
-    ScriptFunction copyCompiled(Environment env, bool isClass=false)
+    ScriptFunction copyCompiled(Environment env)
     {
-        auto newFunc = new ScriptFunction(_functionName, _argNames, _compiled, _isClass, _isGenerator);
+        auto newFunc = new ScriptFunction(_functionName, _argNames, _compiled, _isClass, _isGenerator, _constTable);
         newFunc._closure = env;
         return newFunc;
     }
@@ -294,7 +300,9 @@ private:
 	Environment _closure = null;
 	bool _isClass = false;
     bool _isGenerator = false;
-    union {
+    ConstTable _constTable;
+    union 
+    {
         NativeFunction _nativeFunction;
         NativeDelegate _nativeDelegate;
     }

@@ -100,5 +100,6 @@ class Foo {
     }
 }
 
-console.log(Foo.prototype.myFunction);
-console.log(Foo.myStaticMethod);
+runFile("examples/test.mds");
+myExport();
+console.log("Test");

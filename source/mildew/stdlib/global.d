@@ -31,6 +31,8 @@ import mildew.types;
  */
 void initializeGlobalLibrary(Interpreter interpreter)
 {
+    // experimental: runFile
+    interpreter.forceSetGlobal("runFile", new ScriptFunction("runFile", &native_runFile));
     interpreter.forceSetGlobal("isdefined", new ScriptFunction("isdefined", &native_isdefined));
     interpreter.forceSetGlobal("isFinite", new ScriptFunction("isFinite", &native_isFinite));
     interpreter.forceSetGlobal("isNaN", new ScriptFunction("isNaN", &native_isNaN));
@@ -41,6 +43,28 @@ void initializeGlobalLibrary(Interpreter interpreter)
 //
 // Global method implementations
 //
+
+// experimental
+private ScriptAny native_runFile(Environment env, ScriptAny* thisObj,
+                                 ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(args.length < 1)
+    {
+        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
+        return ScriptAny.UNDEFINED;
+    }
+    auto fileName = args[0].toString();
+    try 
+    {
+        return env.getGlobalEnvironment.interpreter.evaluateFile(fileName, false, true);
+
+    }
+    catch(Exception ex)
+    {
+        nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+        return ScriptAny(ex.msg);
+    }
+}
 
 private ScriptAny native_isdefined(Environment env, 
                                    ScriptAny* thisObj, 

@@ -49,7 +49,6 @@ public:
     this(bool printVMDebugInfo = true)
     {
         _globalEnvironment = new Environment(this);
-        _currentEnvironment = _globalEnvironment;
         _compiler = new Compiler();
         _printVMDebugInfo = printVMDebugInfo;
         _vm = new VirtualMachine(_globalEnvironment);
@@ -91,23 +90,34 @@ public:
      *  If the script has a return statement with an expression, this value will be the result of that expression
      *  otherwise it will be ScriptAny.UNDEFINED
      */
-    ScriptAny evaluate(in string code, bool printDisasm=false)
+    ScriptAny evaluate(in string code, bool printDisasm=false, bool fromScript=false)
     {
         auto chunk = _compiler.compile(code);
         if(printDisasm)
             _vm.printChunk(chunk, true);
 
-        return _vm.run(chunk, _printVMDebugInfo);
+        if(fromScript)
+        {
+            auto func = new ScriptFunction("chunk", [], chunk.bytecode, false, false, chunk.constTable);
+            func = func.copyCompiled(_globalEnvironment);
+            return _vm.runFunction(func, ScriptAny.UNDEFINED, []);
+        }
+        else
+        {
+            return _vm.run(chunk, _printVMDebugInfo);
+        }
     }
 
     /**
      * Evaluates a file that can be either binary bytecode or textual source code.
      * Params:
      *  pathName = the location of the code file in the file system.
+     *  printDisasm = Whether or not bytecode disassembly should be printed before running
+     *  fromScript = This should be left to false and is used internally
      * Returns:
      *  The result of evaluating the file, undefined if no return statement.
      */
-    ScriptAny evaluateFile(in string pathName, bool printDisasm=false)
+    ScriptAny evaluateFile(in string pathName, bool printDisasm=false, bool fromScript=false)
     {
         import std.stdio: File, writefln;
         import mildew.util.encode: decode;
@@ -120,12 +130,21 @@ public:
             auto chunk = Chunk.deserialize(raw);
             if(printDisasm)
                 _vm.printChunk(chunk);
-            return _vm.run(chunk, _printVMDebugInfo);
+            if(fromScript)
+            {
+                auto func = new ScriptFunction(pathName, [], chunk.bytecode, false, false, chunk.constTable);
+                func = func.copyCompiled(_globalEnvironment);
+                return _vm.runFunction(func, ScriptAny.UNDEFINED, []);
+            }
+            else
+            {
+                return _vm.run(chunk, _printVMDebugInfo);
+            }
         }
         else
         {
             auto source = cast(string)raw;
-            return evaluate(source, printDisasm);
+            return evaluate(source, printDisasm, fromScript);
         }
     }
 
@@ -135,7 +154,7 @@ public:
      * Sets a global variable or constant without checking whether or not the variable or const was already
      * declared. This is used by host applications to define custom functions or objects.
      * Params:
-     *  name = The name of the variable.
+     *  name = The name of the global variable.
      *  value = The value the variable should be set to.
      *  isConst = Whether or not the script can overwrite the global.
      */
@@ -148,6 +167,8 @@ public:
      * Unsets a variable or constant in the global environment. Used by host applications to remove
      * items that were loaded by the standard library load functions. Specific functions of
      * script classes can be removed by modifying the "prototype" field of their constructor.
+     * Params:
+     *  name = The name of the global variable to unset
      */
     void forceUnsetGlobal(in string name)
     {
@@ -169,6 +190,5 @@ private:
     bool _printVMDebugInfo;
     VirtualMachine _vm;
     Environment _globalEnvironment;
-    Environment _currentEnvironment;
 }
 
