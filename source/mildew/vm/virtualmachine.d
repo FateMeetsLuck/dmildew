@@ -1848,7 +1848,12 @@ class VirtualMachine
     }
 
     /// Get the last value from opPop
-    ScriptAny lastValuePopped() { return _lastValuePopped; }
+    ScriptAny lastValuePopped() 
+    {
+        auto retVal = _lastValuePopped; 
+        _lastValuePopped = ScriptAny.UNDEFINED; // to avoid memory leaks
+        return retVal; 
+    }
 
 private:
 

@@ -37,10 +37,12 @@ void evaluateWithErrorChecking(Terminal* term, Interpreter interpreter, in strin
             }
             else
             {
-                interpreter.forceSetGlobal("_", interpreter.vm.lastValuePopped, false);
-                // term.setTrueColor(RGB(19,19,19), RGB(0,0,0));
+                auto _ = interpreter.vm.lastValuePopped;
+                if(_ != ScriptAny.UNDEFINED)
+                    interpreter.forceSetGlobal("_", _, false);
                 term.color(Color.green, Color.DEFAULT);
-                term.writeln(interpreter.vm.lastValuePopped);
+                if(_ != ScriptAny.UNDEFINED)
+                    term.writeln(_);
                 term.color(Color.DEFAULT, Color.DEFAULT);
             }
         }
@@ -124,7 +126,8 @@ int main(string[] args)
                     input = input[0..$-1];
                     input ~= "\n" ~ strip(terminal.getline(">>> "));
                 }
-                terminal.writeln();
+                // terminal.writeln(":");
+                stdout.writeln();
                 evaluateWithErrorChecking(&terminal, interpreter, input, "<stdin>", printDisasm);
             }
             catch(UserInterruptionException ex)

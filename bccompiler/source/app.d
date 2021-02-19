@@ -57,7 +57,8 @@ int main(string[] args)
         auto raw = chunk.serialize();
         outFile.rawWrite(raw);
         outFile.close();
-        auto testChunk = Chunk.deserialize(raw);
+        // sanity check read back
+        // auto testChunk = Chunk.deserialize(raw); // @suppress(dscanner.suspicious.unmodified)
     }
     catch(ScriptCompileException ex)
     {
