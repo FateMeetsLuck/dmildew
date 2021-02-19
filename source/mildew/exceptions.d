@@ -77,10 +77,10 @@ class ScriptRuntimeException : Exception
     {
         import std.conv: to;
 
-        string str = "ScriptRuntimeException: " ~ msg ~ "\n";
+        string str = "ScriptRuntimeException: " ~ msg;
         foreach(tb ; scriptTraceback)
         {
-            str ~= " at line " ~ tb[0].to!string ~ ":" ~ tb[1] ~ "\n";
+            str ~= "\n at line " ~ tb[0].to!string ~ ":" ~ tb[1];
         }
         return str;
     }

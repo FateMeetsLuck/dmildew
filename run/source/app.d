@@ -20,7 +20,8 @@ import mildew.types;
 /**
  * This runs a script program and prints the appropriate error message when a script exception is caught.
  */
-void evaluateWithErrorChecking(Interpreter interpreter, in string source, in string fileName, bool printDisasm)
+void evaluateWithErrorChecking(Terminal* term, Interpreter interpreter, in string source, in string fileName, 
+                               bool printDisasm)
 {
     try 
     {
@@ -28,18 +29,32 @@ void evaluateWithErrorChecking(Interpreter interpreter, in string source, in str
         if(source == "" && fileName != "<stdin>")
             result = interpreter.evaluateFile(fileName, printDisasm);
         else
+        {
             result = interpreter.evaluate(source, printDisasm);
-        writeln("The program successfully returned " ~ result.toString);
+            if(result != ScriptAny.UNDEFINED)
+            {
+                interpreter.forceSetGlobal("_", result, false);
+            }
+            else
+            {
+                interpreter.forceSetGlobal("_", interpreter.vm.lastValuePopped, false);
+                // term.setTrueColor(RGB(19,19,19), RGB(0,0,0));
+                term.color(Color.green, Color.DEFAULT);
+                term.writeln(interpreter.vm.lastValuePopped);
+                term.color(Color.DEFAULT, Color.DEFAULT);
+            }
+        }
+        term.writeln("The program successfully returned " ~ result.toString);
     }
     catch(ScriptCompileException ex)
     {
-        stderr.writeln("In file " ~ fileName);
-        stderr.writefln("%s", ex);
+        stderr.writeln("\nIn file " ~ fileName);
+        stderr.writef("%s", ex);
     }
     catch(ScriptRuntimeException ex)
     {
-        stderr.writeln("In file " ~ fileName);
-        stderr.writefln("%s", ex);
+        stderr.writeln("\nIn file " ~ fileName);
+        stderr.writef("%s", ex);
         if(ex.thrownValue.type != ScriptAny.Type.UNDEFINED)
             stderr.writefln("Value thrown: %s", ex.thrownValue);
     }
@@ -64,7 +79,8 @@ private void printUsage()
  */
 int main(string[] args)
 {
-    auto terminal = Terminal(ConsoleOutputType.linear);
+    Terminal terminal = Terminal(ConsoleOutputType.linear);
+    // auto terminal = Terminal(ConsoleOutputType.linear);
     bool printVMDebugInfo = false;
     bool printDisasm = false;
 
@@ -92,7 +108,7 @@ int main(string[] args)
     {
         string[] fileNames = args[1..$];
         foreach(fileName ; fileNames)
-            evaluateWithErrorChecking(interpreter, "", fileName, printDisasm);
+            evaluateWithErrorChecking(&terminal, interpreter, "", fileName, printDisasm);
     }    
     else
     {
@@ -108,15 +124,15 @@ int main(string[] args)
                     input = input[0..$-1];
                     input ~= "\n" ~ strip(terminal.getline(">>> "));
                 }
-                writeln();
-                evaluateWithErrorChecking(interpreter, input, "<stdin>", printDisasm);
+                terminal.writeln();
+                evaluateWithErrorChecking(&terminal, interpreter, input, "<stdin>", printDisasm);
             }
             catch(UserInterruptionException ex)
             {
                 break;
             }
         }
-        writeln("");
+        terminal.writeln("");
     }
     return 0;
 }

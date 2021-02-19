@@ -244,7 +244,7 @@ private int opPush(VirtualMachine vm, Chunk chunk)
 pragma(inline, true)
 private int opPop(VirtualMachine vm, Chunk chunk)
 {
-    vm._stack.pop();
+    vm._lastValuePopped = vm._stack.pop();
     ++vm._ip;
     return 0;
 }
@@ -1847,6 +1847,9 @@ class VirtualMachine
         return vm;
     }
 
+    /// Get the last value from opPop
+    ScriptAny lastValuePopped() { return _lastValuePopped; }
+
 private:
 
     enum FuncCallType { NORMAL, NEW }
@@ -1887,6 +1890,7 @@ private:
     Stack!ScriptAny _stack;
     TryData[] _tryData;
     VirtualMachine _parent = null; // the VM that spawned this VM
+    ScriptAny _lastValuePopped;
 
     /// stops the machine
     bool _stopped;
