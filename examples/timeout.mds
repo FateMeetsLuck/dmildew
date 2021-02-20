@@ -1,0 +1,8 @@
+/*
+Experimental asynchronous single threaded function: setTimeout
+*/
+console.log("Hello");
+setTimeout(()=>console.log("2 second timeout complete"), 2000);
+console.log("Timeout won't run just yet");
+
+setTimeout(()=>console.log("1 second timeout complete"), 1000);

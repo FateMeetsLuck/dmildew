@@ -17,8 +17,12 @@ this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 module mildew.vm.virtualmachine;
 
+import core.sync.semaphore;
+import core.thread.fiber;
 import std.concurrency;
+import std.container: SList;
 import std.conv: to;
+import std.parallelism;
 import std.stdio;
 import std.string;
 import std.typecons;
@@ -1724,10 +1728,14 @@ class VirtualMachine
                 printStack();
         }
         // if something is on the stack, that's the return value
+        ScriptAny retVal;
         if(_stack.size > 0)
-            return _stack.pop();
-        // _currentConstTable = null;
-        return ScriptAny.UNDEFINED;
+            retVal = _stack.pop();
+        
+        // good place to run asyncs
+        runQueue();
+
+        return retVal;
     }
 
     /// For calling script functions with call or apply. Ugly hackish function that needs
@@ -1833,6 +1841,38 @@ class VirtualMachine
         return retVal; 
     }
 
+    /// Queue a fiber
+    Fiber async(ScriptFunction func, ScriptAny thisToUse, ScriptAny[] args)
+    {
+        auto fiber = new Fiber({
+            runFunction(func, thisToUse, args);
+        });
+        _fibersQueued.insert(fiber);
+        return fiber;
+    }
+
+    // TODO await for when it is possible to await a async function?
+
+    /// Runs the asyncs queued up
+    void runQueue()
+    {
+        _gSync = new Semaphore;
+        while(!_fibersQueued.empty)
+        {
+            auto fibersRunning = _fibersQueued;
+            _fibersQueued = SList!Fiber();
+            foreach(fiber ; fibersRunning)
+            {
+                fiber.call();
+                if(fiber.state != Fiber.State.TERM)
+                    _fibersQueued.insert(fiber);
+            }
+
+            if(_gWaitingOnThreads > 0)
+                _gSync.wait();
+        }
+    }
+
 private:
 
     enum FuncCallType { NORMAL, NEW }
@@ -1874,6 +1914,9 @@ private:
     TryData[] _tryData;
     VirtualMachine _parent = null; // the VM that spawned this VM
     ScriptAny _lastValuePopped;
+    SList!Fiber _fibersQueued = SList!Fiber();
+    size_t _gWaitingOnThreads = 0;
+    __gshared Semaphore _gSync;
 
     /// stops the machine
     bool _stopped;

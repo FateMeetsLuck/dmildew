@@ -100,6 +100,7 @@ class Foo {
     }
 }
 
+// runFile is temporary for finding a bug. DO NOT USE
 runFile("examples/test.mds");
 myExport();
 console.log("Test");

@@ -38,13 +38,14 @@ void initializeGlobalLibrary(Interpreter interpreter)
     interpreter.forceSetGlobal("isNaN", new ScriptFunction("isNaN", &native_isNaN));
     interpreter.forceSetGlobal("parseFloat", new ScriptFunction("parseFloat", &native_parseFloat));
     interpreter.forceSetGlobal("parseInt", new ScriptFunction("parseInt", &native_parseInt));
+    interpreter.forceSetGlobal("setTimeout", new ScriptFunction("setTimeout", &native_setTimeout));
 }
 
 //
 // Global method implementations
 //
 
-// experimental
+// experimental DO NOT USE
 private ScriptAny native_runFile(Environment env, ScriptAny* thisObj,
                                  ScriptAny[] args, ref NativeFunctionError nfe)
 {
@@ -136,4 +137,45 @@ private ScriptAny native_parseInt(Environment env, ScriptAny* thisObj,
     {
         return ScriptAny.UNDEFINED;
     }
+}
+
+// experimental
+private ScriptAny native_setTimeout(Environment env, ScriptAny* thisObj,
+                                    ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import core.thread: Thread;
+    import std.datetime: dur, Clock;
+    import std.concurrency: yield;
+
+    // all environments are supposed to be linked to the global one. if not, there is a bug
+    auto vm = env.getGlobalEnvironment.interpreter.vm;
+    if(args.length < 2)
+    {
+        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
+        return ScriptAny.UNDEFINED;
+    }
+    auto func = args[0].toValue!ScriptFunction;
+    auto timeout = args[1].toValue!size_t;
+    auto args_ = args[2..$];
+    bool _; // @suppress(dscanner.suspicious.unmodified)
+    auto thisToUsePtr = env.lookupVariableOrConst("this", _);
+
+    ScriptFunction funcToAsync = new ScriptFunction("callback", 
+        delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError) {
+            // Thread.sleep(dur!"msecs"(timeout));
+            immutable start = Clock.currStdTime() / 10_000;
+            long current = start;
+            while(current - start < timeout)
+            {
+                yield();
+                current = Clock.currStdTime() / 10_000;
+            }
+            vm.runFunction(func, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args_);
+            return ScriptAny.UNDEFINED;
+    });
+
+    auto fiber = vm.async(funcToAsync, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args_);
+    auto retVal = new ScriptObject("Timeout", null, fiber);
+
+    return ScriptAny(retVal);
 }

@@ -1,5 +1,5 @@
 /**
-This module implements the Mildew Map class, which allows any ScriptValue to serve as a key in a hash map.
+This module implements the Mildew Map class, which allows all Mildew types to serve as a key in a hash map.
 
 ────────────────────────────────────────────────────────────────────────────────
 
