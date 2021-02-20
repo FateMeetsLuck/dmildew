@@ -1850,6 +1850,12 @@ class VirtualMachine
         return new ScriptObject(name, null, fiber);
     }
 
+    /// Removes a ScriptFiber from the queue
+    bool removeFiber(ScriptFiber fiber)
+    {
+        return _fibersQueued.linearRemoveElement(fiber);
+    }
+
     // TODO await for when it is possible to await a async function?
 
     /// Runs the asyncs queued up

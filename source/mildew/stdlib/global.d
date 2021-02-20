@@ -33,6 +33,7 @@ void initializeGlobalLibrary(Interpreter interpreter)
 {
     // experimental: runFile
     interpreter.forceSetGlobal("runFile", new ScriptFunction("runFile", &native_runFile));
+    interpreter.forceSetGlobal("clearTimeout", new ScriptFunction("clearTimeout", &native_clearTimeout));
     interpreter.forceSetGlobal("isdefined", new ScriptFunction("isdefined", &native_isdefined));
     interpreter.forceSetGlobal("isFinite", new ScriptFunction("isFinite", &native_isFinite));
     interpreter.forceSetGlobal("isNaN", new ScriptFunction("isNaN", &native_isNaN));
@@ -65,6 +66,28 @@ private ScriptAny native_runFile(Environment env, ScriptAny* thisObj,
         nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
         return ScriptAny(ex.msg);
     }
+}
+
+private ScriptAny native_clearTimeout(Environment env, ScriptAny* thisObj,
+                                      ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import mildew.vm.virtualmachine: VirtualMachine;
+    import mildew.vm.fiber: ScriptFiber;
+
+    if(args.length < 1)
+    {
+        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
+        return ScriptAny.UNDEFINED;
+    }
+    auto sfib = args[0].toNativeObject!ScriptFiber;
+    if(sfib is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    if(sfib.toString() != "Timeout")
+        return ScriptAny(false);
+    return ScriptAny(env.getGlobalEnvironment.interpreter.vm.removeFiber(sfib));
 }
 
 private ScriptAny native_isdefined(Environment env, 
@@ -181,7 +204,7 @@ private ScriptAny native_setTimeout(Environment env, ScriptAny* thisObj,
 
     // auto fiber = vm.async(funcToAsync, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args_);
     // auto retVal = new ScriptObject("Timeout", null, fiber);
-    auto retVal = vm.async("Interval", funcToAsync, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args);
+    auto retVal = vm.async("Timeout", funcToAsync, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args);
 
     return ScriptAny(retVal);
 }

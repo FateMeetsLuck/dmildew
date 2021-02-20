@@ -46,17 +46,18 @@ void evaluateWithErrorChecking(Terminal* term, Interpreter interpreter, in strin
                 term.color(Color.DEFAULT, Color.DEFAULT);
             }
         }
-        term.writeln("The program successfully returned " ~ result.toString);
+        if(source != "")
+            term.writeln("The program successfully returned " ~ result.toString);
     }
     catch(ScriptCompileException ex)
     {
         stderr.writeln("\nIn file " ~ fileName);
-        stderr.writef("%s", ex);
+        stderr.writefln("%s", ex);
     }
     catch(ScriptRuntimeException ex)
     {
         stderr.writeln("\nIn file " ~ fileName);
-        stderr.writef("%s", ex);
+        stderr.writefln("%s", ex);
         if(ex.thrownValue.type != ScriptAny.Type.UNDEFINED)
             stderr.writefln("Value thrown: %s", ex.thrownValue);
     }

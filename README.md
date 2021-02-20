@@ -100,4 +100,4 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Bind native classes and functions with one line of code with mixins and template metaprogramming. Or write software that will analyze D source files and generate bindings.
 * Write a more complete and robust standard library for the scripting language. (In progress.)
 * Allow certain unicode characters as components of variable names.
-* Implement asynchronous functions and function calls.
+* Implement asynchronous functions and function calls. (In progress.)

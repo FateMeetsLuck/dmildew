@@ -11,9 +11,28 @@ forming a scope and unique environment in the for-loop.
 function startTimers(name) {
     for(let i = 0; i < 5; ++i) {
         let x = i;
-        setTimeout(()=>console.log(`${name} ${x}`), i* 1000);
+        let timeout = setTimeout(()=>console.log(`${name} ${x}`), i* 1000);
+        if(i == 1)
+            clearTimeout(timeout);
     }
 }
 startTimers("first");
 startTimers("second");
 console.log("Starting timers");
+
+function testClass() {
+    class Foo {
+        constructor() {
+            this.a = 42;
+        }
+        setTimer() {
+            setTimeout(()=>{
+                console.log(this.a);
+            }, 100);
+        }
+    }
+
+    let foo = new Foo();
+    foo.setTimer();
+}
+testClass();
