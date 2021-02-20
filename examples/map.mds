@@ -1,0 +1,21 @@
+const map = new Map();
+map.set({}, "empty object")
+    .set([], "empty array")
+    .set(69, "The number 69")
+    .set(4.2, "a decimal number")
+    .set("foo", "The string foo");
+map.forEach((v,k) => {
+    console.log(`k=${k}, v=${v}`);
+});
+console.log("That was " + map + " iterated with .forEach");
+
+for(let key, value in map) {
+    console.log(key, value);
+}
+console.log("That was using for-in");
+
+for(let value of map.values())
+{
+    console.log(value);
+}
+console.log("That was .values");

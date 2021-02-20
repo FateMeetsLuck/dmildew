@@ -212,7 +212,8 @@ private ScriptObject _stringPrototype;
 
 // Helper methods
 
-private ScriptAny getLocalThis(Environment env, ScriptAny func=ScriptAny.UNDEFINED)
+/// Determine the local this
+ScriptAny getLocalThis(Environment env, ScriptAny func=ScriptAny.UNDEFINED)
 {
     if(func && func.type == ScriptAny.Type.FUNCTION)
     {

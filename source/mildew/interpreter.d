@@ -67,6 +67,7 @@ public:
         import mildew.stdlib.console: initializeConsoleLibrary;
         import mildew.stdlib.date: initializeDateLibrary;
         import mildew.stdlib.generator: initializeGeneratorLibrary;
+        import mildew.stdlib.map: initializeMapLibrary;
         import mildew.stdlib.math: initializeMathLibrary;
         import mildew.stdlib.regexp: initializeRegExpLibrary;
         import mildew.stdlib.system: initializeSystemLib;
@@ -75,6 +76,7 @@ public:
         initializeConsoleLibrary(this);
         initializeDateLibrary(this);
         initializeGeneratorLibrary(this);
+        initializeMapLibrary(this);
         initializeMathLibrary(this);
         initializeRegExpLibrary(this);
         initializeSystemLib(this);

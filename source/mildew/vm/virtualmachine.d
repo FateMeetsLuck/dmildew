@@ -26,6 +26,7 @@ import std.typecons;
 import mildew.environment;
 import mildew.exceptions;
 import mildew.stdlib.generator;
+import mildew.stdlib.map;
 import mildew.stdlib.regexp;
 import mildew.types;
 import mildew.util.encode;
@@ -459,6 +460,31 @@ private int opIter(VirtualMachine vm, Chunk chunk)
             auto func = new ScriptFunction("next", &native_Generator_next, false);
             func.bind(objToIterate);
             vm._stack.push(ScriptAny(func));
+        }
+        else if(objToIterate.isNativeObjectType!ScriptMap)
+        {
+            auto map = objToIterate.toNativeObject!ScriptMap;
+            auto generator = new Generator!(Tuple!(ScriptAny, ScriptAny))({
+                foreach(key, value ; map.entries)
+                    yield(tuple(key, value));
+            });
+            vm._stack.push(ScriptAny(new ScriptFunction("next",
+                delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError) {
+                    auto retVal = new ScriptObject("iteration", null, null);
+                    if(generator.empty)
+                    {
+                        retVal.assignField("done", ScriptAny(true));
+                    }
+                    else
+                    {
+                        auto result = generator.front();
+                        retVal.assignField("key", result[0]);
+                        retVal.assignField("value", result[1]);
+                        generator.popFront();
+                    }
+                    return ScriptAny(retVal);
+                }
+            )));
         }
         else
         {

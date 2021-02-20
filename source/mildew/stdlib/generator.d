@@ -69,7 +69,7 @@ class ScriptGenerator : Generator!ScriptAny
     {
         return "Generator " ~ _name;
     }
-private:
+package:
 
     ScriptAny native_yield(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
     {
@@ -82,6 +82,7 @@ private:
         return result;
     }
 
+private:
     string _name;
     bool _markedAsFinished = false;
     ScriptAny _yieldValue;
