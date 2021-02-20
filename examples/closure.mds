@@ -1,5 +1,5 @@
 /*
-Closures work similarly to Lua and JavaScript. The functions receive a reference to the outer context in
+Closures work similarly to Lua and JavaScript. The functions receive a reference to the outer environment in
 which they are declared, and this works for classes as well.
 */
 

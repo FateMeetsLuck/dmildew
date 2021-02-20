@@ -6,7 +6,7 @@
 	"dependencies": {
 		"dmildew": "~main"
 	},
-	"description": "Compiled scripts to executable bytecode file.",
+	"description": "Compiles scripts to executable bytecode file.",
 	"license": "GPL-3.0",
 	"name": "bccompiler"
 }

@@ -25,4 +25,8 @@ console.log(newStr);
 
 console.log("DMildew DMildew".replaceAll(/dmildew/gi, "md"));
 
-// As of Feb 18 15:55 2021 This program produces the expected output.
+for(let match of (new RegExp("\\w+", "g")).matchAll(str)) {
+    console.log(match);
+}
+
+// As of Feb 20 15:02 2021 This program produces the expected output.

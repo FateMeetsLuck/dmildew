@@ -184,6 +184,7 @@ ScriptObject getStringPrototype()
         _stringPrototype.addGetterProperty("length", new ScriptFunction("String.prototype.length", 
                 &native_String_p_length));
         _stringPrototype["match"] = new ScriptFunction("String.prototype.match", &native_String_match);
+        _stringPrototype["matchAll"] = new ScriptFunction("String.prototype.matchAll", &native_String_matchAll);
         _stringPrototype["normalize"] = new ScriptFunction("String.prototype.normalize",
                 &native_String_normalize);
         _stringPrototype["padEnd"] = new ScriptFunction("String.prototype.padEnd", &native_String_padEnd);
@@ -1631,7 +1632,39 @@ private ScriptAny native_String_match(Environment env, ScriptAny* thisObj,
     return ScriptAny(regExp.match(thisObj.toString()));
 }
 
-// TODO matchAll once generators and RegExp.matchAll are.
+private ScriptAny native_String_matchAll(Environment env, ScriptAny* thisObj,
+                                         ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.concurrency: yield;
+
+    if(thisObj.type != ScriptAny.Type.STRING || args.length < 1)
+        return ScriptAny.UNDEFINED;
+    auto str = thisObj.toString();
+    
+    ScriptRegExp regExp = args[0].toNativeObject!ScriptRegExp;
+    if(regExp is null)
+    {
+        try 
+        {
+            regExp = new ScriptRegExp(args[0].toString());
+        }
+        catch(Exception)
+        {
+            return ScriptAny.UNDEFINED;
+        }
+    }
+    
+    ScriptAny func(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe){
+        foreach(match ; regExp.matchAll(str))
+            yield!ScriptAny(ScriptAny(match.hit));
+        ScriptAny undef;
+        return undef;
+    }
+
+    auto generator = new ScriptGenerator(env, new ScriptFunction("Iterator", &func), []);
+    auto result = new ScriptObject("Iterator", getGeneratorPrototype, generator);
+    return ScriptAny(result);
+}
 
 private ScriptAny native_String_normalize(Environment env, ScriptAny* thisObj,
                                           ScriptAny[] args, ref NativeFunctionError nfe)

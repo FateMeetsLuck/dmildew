@@ -233,9 +233,8 @@ ScriptObject getRegExpProto()
         _regExpProto["global"] = new ScriptFunction("RegExp.prototype.global", &native_RegExp_global);
         _regExpProto["ignoreCase"] = new ScriptFunction("RegExp.prototype.ignoreCase", &native_RegExp_ignoreCase);
         _regExpProto["multiline"] = new ScriptFunction("RegExp.prototype.multiline", &native_RegExp_multiline);
-
         _regExpProto["match"] = new ScriptFunction("RegExp.prototype.match", &native_RegExp_match);
-        // TODO matchAll
+        _regExpProto["matchAll"] = new ScriptFunction("RegExp.prototype.matchAll", &native_RegExp_matchAll);
         _regExpProto["replace"] = new ScriptFunction("RegExp.prototype.replace", &native_RegExp_replace);
         _regExpProto["search"] = new ScriptFunction("RegExp.prototype.search", &native_RegExp_search);
         _regExpProto["split"] = new ScriptFunction("RegExp.prototype.split", &native_RegExp_split);
@@ -247,7 +246,7 @@ ScriptObject getRegExpProto()
 
 private ScriptObject _regExpProto;
 
-ScriptAny native_RegExp_ctor(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+private ScriptAny native_RegExp_ctor(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(!thisObj.isObject)
         return ScriptAny.UNDEFINED;
@@ -377,7 +376,35 @@ private ScriptAny native_RegExp_match(Environment env, ScriptAny* thisObj,
     return ScriptAny(result);
 }
 
-// TODO matchAll once iterators are implemented
+private ScriptAny native_RegExp_matchAll(Environment env, ScriptAny* thisObj,
+                                         ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.concurrency: yield;
+    import mildew.stdlib.generator: ScriptGenerator, getGeneratorPrototype;
+
+    auto regExp = thisObj.toNativeObject!ScriptRegExp;
+    if(regExp is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    if(args.length < 1)
+    {
+        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
+        return ScriptAny.UNDEFINED;
+    }
+    auto str = args[0].toString();
+    ScriptAny func(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+    {
+        auto matches = regExp.matchAll(str);
+        foreach(match; matches)
+            yield!ScriptAny(ScriptAny(match.hit));
+        return ScriptAny.UNDEFINED;
+    }
+    auto generator = new ScriptGenerator(env, new ScriptFunction("iterator", &func), []);
+    auto result = new ScriptObject("Iterator", getGeneratorPrototype, generator);
+    return ScriptAny(result);
+}
 
 private ScriptAny native_RegExp_replace(Environment env, ScriptAny* thisObj,
                                         ScriptAny[] args, ref NativeFunctionError nfe)
