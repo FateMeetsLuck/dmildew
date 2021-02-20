@@ -139,7 +139,8 @@ private ScriptAny native_parseInt(Environment env, ScriptAny* thisObj,
     }
 }
 
-// experimental
+// experimental. TODO: subclass Fiber just for the toString and name properties.
+// TODO setInterval and a cancel function
 private ScriptAny native_setTimeout(Environment env, ScriptAny* thisObj,
                                     ScriptAny[] args, ref NativeFunctionError nfe)
 {
@@ -155,8 +156,13 @@ private ScriptAny native_setTimeout(Environment env, ScriptAny* thisObj,
         return ScriptAny.UNDEFINED;
     }
     auto func = args[0].toValue!ScriptFunction;
+    if(func is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
     auto timeout = args[1].toValue!size_t;
-    auto args_ = args[2..$];
+    args = args[2..$];
     bool _; // @suppress(dscanner.suspicious.unmodified)
     auto thisToUsePtr = env.lookupVariableOrConst("this", _);
 
@@ -170,12 +176,13 @@ private ScriptAny native_setTimeout(Environment env, ScriptAny* thisObj,
                 yield();
                 current = Clock.currStdTime() / 10_000;
             }
-            vm.runFunction(func, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args_);
+            vm.runFunction(func, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args);
             return ScriptAny.UNDEFINED;
     });
 
-    auto fiber = vm.async(funcToAsync, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args_);
-    auto retVal = new ScriptObject("Timeout", null, fiber);
+    // auto fiber = vm.async(funcToAsync, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args_);
+    // auto retVal = new ScriptObject("Timeout", null, fiber);
+    auto retVal = vm.async("Interval", funcToAsync, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args);
 
     return ScriptAny(retVal);
 }

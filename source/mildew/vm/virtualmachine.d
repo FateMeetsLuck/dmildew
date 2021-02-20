@@ -38,6 +38,7 @@ import mildew.util.regex: extract;
 import mildew.util.stack;
 import mildew.vm.chunk;
 import mildew.vm.consttable;
+import mildew.vm.fiber;
 
 /// 8-bit opcodes
 enum OpCode : ubyte 
@@ -1841,14 +1842,12 @@ class VirtualMachine
         return retVal; 
     }
 
-    /// Queue a fiber
-    Fiber async(ScriptFunction func, ScriptAny thisToUse, ScriptAny[] args)
+    /// Queue a fiber. TODO rewrite to accept a ScriptFiber
+    ScriptObject async(string name, ScriptFunction func, ScriptAny thisToUse, ScriptAny[] args)
     {
-        auto fiber = new Fiber({
-            runFunction(func, thisToUse, args);
-        });
+        auto fiber = new ScriptFiber(name, this, func, thisToUse, args);
         _fibersQueued.insert(fiber);
-        return fiber;
+        return new ScriptObject(name, null, fiber);
     }
 
     // TODO await for when it is possible to await a async function?
@@ -1860,7 +1859,7 @@ class VirtualMachine
         while(!_fibersQueued.empty)
         {
             auto fibersRunning = _fibersQueued;
-            _fibersQueued = SList!Fiber();
+            _fibersQueued = SList!ScriptFiber();
             foreach(fiber ; fibersRunning)
             {
                 fiber.call();
@@ -1914,7 +1913,7 @@ private:
     TryData[] _tryData;
     VirtualMachine _parent = null; // the VM that spawned this VM
     ScriptAny _lastValuePopped;
-    SList!Fiber _fibersQueued = SList!Fiber();
+    SList!ScriptFiber _fibersQueued = SList!ScriptFiber();
     size_t _gWaitingOnThreads = 0;
     __gshared Semaphore _gSync;
 
