@@ -2,12 +2,18 @@
 Experimental asynchronous single threaded function: setTimeout
 This program executes these callbacks in an entirely different order than Node
 This may be due to an implementation of D's yield function.
+
+Note that due to the implementation of for-loops, to use closures that refer to
+the iteration variable, i in this case, one has to copy i into a declaration, thus
+forming a scope and unique environment in the for-loop.
 */
-console.log("Hello");
-setTimeout(()=>console.log("2 second timeout complete"), 2000);
-console.log("Timeout won't run just yet");
 
-setTimeout(()=>console.log("1 second timeout complete"), 1000);
-
-setTimeout(()=>console.log("Half second first"), 500);
-setTimeout(()=>console.log("Half second next"), 500);
+function startTimers(name) {
+    for(let i = 0; i < 5; ++i) {
+        let x = i;
+        setTimeout(()=>console.log(`${name} ${x}`), i* 1000);
+    }
+}
+startTimers("first");
+startTimers("second");
+console.log("Starting timers");

@@ -165,19 +165,18 @@ private ScriptAny native_setTimeout(Environment env, ScriptAny* thisObj,
     args = args[2..$];
     bool _; // @suppress(dscanner.suspicious.unmodified)
     auto thisToUsePtr = env.lookupVariableOrConst("this", _);
-
     ScriptFunction funcToAsync = new ScriptFunction("callback", 
         delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError) {
             // Thread.sleep(dur!"msecs"(timeout));
+
             immutable start = Clock.currStdTime() / 10_000;
             long current = start;
-            while(current - start < timeout)
+            while(current - start <= timeout)
             {
                 yield();
                 current = Clock.currStdTime() / 10_000;
             }
-            vm.runFunction(func, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args);
-            return ScriptAny.UNDEFINED;
+            return vm.runFunction(func, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args);
     });
 
     // auto fiber = vm.async(funcToAsync, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args_);

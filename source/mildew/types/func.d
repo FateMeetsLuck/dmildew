@@ -281,6 +281,8 @@ package(mildew):
 
 	/// Property get closure
 	auto closure() { return _closure; }
+    /// Property set closure
+    auto closure(Environment c) { return _closure = c; }
 
     /// Property isClass
     auto isClass() const { return _isClass; }
