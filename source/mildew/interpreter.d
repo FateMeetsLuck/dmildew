@@ -177,6 +177,14 @@ public:
         _globalEnvironment.forceRemoveVarOrConst(name);
     }
 
+    /**
+     * Run the VM queued fibers
+     */
+    void runVMFibers()
+    {
+        _vm.runQueue();
+    }
+
     /// whether or not debug info should be printed between each VM instruction
     bool printVMDebugInfo() const 
     {

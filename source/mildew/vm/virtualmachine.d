@@ -1733,8 +1733,7 @@ class VirtualMachine
         if(_stack.size > 0)
             retVal = _stack.pop();
         
-        // good place to run asyncs
-        runQueue();
+        // runQueue();
 
         return retVal;
     }
@@ -1850,7 +1849,13 @@ class VirtualMachine
         return new ScriptObject(name, null, fiber);
     }
 
-    /// Removes a ScriptFiber from the queue
+    /**
+     * Removes a ScriptFiber from the queue
+     * Params:
+     *  fiber = The ScriptFiber to remove. This is an object returned by async
+     * Returns:
+     *  Whether or not the fiber was successfully removed.
+     */
     bool removeFiber(ScriptFiber fiber)
     {
         return _fibersQueued.linearRemoveElement(fiber);
@@ -1858,10 +1863,13 @@ class VirtualMachine
 
     // TODO await for when it is possible to await a async function?
 
-    /// Runs the asyncs queued up
+    /**
+     * Runs the asyncs queued up. This is called by Interpreter.runVMFibers
+     */
     void runQueue()
     {
         _gSync = new Semaphore;
+        
         while(!_fibersQueued.empty)
         {
             auto fibersRunning = _fibersQueued;

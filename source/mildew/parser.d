@@ -528,9 +528,9 @@ private:
             case Token.Type.LPAREN: {
                 // first check if this is a lambda
                 auto lookahead = peekTokens(3);
-                if(lookahead[1].type == Token.Type.COMMA ||
+                if((lookahead[1].type == Token.Type.COMMA ||
                    lookahead[1].type == Token.Type.ARROW ||
-                   lookahead[2].type == Token.Type.ARROW)
+                   lookahead[2].type == Token.Type.ARROW) && lookahead[0].type != Token.Type.LPAREN)
                 {
                     left = parseLambda(true);
                 }

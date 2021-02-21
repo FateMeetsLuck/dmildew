@@ -46,6 +46,7 @@ void evaluateWithErrorChecking(Terminal* term, Interpreter interpreter, in strin
                 term.color(Color.DEFAULT, Color.DEFAULT);
             }
         }
+        interpreter.runVMFibers();
         if(source != "")
             term.writeln("The program successfully returned " ~ result.toString);
     }

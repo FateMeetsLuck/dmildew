@@ -170,6 +170,7 @@ private ScriptAny native_setTimeout(Environment env, ScriptAny* thisObj,
     import core.thread: Thread;
     import std.datetime: dur, Clock;
     import std.concurrency: yield;
+    import mildew.types.bindings: getLocalThis;
 
     // all environments are supposed to be linked to the global one. if not, there is a bug
     auto vm = env.getGlobalEnvironment.interpreter.vm;
@@ -187,7 +188,8 @@ private ScriptAny native_setTimeout(Environment env, ScriptAny* thisObj,
     auto timeout = args[1].toValue!size_t;
     args = args[2..$];
     bool _; // @suppress(dscanner.suspicious.unmodified)
-    auto thisToUsePtr = env.lookupVariableOrConst("this", _);
+    // auto thisToUsePtr = env.lookupVariableOrConst("this", _);
+    auto thisToUse = args.length > 0 ? getLocalThis(env, args[0]) : ScriptAny.UNDEFINED;
     ScriptFunction funcToAsync = new ScriptFunction("callback", 
         delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError) {
             // Thread.sleep(dur!"msecs"(timeout));
@@ -199,12 +201,12 @@ private ScriptAny native_setTimeout(Environment env, ScriptAny* thisObj,
                 yield();
                 current = Clock.currStdTime() / 10_000;
             }
-            return vm.runFunction(func, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args);
+            return vm.runFunction(func, thisToUse, args);
     });
 
     // auto fiber = vm.async(funcToAsync, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args_);
     // auto retVal = new ScriptObject("Timeout", null, fiber);
-    auto retVal = vm.async("Timeout", funcToAsync, thisToUsePtr? *thisToUsePtr: ScriptAny.UNDEFINED, args);
+    auto retVal = vm.async("Timeout", funcToAsync, thisToUse, args);
 
     return ScriptAny(retVal);
 }
