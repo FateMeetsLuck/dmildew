@@ -1,6 +1,6 @@
 /* 
 Modified from https://itnext.io/broken-promises-a-barely-working-implementation-of-js-promises-ed7f99071f54 as
-an experiment. The setTimeout 0 trick allows "instant" resolution.
+an experiment. The setTimeout 0 trick allows "instant" resolution. This implementation lacks Promise.all
  */
 function Promise(action) {
     this.status = 'pending';
@@ -60,11 +60,11 @@ function calculate(num1, operator, num2) {
 
 calculate(5, "-", 10)
     .then(result => console.log("Result is " + result))
-    .catch(err => console.error("Could not calculate: " + err));
+    .catch(err => console.error("Could not calculate -: " + err));
 
 
 calculate(69, "+", 11)
     .then(result => console.log("Result is " + result))
-    .catch(err => console.error("Could not calculate: " + err));
+    .catch(err => console.error("Could not calculate +: " + err));
 
 // This program works as expected, somehow.

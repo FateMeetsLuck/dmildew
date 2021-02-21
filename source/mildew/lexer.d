@@ -81,7 +81,7 @@ struct Token
         PLUS_ASSIGN, DASH_ASSIGN,
         BAND_ASSIGN, BXOR_ASSIGN, BOR_ASSIGN, BLS_ASSIGN, BRS_ASSIGN, BURS_ASSIGN,
 
-        PLUS, DASH, STAR, FSLASH, PERCENT, POW, DOT,
+        PLUS, DASH, STAR, FSLASH, PERCENT, POW, DOT, TDOT,
         INC, DEC, // ++ and --
         BIT_AND, BIT_XOR, BIT_OR, BIT_NOT, BIT_LSHIFT, BIT_RSHIFT, BIT_URSHIFT,
         LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET, 
@@ -161,6 +161,7 @@ struct Token
         case Type.PERCENT: return "%";
         case Type.POW: return "**";
         case Type.DOT: return ".";
+        case Type.TDOT: return "...";
         case Type.INC: return "++";
         case Type.DEC: return "--"; 
         case Type.BIT_AND: return "&";
@@ -341,7 +342,7 @@ public:
             else if(currentChar == ',')
                 tokens ~= Token(Token.Type.COMMA, _position);
             else if(currentChar == '.')
-                tokens ~= Token(Token.Type.DOT, _position);
+                tokens ~= makeDotTokens();
             else if(currentChar == ':')
                 tokens ~= Token(Token.Type.COLON, _position);
             else if(currentChar == '?')
@@ -879,6 +880,28 @@ private:
         else
         {
             return Token(Token.Type.BIT_XOR, _position);
+        }
+    }
+
+    Token[] makeDotTokens()
+    {
+        immutable startPos = _position;
+        if(peekChar == '.')
+        {
+            advanceChar();
+            if(peekChar == '.')
+            {
+                advanceChar();
+                return [Token(Token.Type.TDOT, startPos)];
+            }
+            else
+            {
+                return [Token(Token.Type.DOT, startPos), Token(Token.Type.DOT, _position)];
+            }
+        }
+        else
+        {
+            return [Token(Token.Type.DOT, _position)];
         }
     }
 

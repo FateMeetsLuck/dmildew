@@ -288,6 +288,41 @@ class ObjectLiteralNode : ExpressionNode
     ExpressionNode[] valueNodes;
 }
 
+class DestructureTargetNode : ExpressionNode
+{
+    this(string[] names, string rname, bool isObj)
+    {
+        varNames = names;
+        remainderName = rname;
+        isObject = isObj;
+    }
+
+    // this can't be directly visited?
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return Variant(null);
+    }
+
+    override string toString() const
+    {
+        auto result = isObject ? "{" : "[";
+        for(size_t i = 0; i < varNames.length; ++i)
+        {
+            result ~= varNames[i];
+            if(i < varNames.length - 1)
+                result ~= ", ";
+        }
+        if(remainderName)
+            result ~= remainderName ~ "...";
+        result ~= isObject ? "}" : "]";
+        return result;
+    }
+
+    string[] varNames;
+    string remainderName;
+    bool isObject; // false for array
+}
+
 class ClassLiteralNode : ExpressionNode 
 {
     this(Token ctoken, ClassDefinition cdef)

@@ -974,13 +974,87 @@ private:
     {
         auto specifier = _currentToken;
         nextToken();
-        auto expressions = parseCommaSeparatedExpressions(Token.Type.SEMICOLON);
+        // auto expressions = parseCommaSeparatedExpressions(Token.Type.SEMICOLON);
+        ExpressionNode[] expressions;
+        while(_currentToken.type != Token.Type.SEMICOLON && _currentToken.type != Token.Type.EOF 
+          && !_currentToken.isIdentifier("of") && !_currentToken.isKeyword("in"))
+        {
+            if(_currentToken.type == Token.Type.IDENTIFIER)
+            {
+                auto varName = _currentToken.text;
+                nextToken();
+                if(_currentToken.type == Token.Type.ASSIGN)
+                {
+                    nextToken();
+                    auto assignment = parseExpression();
+                    expressions ~= new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, "="), 
+                        new VarAccessNode(Token.createFakeToken(Token.Type.IDENTIFIER, varName)),
+                        assignment);
+                }
+                else
+                {
+                    expressions ~= new VarAccessNode(Token.createFakeToken(Token.Type.IDENTIFIER, varName));
+                }
+            }
+            else if(_currentToken.type == Token.Type.LBRACE || _currentToken.type == Token.Type.LBRACKET)
+            {
+                immutable isObj = _currentToken.type == Token.Type.LBRACE;
+                immutable endTokenType = isObj ? Token.Type.RBRACE : Token.Type.RBRACKET;
+                nextToken();
+                string[] names;
+                string remainderName;
+                while(_currentToken.type != endTokenType && _currentToken.type != Token.Type.EOF)
+                {
+                    if(_currentToken.type == Token.Type.TDOT)
+                    {
+                        nextToken();
+                        if(_currentToken.type != Token.Type.IDENTIFIER)
+                            throw new ScriptCompileException("Remainder must be identifier", _currentToken);
+                        if(remainderName != "")
+                            throw new ScriptCompileException("Only one remainder allowed", _currentToken);
+                        remainderName = _currentToken.text;
+                    }
+                    else if(_currentToken.type == Token.Type.IDENTIFIER)
+                    {
+                        auto currentName = _currentToken.text;
+                        names ~= currentName;
+                    }
+                    nextToken();
+                    if(_currentToken.type == Token.Type.COMMA)
+                        nextToken(); // eat the ,
+                    else if(_currentToken.type != endTokenType && _currentToken.type != Token.Type.EOF)
+                        throw new ScriptCompileException("Destructuring variable names must be separated by comma",
+                            _currentToken);
+                }
+                if(names.length == 0 && remainderName == "")
+                    throw new ScriptCompileException("Destructuring declaration cannot be empty", _currentToken);
+                nextToken(); // eat the } or ]
+                if(_currentToken.type != Token.Type.ASSIGN)
+                    throw new ScriptCompileException("Destructuring declarations must be assignments", _currentToken);
+                immutable assignToken = _currentToken;
+                nextToken(); // eat the =
+                auto assignment = parseExpression();
+                expressions ~= new BinaryOpNode(assignToken, new DestructureTargetNode(names, remainderName, isObj),
+                    assignment);
+            }
+
+            if(_currentToken.type == Token.Type.COMMA)
+            {
+                nextToken();
+            }
+            else if(_currentToken.type != Token.Type.SEMICOLON && _currentToken.type != Token.Type.EOF
+                && !_currentToken.isIdentifier("of") && !_currentToken.isKeyword("in"))
+            {
+                throw new ScriptCompileException("Expected ',' between variable declarations (or missing ';')", 
+                    _currentToken);
+            }
+        }
         // make sure all expressions are valid BinaryOpNodes or VarAccessNodes
         foreach(expression; expressions)
         {
             if(auto node = cast(BinaryOpNode)expression)
             {
-                if(!cast(VarAccessNode)node.leftNode)
+                if(!(cast(VarAccessNode)node.leftNode || cast(DestructureTargetNode)node.leftNode))
                     throw new ScriptCompileException("Invalid assignment node", _currentToken);
                 if(node.opToken.type != Token.Type.ASSIGN)
                     throw new ScriptCompileException("Invalid assignment statement", node.opToken);

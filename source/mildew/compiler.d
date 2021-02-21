@@ -581,6 +581,7 @@ public:
         foreach(expr ; vdsnode.varAccessOrAssignmentNodes)
         {
             string varName = "";
+            DestructureTargetNode destr = null;
 
             // is it a validated binop node
             if(auto bopnode = cast(BinaryOpNode)expr)
@@ -599,9 +600,17 @@ public:
                         clsnode.classDefinition.className = bopnode.leftNode.toString();
                     }
                 }
-                auto van = cast(VarAccessNode)bopnode.leftNode;
-                bopnode.rightNode.accept(this); // push value to stack
-                varName = van.varToken.text;
+                if(auto destru = cast(DestructureTargetNode)bopnode.leftNode)
+                {
+                    bopnode.rightNode.accept(this);
+                    destr = destru;
+                }
+                else 
+                {
+                    auto van = cast(VarAccessNode)bopnode.leftNode;
+                    bopnode.rightNode.accept(this); // push value to stack
+                    varName = van.varToken.text;
+                }
             }
             else if(auto van = cast(VarAccessNode)expr)
             {
@@ -612,23 +621,66 @@ public:
                 throw new Exception("Parser failure or unimplemented feature: " ~ vdsnode.toString());
 
             // make sure it's not overwriting a stack value
-            if(vdsnode.qualifier.text != "var")
+            /*if(vdsnode.qualifier.text != "var")
             {
                 immutable lookup = cast(immutable)lookupVar(varName);
                 if(lookup.isDefined && lookup.stackLocation != -1)
                     throw new ScriptCompileException("Attempt to redeclare stack variable " ~ varName, 
                             vdsnode.qualifier);
                 defineVar(varName, VarMetadata(true, -1, cast(int)_funcDepth, vdsnode.qualifier.text == "const"));
+            }*/
+
+            if(vdsnode.qualifier.text != "var" && vdsnode.qualifier.text != "let" && vdsnode.qualifier.text != "const")
+                throw new Exception("Parser failed to parse variable declaration");
+
+            if(destr)
+            {
+                for(size_t i = 0; i < destr.varNames.length; ++i)
+                {
+                    _chunk.bytecode ~= OpCode.PUSH ~ encode!int(-1);
+                    if(destr.isObject)
+                        _chunk.bytecode ~= OpCode.CONST ~ encodeConst(destr.varNames[i]);
+                    else
+                        _chunk.bytecode ~= OpCode.CONST ~ encodeConst(i);
+                    _chunk.bytecode ~= OpCode.OBJGET;
+                    if(vdsnode.qualifier.text == "var")
+                        _chunk.bytecode ~= OpCode.DECLVAR ~ encodeConst(destr.varNames[i]);
+                    else if(vdsnode.qualifier.text == "let")
+                        _chunk.bytecode ~= OpCode.DECLLET ~ encodeConst(destr.varNames[i]);
+                    else if(vdsnode.qualifier.text == "const")
+                        _chunk.bytecode ~= OpCode.DECLCONST ~ encodeConst(destr.varNames[i]);
+                }
+                if(destr.remainderName)
+                {
+                    if(!destr.isObject)
+                    {
+                        _chunk.bytecode ~= OpCode.PUSH ~ encode!int(-1);
+                        _chunk.bytecode ~= OpCode.CONST ~ encodeConst("slice");
+                        _chunk.bytecode ~= OpCode.OBJGET;
+                        _chunk.bytecode ~= OpCode.CONST ~ encodeConst(destr.varNames.length);
+                        _chunk.bytecode ~= OpCode.CALL ~ encode!uint(1);
+                    }
+                    if(vdsnode.qualifier.text == "var")
+                        _chunk.bytecode ~= OpCode.DECLVAR ~ encodeConst(destr.remainderName);
+                    else if(vdsnode.qualifier.text == "let")
+                        _chunk.bytecode ~= OpCode.DECLLET ~ encodeConst(destr.remainderName);
+                    else if(vdsnode.qualifier.text == "const")
+                        _chunk.bytecode ~= OpCode.DECLCONST ~ encodeConst(destr.remainderName);
+                }
+                else
+                {
+                    _chunk.bytecode ~= OpCode.POP;
+                }
             }
-            
-            if(vdsnode.qualifier.text == "var")
-                _chunk.bytecode ~= OpCode.DECLVAR ~ encodeConst(varName);
-            else if(vdsnode.qualifier.text == "let")
-                _chunk.bytecode ~= OpCode.DECLLET ~ encodeConst(varName);
-            else if(vdsnode.qualifier.text == "const")
-                _chunk.bytecode ~= OpCode.DECLCONST ~ encodeConst(varName);
             else
-                throw new Exception("Catastrophic parser fail: " ~ vdsnode.toString());
+            {
+                if(vdsnode.qualifier.text == "var")
+                    _chunk.bytecode ~= OpCode.DECLVAR ~ encodeConst(varName);
+                else if(vdsnode.qualifier.text == "let")
+                    _chunk.bytecode ~= OpCode.DECLLET ~ encodeConst(varName);
+                else if(vdsnode.qualifier.text == "const")
+                    _chunk.bytecode ~= OpCode.DECLCONST ~ encodeConst(varName);
+            }
         }
         return Variant(null);
     }

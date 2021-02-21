@@ -1,0 +1,11 @@
+const obj1 = {
+    a: 69,
+    prop1: "This is not a property",
+    foo: -42
+};
+
+const { a, foo, ...rest } = obj1;
+console.log(a, foo, rest);
+
+const [num1, num2, ...num3] = [1, 2, 3, 4, 5];
+console.log(num1, num2, num3);
