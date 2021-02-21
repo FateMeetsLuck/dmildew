@@ -446,8 +446,9 @@ private:
         --_index; // UGLY but IDK what else to do
         // first check for keyword, that can't be a label
 
-        // return, throw, and delete are a special case after "."
-        if(text == "return" || text == "throw" || text == "delete")
+        // these words can be used as object members but not as labels
+        if(text == "return" || text == "throw" || text == "delete"
+         || text == "catch" || text == "finally")
         {
             if(tokens.length > 0 && tokens[$-1].type == Token.Type.DOT)
                 return Token(Token.Type.IDENTIFIER, startpos, text);

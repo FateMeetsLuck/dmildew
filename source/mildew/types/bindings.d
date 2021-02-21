@@ -1326,7 +1326,7 @@ private ScriptAny native_Function_bind(Environment env, ScriptAny* thisObj,
     auto fn = thisObj.toValue!ScriptFunction;
     ScriptAny newBinding = args.length > 0 ? args[0] : ScriptAny.UNDEFINED;
     fn.bind(newBinding);
-    return ScriptAny.UNDEFINED;
+    return *thisObj;
 }
 
 /**

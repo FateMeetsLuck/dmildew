@@ -18,7 +18,9 @@ import mildew.parser;
 import mildew.types;
 
 /**
- * This runs a script program and prints the appropriate error message when a script exception is caught.
+ * This runs a script program and prints the appropriate error message when a script exception is caught. A lot
+ * of extra code is added to capture the result of the previous expression, but all one really needs is
+ * a call to evaluate or evaluateFile and runVMFibers call surrounded by a try-catch.
  */
 void evaluateWithErrorChecking(Terminal* term, Interpreter interpreter, in string source, in string fileName, 
                                bool printDisasm)
@@ -120,6 +122,7 @@ int main(string[] args)
         {
             try 
             {
+                // TODO run input from another thread to establish event loop
                 string input = strip(terminal.getline("mildew> "));
                 if(input == "#exit" || input == "")
                     break;

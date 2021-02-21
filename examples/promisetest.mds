@@ -1,0 +1,70 @@
+/* 
+Modified from https://itnext.io/broken-promises-a-barely-working-implementation-of-js-promises-ed7f99071f54 as
+an experiment. The setTimeout 0 trick allows "instant" resolution.
+ */
+function Promise(action) {
+    this.status = 'pending';
+    this.value = undefined;
+    
+    this.thenCallbacks = [];
+    this.onCatch = undefined;
+    this.onFinally = undefined;
+
+    this.then = function(callback) {
+        this.thenCallbacks.push(callback);
+        return this;
+    };
+
+    this.catch = function(callback) {
+        this.onCatch = callback;
+        return this;
+    };
+
+    function resolver(value) {
+        this.status = 'resolved';
+        this.value = value;
+        this.thenCallbacks.forEach(function(func) {
+            func(this.value);
+        }, this);
+
+        if(typeof this.finallyCallback === 'function') {
+            this.finallyCallback(this.value);
+        }
+    }
+
+    function rejector(value) {
+        this.status = 'rejected';
+        this.value = value;
+
+        if(typeof this.onCatch === 'function') {
+            this.onCatch(this.value);
+        }
+
+        if(typeof this.onFinally === 'function') {
+            this.onFinally(this.value);
+        }
+    }
+
+    setTimeout(action, 0, resolver.bind(this), rejector.bind(this));
+}
+
+function calculate(num1, operator, num2) {
+    return new Promise((resolve, reject)=>{
+        if(operator === '+') {
+            resolve(num1 + num2);
+        } else {
+            reject("Only addition is supported");
+        }
+    });
+}
+
+calculate(5, "-", 10)
+    .then(result => console.log("Result is " + result))
+    .catch(err => console.error("Could not calculate: " + err));
+
+
+calculate(69, "+", 11)
+    .then(result => console.log("Result is " + result))
+    .catch(err => console.error("Could not calculate: " + err));
+
+// This program works as expected, somehow.
