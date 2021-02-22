@@ -455,10 +455,23 @@ public:
     /// handle :? operator
 	Variant visitTerniaryOpNode(TerniaryOpNode tonode)
     {
-        tonode.conditionNode.accept(this);
-        tonode.onTrueNode.accept(this);
+        /*tonode.onTrueNode.accept(this);
         tonode.onFalseNode.accept(this);
-        _chunk.bytecode ~= OpCode.TERN;
+        _chunk.bytecode ~= OpCode.TERN;*/
+
+        tonode.conditionNode.accept(this);
+        immutable start = _chunk.bytecode.length;
+        immutable jmpFalse =  genJmpFalse();
+        tonode.onTrueNode.accept(this);
+        immutable endTrue = _chunk.bytecode.length;
+        immutable jmp = genJmp();
+        immutable falseLabel = _chunk.bytecode.length;
+        tonode.onFalseNode.accept(this);
+        immutable end = _chunk.bytecode.length;
+
+        *cast(int*)(_chunk.bytecode.ptr + jmpFalse) = cast(int)(falseLabel - start);
+        *cast(int*)(_chunk.bytecode.ptr + jmp) = cast(int)(end - endTrue);
+
         return Variant(null);
     }
 

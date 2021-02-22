@@ -116,7 +116,6 @@ enum OpCode : ubyte
     BITXOR, // bitwise xor
     AND, // and
     OR, // or
-    TERN, // : ? looks at stack[-3..-1]
 
     RETURN, // return from a function, should leave exactly one value on stack
     HALT, // completely stop the vm
@@ -1200,18 +1199,6 @@ private int opOr(VirtualMachine vm, Chunk chunk)
 }
 
 pragma(inline, true)
-private int opTern(VirtualMachine vm, Chunk chunk)
-{
-    auto operands = vm._stack.pop(3);
-    if(operands[0])
-        vm._stack.push(operands[1]);
-    else
-        vm._stack.push(operands[2]);
-    ++vm._ip;
-    return 0;
-}
-
-pragma(inline, true)
 private int opReturn(VirtualMachine vm, Chunk chunk)
 {
     if(vm._stack.size < 1)
@@ -1324,7 +1311,6 @@ class VirtualMachine
         _ops[OpCode.BITXOR] = &opBitXor;
         _ops[OpCode.AND] = &opAnd;
         _ops[OpCode.OR] = &opOr;
-        _ops[OpCode.TERN] = &opTern;
         _ops[OpCode.RETURN] = &opReturn;
         _ops[OpCode.HALT] = &opHalt;
         _stack.reserve(256);
@@ -1483,7 +1469,6 @@ class VirtualMachine
             case OpCode.BITXOR:
             case OpCode.AND:
             case OpCode.OR:
-            case OpCode.TERN:
                 ++ip;
                 break;
             case OpCode.RETURN:
@@ -1655,7 +1640,6 @@ class VirtualMachine
         case OpCode.BITXOR:
         case OpCode.AND:
         case OpCode.OR:
-        case OpCode.TERN:
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.RETURN:

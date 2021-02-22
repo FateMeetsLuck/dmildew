@@ -62,8 +62,6 @@ When using the destructuring variable declarations, whichever variable name is a
 
 Arguments with default values must be the last arguments in an argument list.
 
-The terniary `? :` operator evaluates both expressions. This is a bug that will be fixed in a future release.
-
 If any complex data type is used as a key to a Map, modifying the key causes undefined behavior.
 
 Mildew is not optimized for computationally heavy tasks. The design of the language focuses on interoperability with D native functions and CPU intensive operations should be moved to native implementations and called from the scripting language.
