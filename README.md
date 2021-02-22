@@ -12,9 +12,11 @@ The `examples/` folder contains example scripts. It should look familiar to anyo
 
 This project is in its early stages so one should probably use the ~main version to get the latest bug fixes. The release tags are only so that it is usable in dub.
 
+The REPL sub-project dmildew:run shows how to instantiate an Interpreter instance and evaluate lines of Mildew code. Documentation for the D library API can be found [here](https://dmildew.dpldocs.info/mildew.html). The main interface for the API is `mildew.interpreter.Interpreter`. The asynchronous callback API is still a work in progress and will require the host application to have some sort of event loop that calls the appropriate Interpreter method at the end to work.
+
 ## Mildew Standard Library Documentation 
 
-The documentation for the standard library, which is only loaded if the host application chooses to do so, can be found [here](https://pillager86.github.io/dmildew/).
+The documentation for the standard library usable by scripts, which is only loaded if the host application chooses to do so, can be found [here](https://pillager86.github.io/dmildew/).
 
 ## Building 
 
@@ -28,15 +30,15 @@ A script can be compiled with `dub run dmildew:bccompiler -- <name of script fil
 
 In a terminal in the main project directory run `dub run dmildew:run -- examples/<nameofexample>.mds`. To try out the interactive shell simply type `dub run dmilew:run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after. One can also store anonymous class expressions in a global variable such as `var Foo = class {};`.
 
-The option `-d` prints bytecode disassembly before running each chunk of code. The `-v` option prints highly verbose step by step execution of bytecode in the virtual machine.
+The option `-d` prints bytecode disassembly before running each chunk of code. The option `-v` prints highly verbose step by step execution of bytecode in the virtual machine.
 
 ## Binding
 
-See mildew/stdlib files for how to bind free functions. Classes are bound by assigning the native D object to the thisObj's nativeObject field after casting the thisObj to ScriptObject. The constructor function or delegate should have a "prototype" field containing functions to serve as the bound D class methods. The "prototype" field itself should have a field called "constructor" set to the constructor so that the `instanceof` operator will work. The Date and RegExp libraries are a good example of how class binding works.
+See source/mildew/stdlib/global.d for how to bind free functions and source/mildew/stdlib/console.d for how to store free functions in a "namespace." Classes are bound by assigning the native D object to the thisObj's nativeObject field after casting the thisObj to ScriptObject. The constructor ScriptFunction should have a "prototype" field (accessed with ["prototype"] and not to be confused with the .prototype D property) containing functions to serve as the bound D class methods. The "prototype" field itself should have a field called "constructor" set to the constructor so that the `instanceof` operator will work. The Date and RegExp libraries are a good example of how class binding works.
 
-Binding structs can only be done by wrapping the struct inside a class and storing the class object in a ScriptObject.
+Binding structs can only be done by wrapping the struct inside a class and storing the class object in a ScriptObject. The RegExp library is an example of this, as it wraps the D std.regex.Regex!char struct.
 
-The function or delegate signature that can be wrapped inside a ScriptAny (and thus ScriptFunction) is `ScriptAny function(Environment, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError);` And such a function is wrapped by `ScriptAny(new ScriptFunction("name of function", &nativeFunction))`. This is analogous to how Lua bindings work.
+The function or delegate signature that can be wrapped inside a ScriptAny (and thus ScriptFunction) is `ScriptAny nameOfBinding(Environment, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError);` And such a function is wrapped by `ScriptAny someFunc = new ScriptFunction("name of function", &nameOfBinding);`. This is analogous to how Lua bindings work.
 
 `bindingexample2.zip` in the examples folder contains a simple program that binds a class and its public methods and properties. D classes that are bound can be extended by the script as long as the native function constructor checks that the `thisObj` parameter is an object and assigns the native object to its `nativeObject` field. `bindingexample3.zip` shows a more advanced example of binding D classes that have an inheritance hierarchy. The power of Mildew is that methods written for the base class will automatically work on the bound subclasses.
 
@@ -66,7 +68,7 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 
 ## Current Goals
 
-* Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution.
+* Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution. The `runFile` stdlib function exists but is not intended for production use and will be replaced.
 * Bind native classes and functions with one line of code with mixins and template metaprogramming. Or write software that will analyze D source files and generate bindings.
 * Write a more complete and robust standard library for the scripting language. (In progress.)
 * Allow certain unicode characters as components of variable names.

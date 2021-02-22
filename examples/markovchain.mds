@@ -4,10 +4,10 @@
 /**
  * Generates random text based on input. This function was ported to Mildew from Java at
  * https://rosettacode.org/wiki/Markov_chain_text_generator#Java
- * @param text The source text to build dictionary from
- * @param keySize Determines randomness of word sequence
- * @param outputSize How many words to return
- * @returns A string of random words based on Markov generation of source text
+ * @param {String} text The source text to build dictionary from
+ * @param {integer} keySize Determines randomness of word sequence
+ * @param {integer} outputSize How many words to return
+ * @returns {String} A string of random words based on Markov generation of source text
  */
 function markovChain(text, keySize, outputSize) {
     if(keySize < 1)

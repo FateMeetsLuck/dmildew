@@ -43,10 +43,9 @@ public:
      * to not pollute the global namespace. However, scripts can use var to declare variables that
      * are global.
      * Params:
-     *  useVM = whether or not compilation to bytecode and the VM should be used instead of tree walking.
-     *  printVMDebugInfo = if useVM is true, this option prints very verbose data while executing bytecode.
+     *  printVMDebugInfo = This option, if true, indicates to print very verbose data while executing bytecode.
      */
-    this(bool printVMDebugInfo = true)
+    this(bool printVMDebugInfo = false)
     {
         _globalEnvironment = new Environment(this);
         _compiler = new Compiler();
@@ -88,12 +87,15 @@ public:
      * Params:
      *  code = This is the source code of a script to be executed.
      *  printDisasm = If VM mode is set, print the disassembly of bytecode before running if true.
+     *  fromScript = This parameter is reserved for internal use and should be left as false
      * Returns:
      *  If the script has a return statement with an expression, this value will be the result of that expression
      *  otherwise it will be ScriptAny.UNDEFINED
      */
     ScriptAny evaluate(in string code, bool printDisasm=false, bool fromScript=false)
     {
+        // TODO: evaluate should run all compiled chunks as a function call with module and exports
+        // parameters.
         auto chunk = _compiler.compile(code);
         if(printDisasm)
             _vm.printChunk(chunk, true);
@@ -115,12 +117,14 @@ public:
      * Params:
      *  pathName = the location of the code file in the file system.
      *  printDisasm = Whether or not bytecode disassembly should be printed before running
-     *  fromScript = This should be left to false and is used internally
+     *  fromScript = This should be left to false and will be used internally
      * Returns:
      *  The result of evaluating the file, undefined if no return statement.
      */
     ScriptAny evaluateFile(in string pathName, bool printDisasm=false, bool fromScript=false)
     {
+        // TODO if fromScript is true, module and exports parameter that can be checked
+        // and made the return value
         import std.stdio: File, writefln;
         import mildew.util.encode: decode;
 
@@ -195,6 +199,8 @@ public:
     VirtualMachine vm() { return _vm; }
 
 private:
+
+    // TODO a registry to keep track of loaded/run files. 
 
     Compiler _compiler;
     bool _printVMDebugInfo;
