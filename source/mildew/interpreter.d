@@ -182,7 +182,7 @@ public:
     }
 
     /**
-     * Run the VM queued fibers
+     * Run the VM queued fibers. This API is still being worked on.
      */
     void runVMFibers()
     {

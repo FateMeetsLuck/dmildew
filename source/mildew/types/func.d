@@ -145,6 +145,7 @@ public:
     /// isGenerator property. used by various pieces
     bool isGenerator() const { return _isGenerator; }
 
+    alias opCmp = ScriptObject.opCmp;
     int opCmp(const ScriptFunction other) const
     {
         if(_type != other._type)
@@ -213,6 +214,7 @@ public:
         return typeid(_functionName).getHash(&_functionName);
     }
 
+    alias opEquals = ScriptObject.opEquals;
     bool opEquals(ScriptFunction other) const
     {
         return opCmp(other) == 0;

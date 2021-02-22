@@ -31,8 +31,7 @@ private alias VariableTable = ScriptAny[string];
  * climbing the Environment.parent chain until reaching the Environment whose parent is null. This allows
  * native functions to define local and global variables. Note that calling a native function does
  * not create a stack frame so one could write a native function that adds local variables to the
- * stack frame where it was called. NOTE: It is not possible to access integral for loop variables
- * from an Environment when using VM mode.
+ * stack frame where it was called.
  */
 class Environment
 {
@@ -223,7 +222,7 @@ public:
     }
 
     /// climb environment stack until finding one without a parent
-    Environment getGlobalEnvironment()
+    Environment g()
     {
         Environment c = this;
         while(c._parent !is null)
@@ -231,12 +230,6 @@ public:
             c = c._parent;
         }
         return c;
-    }
-
-    /// inserts a label into the list of valid labels
-    deprecated void insertLabel(string label)
-    {
-        _labelList.insert(label);
     }
 
     /// Retrieves the interpreter object from the top level environment
@@ -250,25 +243,6 @@ public:
             search = search._parent;
         }
         return null;
-    }
-
-    /// checks environment stack for a label
-    deprecated bool labelExists(string label)
-    {
-        auto environment = this;
-        while(environment !is null)
-        {
-            if(label in environment._labelList)
-                return true;
-            environment = environment._parent;
-        }
-        return false;
-    }
-
-    /// removes a label from the existing environment
-    deprecated void removeLabelFromCurrent(string label)
-    {
-        _labelList.removeKey(label);
     }
 
     /// returns the parent property

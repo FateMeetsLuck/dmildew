@@ -1,7 +1,6 @@
 /**
 This module implements the expression and statement node classes, which are used internally as a syntax tree.
-The Interpreter can either walk the tree to execute code (deprecated), or compile the tree into bytecode and run it with
-the VirtualMachine.
+The Parser generates the tree and the Compiler traverses it to emit bytecode into Chunks.
 
 ────────────────────────────────────────────────────────────────────────────────
 

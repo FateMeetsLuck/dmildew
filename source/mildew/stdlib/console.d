@@ -1,5 +1,6 @@
 /**
 This module implements functions for the "console" namespace in the scripting language.
+See https://pillager86.github.io/dmildew/console.html for more details.
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -26,7 +27,7 @@ import mildew.types;
 /** 
  * Initializes the console library. This is called by Interpreter.initializeStdlib. The console
  * functions are stored in the "console" global variable and are accessed such as "console.log".
- * Documentation for these functions can be found at https://pillager86.github.io/dmildew/
+ * Documentation for these functions can be found at https://pillager86.github.io/dmildew/console.html
  * Params:
  *  interpreter = The Interpreter object for which to load the namespace and functions.
  */

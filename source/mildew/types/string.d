@@ -49,8 +49,6 @@ public:
         return _string;
     }
 
-    // methods to bind
-
 private:
     string _string;
 }

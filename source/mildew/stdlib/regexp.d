@@ -1,5 +1,6 @@
 /*
-This module implements the Mildew RegExp class.
+This module implements the Mildew RegExp class. See
+https://pillager86.github.io/dmildew/RegExp.html
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -204,7 +205,11 @@ private:
     std.regex.Regex!char _regex;
 }
 
-/// Initializes the RegExp namespace. Not necessary if regex literals are used.
+/**
+ * Initializes the RegExp constructor. This is not necessary as regex literals are a first class
+ * language feature. Documentation for this library can be found at
+ * https://pillager86.github.io/dmildew/RegExp.html
+ */
 void initializeRegExpLibrary(Interpreter interpreter)
 {
     ScriptAny ctor = new ScriptFunction("RegExp", &native_RegExp_ctor, true);

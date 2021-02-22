@@ -133,7 +133,7 @@ private ScriptAny getLocalThis(Environment env)
         return *thisPtr;
 }
 
-/// helper function. TODO: rework as flag system that implements try-catch-finally mechanics
+/// helper function. TODO rework entire call stack system
 private int throwRuntimeError(in string message, VirtualMachine vm, Chunk chunk, 
                             ScriptAny thrownValue = ScriptAny.UNDEFINED, 
                             ScriptRuntimeException rethrow = null)

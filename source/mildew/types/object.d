@@ -131,6 +131,52 @@ public:
     }
 
     /**
+     * Comparison operator
+     */
+    int opCmp(const ScriptObject other) const
+    {
+        if(other is null)
+            return 1;
+        
+        if(_dictionary == other._dictionary)
+            return 0;
+        
+        if(_dictionary.keys < other._dictionary.keys)
+            return -1;
+        else if(_dictionary.keys > other._dictionary.keys)
+            return 1;
+        else if(_dictionary.values < other._dictionary.values)
+            return -1;
+        else if(_dictionary.values > other._dictionary.values)
+            return 1;
+        else
+        {
+            if(_prototype is null && other._prototype is null)
+                return 0;
+            else if(_prototype is null && other._prototype !is null)
+                return -1;
+            else if(_prototype !is null && other._prototype is null)
+                return 1;
+            else
+                return _prototype.opCmp(other._prototype);
+        }
+    }
+
+    /**
+     * opEquals
+     */
+    bool opEquals(const ScriptObject other) const
+    {
+        return opCmp(other) == 0;
+    }
+
+    /// toHash
+    override size_t toHash() const @safe nothrow
+    {
+        return typeid(_dictionary).getHash(&_dictionary);
+    }
+
+    /**
      * Assigns a field to the current object. This does not call any setters.
      */
     ScriptAny assignField(in string name, ScriptAny value)

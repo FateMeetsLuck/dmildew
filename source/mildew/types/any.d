@@ -77,16 +77,10 @@ public:
      * Implements binary math operations between two ScriptAnys and returns a ScriptAny. For
      * certain operations that make no sense the result will be NaN or UNDEFINED. Addition
      * involving any number of ScriptStrings will always coerce the values to string and
-     * perform a concatenation, as per DMildew language semantics.
+     * perform a concatenation, as per Mildew language semantics.
      */
     auto opBinary(string op)(auto ref const ScriptAny rhs) const
-    {
-        // if either value is undefined return undefined. Might want to coerce UNDEFINED
-        // to string "undefined" in some cases...
-        if((_type == Type.UNDEFINED || rhs._type == Type.UNDEFINED) && 
-           (_type != Type.STRING && rhs._type != Type.STRING))
-            return UNDEFINED;
-        
+    {   
         static if(op == "+")
         {
             // if either is string convert both to string and concatenate
@@ -94,9 +88,12 @@ public:
             {
                 return ScriptAny(toString() ~ rhs.toString());
             }
-            
+            else if(_type == Type.UNDEFINED || rhs._type == Type.UNDEFINED)
+            {
+                return ScriptAny.UNDEFINED;
+            }
             // if they are both numerical
-            if(this.isNumber && rhs.isNumber)
+            else if(this.isNumber && rhs.isNumber)
             {
                 // if either is floating point convert both to floating point and add
                 if(_type == Type.DOUBLE || rhs._type == Type.DOUBLE)
@@ -126,11 +123,11 @@ public:
                 return ScriptAny(double.nan);
             mixin("return ScriptAny(toValue!double" ~ op ~ "rhs.toValue!double);");
         }
-        // for the bitwise operations the values MUST be cast to long
+        // bitwise operations even coerce non-numbers to 0, as in JavaScript
         else static if(op == "&" || op == "|" || op == "^" || op == "<<" || op == ">>" || op == ">>>")
         {
             if(!(this.isNumber && rhs.isNumber))
-                return ScriptAny.UNDEFINED;
+                return ScriptAny(0);
             mixin("return ScriptAny(toValue!long" ~ op ~ "rhs.toValue!long);");
         }
         else
@@ -261,7 +258,7 @@ public:
     void addGetterProperty(in string name, ScriptFunction func)
     {
         if(!isObject)
-            return;
+            throw new ScriptAnyException("Cannot add getter " ~ name ~ " to non-object", this);
         _asObject.addGetterProperty(name, func);
     }
 
@@ -271,7 +268,7 @@ public:
     void addSetterProperty(in string name, ScriptFunction func)
     {
         if(!isObject)
-            return;
+            throw new ScriptAnyException("Cannot add setter " ~ name ~ " to non-object", this);
         _asObject.addSetterProperty(name, func);
     }
 
@@ -299,7 +296,7 @@ public:
         else static if(op == "~")
         {
             if(!isNumber)
-                return ScriptAny.UNDEFINED;
+                return ScriptAny(0);
             return ScriptAny(~toValue!long);
         }
         else // increment and decrement have to be handled by the scripting environment
@@ -319,6 +316,12 @@ public:
             return true;
         // but if only one is undefined return false
         else if(_type == Type.UNDEFINED || other._type == Type.UNDEFINED)
+            return false;
+
+        // if both are null return true else false if only one is null
+        if(_type == Type.NULL && other._type == Type.NULL)
+            return true;
+        else if(_type == Type.NULL || other._type == Type.NULL)
             return false;
         
         // if either are strings, convert to string and compare
@@ -348,8 +351,12 @@ public:
             return (cast(ScriptFunction)_asObject).opEquals(cast(ScriptFunction)other._asObject);
         }
 
+        // different types should return false by now
+        if(_type != other._type)
+            return false;
+
         // else compare the objects for now
-        return _asObject == other._asObject;
+        return _asObject.opEquals(other._asObject);
     }
 
     /**
@@ -421,10 +428,12 @@ public:
             return cast(int)_type - cast(int)other._type;
 
         // TODO write opCmp for object
-        if(_asObject == other._asObject)
-            return 0;
+        if(isObject)
+        {
+            return _asObject.opCmp(other._asObject);
+        }
 
-        return -1; // for now
+        return -1;
     }
 
     /**
@@ -434,45 +443,39 @@ public:
     size_t toHash() const nothrow
     {
         import mildew.types.array: ScriptArray;
-        final switch(_type)
+        try 
         {
-            case Type.UNDEFINED:
-                return -1; // not sure what else to do
-            case Type.NULL:
-                return 0; // i don't know what to do for those
-            case Type.BOOLEAN:
-                return typeid(_asBoolean).getHash(&_asBoolean);
-            case Type.INTEGER:
-                return typeid(_asInteger).getHash(&_asInteger);
-            case Type.DOUBLE:
-                return typeid(_asDouble).getHash(&_asDouble);
-            case Type.STRING:
+            final switch(_type)
             {
-                try
+                case Type.UNDEFINED:
+                    return -1; // not sure what else to do
+                case Type.NULL:
+                    return 0; // i don't know what to do for those
+                case Type.BOOLEAN:
+                    return typeid(_asBoolean).getHash(&_asBoolean);
+                case Type.INTEGER:
+                    return typeid(_asInteger).getHash(&_asInteger);
+                case Type.DOUBLE:
+                    return typeid(_asDouble).getHash(&_asDouble);
+                case Type.STRING:
                 {
                     auto str = _asObject.toString();
                     return typeid(str).getHash(&str);
                 }
-                catch(Exception ex)
-                {
-                    return 0; // IDK
-                }
-            }
-            case Type.ARRAY:
-            {
-                try 
+                case Type.ARRAY:
                 {
                     auto arr = (cast(ScriptArray)_asObject).array;
                     return typeid(arr).getHash(&arr);
                 }
-                catch(Exception ex)
-                {
-                    return 0; // IDK
-                }
+                case Type.FUNCTION: 
+                    // todo: function hash?
+                case Type.OBJECT:
+                    return _asObject.toHash();
             }
-            case Type.FUNCTION: 
-            case Type.OBJECT:
-                return typeid(_asObject).getHash(&_asObject);
+        }
+        catch(Exception ex)
+        {
+            return 0;
         }
     }
 

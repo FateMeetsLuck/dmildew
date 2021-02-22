@@ -13,4 +13,13 @@ console.log(`Backwards: ${words.reduceRight(joiner)}`);
 
 const Foo = ()=> { this.a = 99; };
 console.log(new Foo());
+
+switch(()=>69) {
+    case ()=>69:
+        console.log("That's odd but it works");
+        break;
+    default:
+        console.log("Oh well");
+}
+
 // As of Feb 18 15:41 2021 This program produces the correct output

@@ -1,6 +1,6 @@
 /**
 This module implements the Parser struct, which generates Nodes from tokens. The resulting syntax tree
-is processed by Interpreter, or Interpreter and Compiler.
+is processed by the Compiler.
 
 ────────────────────────────────────────────────────────────────────────────────
 

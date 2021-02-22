@@ -1,6 +1,6 @@
 /**
-This module implements functions in the System namespace such as currentTimeMillis
-and getenv.
+This module implements functions in the System namespace. See
+https://pillager86.github.io/dmildew/System.html
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ import mildew.types;
 
 /**
  * Initializes the System namespace. Documentation for this library can be found at
- * https://pillager86.github.io/dmildew/
+ * https://pillager86.github.io/dmildew/System.html
  * Params:
  *  interpreter = The Interpreter instance to load the System namespace into.
  */

@@ -1,7 +1,6 @@
 /**
 Contains functions to mixin to simplify code reuse. For these to work, the parameters of a native function
-must be called context, thisObj, args, and nfe. If placed in if-statement they MUST be surrounded by
-braces.
+must be called context, thisObj, args, and nfe. They should not be placed in inner scopes or under if statements.
 
 ────────────────────────────────────────────────────────────────────────────────
 

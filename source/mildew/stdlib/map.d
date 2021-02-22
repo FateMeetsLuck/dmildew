@@ -1,5 +1,6 @@
 /**
 This module implements the Mildew Map class, which allows all Mildew types to serve as a key in a hash map.
+See https://pillager86.github.io/dmildew/Map.html for usage.
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -36,7 +37,10 @@ class ScriptMap
     }
 }
 
-/// Initializes the Map class in the scripts
+/** 
+ * Initializes the Map class in the scripts. Documentation for usage can be found at
+ * https://pillager86.github.io/dmildew/Map.html
+ */
 void initializeMapLibrary(Interpreter interpreter)
 {
     ScriptAny ctor = new ScriptFunction("Map", &native_Map_ctor, true);

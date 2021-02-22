@@ -1,5 +1,6 @@
 /**
-This module implements script functions that are stored in the global namespace such as parseInt and isdefined.
+This module implements script functions that are stored in the global namespace.
+See https://pillager86.github.io/dmildew/global.html for more information.
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ import mildew.types;
 
 /**
  * This is called by the interpreter's initializeStdlib method to store functions in the global namespace.
- * Documentation for these functions can be found at https://pillager86.github.io/dmildew/
+ * Documentation for these functions can be found at https://pillager86.github.io/dmildew/global.html
  * Params:
  *  interpreter = The Interpreter instance to load the functions into.
  */
@@ -58,7 +59,7 @@ private ScriptAny native_runFile(Environment env, ScriptAny* thisObj,
     auto fileName = args[0].toString();
     try 
     {
-        return env.getGlobalEnvironment.interpreter.evaluateFile(fileName, false, true);
+        return env.g.interpreter.evaluateFile(fileName, false, true);
 
     }
     catch(Exception ex)
@@ -87,7 +88,7 @@ private ScriptAny native_clearTimeout(Environment env, ScriptAny* thisObj,
     }
     if(sfib.toString() != "Timeout")
         return ScriptAny(false);
-    return ScriptAny(env.getGlobalEnvironment.interpreter.vm.removeFiber(sfib));
+    return ScriptAny(env.g.interpreter.vm.removeFiber(sfib));
 }
 
 private ScriptAny native_isdefined(Environment env, 
@@ -173,7 +174,7 @@ private ScriptAny native_setTimeout(Environment env, ScriptAny* thisObj,
     import mildew.types.bindings: getLocalThis;
 
     // all environments are supposed to be linked to the global one. if not, there is a bug
-    auto vm = env.getGlobalEnvironment.interpreter.vm;
+    auto vm = env.g.interpreter.vm;
     if(args.length < 2)
     {
         nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;

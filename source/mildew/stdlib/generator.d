@@ -1,5 +1,6 @@
 /**
 This module implements Generators for the Mildew scripting language.
+See https://pillager86.github.io/dmildew/Generator.html for more details.
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -53,9 +54,9 @@ class ScriptGenerator : Generator!ScriptAny
         }
 
         // next get a VM copy that will live in the following closure
-        if(env.getGlobalEnvironment.interpreter.vm is null)
-            throw new Exception("Generators may only be used in VM mode");
-        auto vm = env.getGlobalEnvironment.interpreter.vm.copy();
+        if(env.g.interpreter is null)
+            throw new Exception("Global environment has null interpreter");
+        auto vm = env.g.interpreter.vm.copy();
 
         _name = func.functionName;
 
@@ -89,7 +90,11 @@ private:
     ScriptAny _returnValue;
 }
 
-/// initialize the Generator library
+/**
+ * Initializes the public Generator constructor. Generator functions are a first class language
+ * feature so this is unnecessary. See https://pillager86.github.io/dmildew/Generator.html for how
+ * to use the constructor and methods in Mildew.
+ */
 void initializeGeneratorLibrary(Interpreter interpreter)
 {
     ScriptAny ctor = new ScriptFunction("Generator", &native_Generator_ctor, true);

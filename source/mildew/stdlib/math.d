@@ -1,5 +1,6 @@
 /**
-This module implements functions for the "Math" namespace in the scripting language
+This module implements functions for the "Math" namespace in the scripting language.
+See https://pillager86.github.io/dmildew/Math.html
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -28,7 +29,7 @@ import mildew.types;
 /**
  * Initializes the math library. This is called by Interpreter.initializeStdlib. Functions
  * are stored in the global Math object and are accessed such as "Math.acos". Documentation
- * for this library can be found at https://pillager86.github.io/dmildew/
+ * for this library can be found at https://pillager86.github.io/dmildew/Math.html
  * Params:
  *  interpreter = The Interpreter object to load the namespace into.
  */

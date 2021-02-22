@@ -1,5 +1,6 @@
 /**
 Bindings for the script Date class. This module contains both the D class definition and the script bindings.
+See https://pillager86.github.io/dmildew/Date.html for more details.
 
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ import mildew.types;
 
 /** 
  * Initializes the Date library, which includes the Date() constructor. Documentation for the
- * library can be found at https://pillager86.github.io/dmildew/
+ * library can be found at https://pillager86.github.io/dmildew/Date.html
  * Params:
  *  interpreter = The Interpreter object for which to load the library.
  */
