@@ -12,7 +12,7 @@ The `examples/` folder contains example scripts. It should look familiar to anyo
 
 This project is in its early stages so one should probably use the ~main version to get the latest bug fixes. The release tags are only so that it is usable in dub.
 
-The REPL sub-project dmildew:run shows how to instantiate an Interpreter instance and evaluate lines of Mildew code. Documentation for the D library API can be found [here](https://dmildew.dpldocs.info/mildew.html). The main interface for the API is `mildew.interpreter.Interpreter`. The asynchronous callback API is still a work in progress and will require the host application to have some sort of event loop that calls the appropriate Interpreter method at the end to work.
+The REPL sub-project dmildew:run shows how to instantiate an Interpreter instance and evaluate lines of Mildew code. Documentation for the D library API can be found [here](https://dmildew.dpldocs.info/mildew.html). The main interface for the API is `mildew.interpreter.Interpreter`. The asynchronous callback API is still a work in progress and will require the host application to have some sort of event loop that calls the appropriate Interpreter method at the end each cycle.
 
 ## Mildew Standard Library Documentation 
 
@@ -58,7 +58,13 @@ Closure functions that refer to variables in an outer scope beyond the immediate
 
 The "super" keyword cannot be used to access static base class methods.
 
-When using the destructuring declarations, whichever variable name is associated with the spread operator is placed as the last variable name in the list during compilation. The spread variable in an object destructuring receives the entire object.
+When using the destructuring variable declarations, whichever variable name is associated with the spread operator is placed as the last variable name in the list during compilation. The spread variable in an object destructuring receives the entire object. Destructuring in other contexts besides variable declaration is not implemented.
+
+Arguments with default values must be the last arguments in an argument list.
+
+The terniary `? :` operator evaluates both expressions. This is a bug that will be fixed in a future release.
+
+If any complex data type is used as a key to a Map, modifying the key causes undefined behavior.
 
 Mildew is not optimized for computationally heavy tasks. The design of the language focuses on interoperability with D native functions and CPU intensive operations should be moved to native implementations and called from the scripting language.
 
@@ -70,7 +76,9 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 
 ## Current Goals
 
-* Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML and their own solution. The `runFile` stdlib function exists but is not intended for production use and will be replaced.
+* Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML/JSON table of contents and their own solution. The `runFile` stdlib function exists but is not intended for production use and will be replaced or removed.
+* Optional possibly asynchronous file I/O library not loaded by the default library loading function due to security. This would be enabled in the REPL only by a specific option.
+* The Promise class for wrapping asynchronous APIs.
 * Bind native classes and functions with one line of code with mixins and template metaprogramming. Or write software that will analyze D source files and generate bindings.
 * Write a more complete and robust standard library for the scripting language. (In progress.)
 * Allow certain unicode characters as components of variable names.

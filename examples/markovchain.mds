@@ -288,4 +288,4 @@ No law, varying the compensation for the services of the Senators and Representa
 
 var sampleText = markovChain(text, 2, 300);
 console.log(sampleText);
-// As of Feb 18 15:45 2021 This program produces the expected randomized output
+// As of Feb 22 17:55 2021 This program threw an exception on one run but did not subsequent runs. There is an unknown bug with suffix line 40.

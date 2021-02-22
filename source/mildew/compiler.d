@@ -133,6 +133,27 @@ public:
         _debugInfoStack.push(new DebugInfo(_currentSource, flnode.optionalName));
         ++_funcDepth;
         _chunk.bytecode = [];
+
+        // handle default args
+        immutable startArgIndex = flnode.argList.length - flnode.defaultArguments.length;
+        for(size_t i = startArgIndex; i < flnode.argList.length; ++i)
+        {
+            auto ifToEmit = new IfStatementNode(flnode.token.position.line,
+                new BinaryOpNode(Token.createFakeToken(Token.Type.STRICT_EQUALS, "==="), 
+                    new VarAccessNode(Token.createFakeToken(Token.Type.IDENTIFIER, flnode.argList[i])),
+                    new LiteralNode(Token.createFakeToken(Token.Type.KEYWORD, "undefined"), ScriptAny.UNDEFINED)
+                ), 
+                new ExpressionStatementNode(flnode.token.position.line, 
+                    new BinaryOpNode(Token.createFakeToken(Token.Type.ASSIGN, "="),
+                        new VarAccessNode(Token.createFakeToken(Token.Type.IDENTIFIER, flnode.argList[i])),
+                        flnode.defaultArguments[i - startArgIndex]
+                    )
+                ), 
+                null
+            );
+            ifToEmit.accept(this);
+        }
+
         foreach(stmt ; flnode.statements)
             stmt.accept(this);
         // add a return undefined statement in case missing one
@@ -164,13 +185,14 @@ public:
         if(lnode.returnExpression)
         {
             // lambda arrows should be on the same line as the expression unless the author is a psychopath
-            flnode = new FunctionLiteralNode(lnode.arrowToken, lnode.argList, [
+            flnode = new FunctionLiteralNode(lnode.arrowToken, lnode.argList, lnode.defaultArguments, [
                     new ReturnStatementNode(lnode.arrowToken.position.line, lnode.returnExpression)
                 ], "<lambda>", false);
         }
         else
         {
-            flnode = new FunctionLiteralNode(lnode.arrowToken, lnode.argList, lnode.statements, "<lambda>", false);
+            flnode = new FunctionLiteralNode(lnode.arrowToken, lnode.argList, lnode.defaultArguments, 
+                    lnode.statements, "<lambda>", false);
         }
         flnode.accept(this);
         return Variant(null);
@@ -1018,7 +1040,8 @@ public:
                     new VarAccessNode(Token.createFakeToken(Token.Type.IDENTIFIER, fdsnode.name)),
                     new FunctionLiteralNode(
                         Token(Token.Type.KEYWORD, Position(cast(int)fdsnode.line, 1)),
-                        fdsnode.argNames, fdsnode.statementNodes, fdsnode.name, false, fdsnode.isGenerator
+                        fdsnode.argNames, fdsnode.defaultArguments,
+                        fdsnode.statementNodes, fdsnode.name, false, fdsnode.isGenerator
                     )
                 )
             ]

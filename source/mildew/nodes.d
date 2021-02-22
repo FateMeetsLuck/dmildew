@@ -118,10 +118,12 @@ class LiteralNode : ExpressionNode
 
 class FunctionLiteralNode : ExpressionNode
 {
-    this(Token t, string[] args, StatementNode[] stmts, string optional = "", bool isC = false, bool isG=false)
+    this(Token t, string[] args, ExpressionNode[] defArgs, StatementNode[] stmts, string optional = "", 
+         bool isC = false, bool isG=false)
     {
         token = t;
         argList = args;
+        defaultArguments = defArgs;
         statements = stmts;
         optionalName = optional;
         isClass = isC;
@@ -153,6 +155,7 @@ class FunctionLiteralNode : ExpressionNode
 
     Token token;
     string[] argList;
+    ExpressionNode[] defaultArguments;
     StatementNode[] statements;
     string optionalName;
     bool isClass;
@@ -161,17 +164,19 @@ class FunctionLiteralNode : ExpressionNode
 
 class LambdaNode : ExpressionNode
 {
-    this(Token arrow, string[] args, StatementNode[] stmts)
+    this(Token arrow, string[] args, ExpressionNode[] defArgs, StatementNode[] stmts)
     {
         arrowToken = arrow;
         argList = args;
+        defaultArguments = defArgs;
         statements = stmts;
     }
 
-    this(Token arrow, string[] args, ExpressionNode ret)
+    this(Token arrow, string[] args, ExpressionNode[] defArgs, ExpressionNode ret)
     {
         arrowToken = arrow;
         argList = args;
+        defaultArguments = defArgs;
         returnExpression = ret;
     }
 
@@ -206,6 +211,7 @@ class LambdaNode : ExpressionNode
 
     Token arrowToken;
     string[] argList;
+    ExpressionNode[] defaultArguments;
     StatementNode[] statements;
     ExpressionNode returnExpression;
 }
@@ -944,11 +950,12 @@ class ReturnStatementNode : StatementNode
 
 class FunctionDeclarationStatementNode : StatementNode
 {
-    this(size_t lineNo, string n, string[] args, StatementNode[] statements, bool isG = false)
+    this(size_t lineNo, string n, string[] args, ExpressionNode[] defArgs, StatementNode[] statements, bool isG = false)
     {
         super(lineNo);
         name = n;
         argNames = args;
+        defaultArguments = defArgs;
         statementNodes = statements;
         isGenerator = isG;
     }
@@ -976,6 +983,7 @@ class FunctionDeclarationStatementNode : StatementNode
 
     string name;
     string[] argNames;
+    ExpressionNode[] defaultArguments;
     StatementNode[] statementNodes;
     bool isGenerator;
 }

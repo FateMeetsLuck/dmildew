@@ -622,17 +622,8 @@ private:
                             _currentToken);
                     nextToken();
                     string[] argNames = [];
-                    while(_currentToken.type != Token.Type.RPAREN)
-                    {
-                        if(_currentToken.type != Token.Type.IDENTIFIER)
-                            throw new ScriptCompileException("Argument list must be valid identifier", _currentToken);
-                        argNames ~= _currentToken.text;
-                        nextToken();
-                        if(_currentToken.type == Token.Type.COMMA)
-                            nextToken();
-                        else if(_currentToken.type !=  Token.Type.RPAREN)
-                            throw new ScriptCompileException("Missing ')' after argument list", _currentToken);
-                    }
+                    ExpressionNode[] defaultArgs;
+                    argNames = parseArgumentList(defaultArgs);
                     nextToken(); // eat the )
                     if(_currentToken.type != Token.Type.LBRACE)
                         throw new ScriptCompileException("Expected '{' before anonymous function body", _currentToken);
@@ -644,7 +635,8 @@ private:
                     _functionContextStack.pop();
                     nextToken();
                     // auto func = new ScriptFunction(name, argNames, statements, null);
-                    left = new FunctionLiteralNode(token, argNames, statements, optionalName, false, isGenerator);
+                    left = new FunctionLiteralNode(token, argNames, defaultArgs, statements, optionalName, 
+                            false, isGenerator);
                 }
                 else if(_currentToken.text == "class")
                 {
@@ -833,19 +825,10 @@ private:
             // then a (
             if(_currentToken.type != Token.Type.LPAREN)
                 throw new ScriptCompileException("Expected '(' after method name", _currentToken);
-            nextToken();
+            nextToken(); // eat the (
             string[] argNames;
-            while(_currentToken.type != Token.Type.RPAREN)
-            {
-                if(_currentToken.type != Token.Type.IDENTIFIER)
-                    throw new ScriptCompileException("Method arguments must be valid identifiers", _currentToken);
-                argNames ~= _currentToken.text;
-                nextToken();
-                if(_currentToken.type == Token.Type.COMMA)
-                    nextToken();
-                else if(_currentToken.type != Token.Type.RPAREN)
-                    throw new ScriptCompileException("Method arguments must be separated by ','", _currentToken);
-            }
+            ExpressionNode[] defaultArgs;
+            argNames = parseArgumentList(defaultArgs);
             nextToken(); // eat the )
             // then a {
             if(_currentToken.type != Token.Type.LBRACE)
@@ -884,7 +867,7 @@ private:
                         throw new ScriptCompileException("Derived class constructors must have one super call", 
                                 classToken);
                 }
-                constructor = new FunctionLiteralNode(idToken, argNames, statements, className, true);
+                constructor = new FunctionLiteralNode(idToken, argNames, defaultArgs, statements, className, true);
             }
             else // it's a normal method or getter/setter
             {
@@ -893,17 +876,19 @@ private:
                     auto trueName = currentMethodName;
                     if(className != "<anonymous class>" && className != "")
                         trueName = className ~ ".prototype." ~ currentMethodName;
-                    methods ~= new FunctionLiteralNode(idToken, argNames, statements, trueName);
+                    methods ~= new FunctionLiteralNode(idToken, argNames, defaultArgs, statements, trueName);
                     methodNames ~= currentMethodName;
                 }
                 else if(ptype == PropertyType.GET)
                 {
-                    getMethods ~= new FunctionLiteralNode(idToken, argNames, statements, currentMethodName);
+                    getMethods ~= new FunctionLiteralNode(idToken, argNames, defaultArgs, statements, 
+                            currentMethodName);
                     getMethodNames ~= currentMethodName;                    
                 }
                 else if(ptype == PropertyType.SET)
                 {
-                    setMethods ~= new FunctionLiteralNode(idToken, argNames, statements, currentMethodName);
+                    setMethods ~= new FunctionLiteralNode(idToken, argNames, defaultArgs, statements, 
+                            currentMethodName);
                     setMethodNames ~= currentMethodName;                    
                 }
                 else if(ptype == PropertyType.STATIC)
@@ -911,7 +896,7 @@ private:
                     auto trueName = currentMethodName;
                     if(className != "<anonymous class>" && className != "")
                         trueName = className ~ "." ~ currentMethodName;
-                    staticMethods ~= new FunctionLiteralNode(idToken, argNames, statements, trueName);
+                    staticMethods ~= new FunctionLiteralNode(idToken, argNames, defaultArgs, statements, trueName);
                     staticMethodNames ~= currentMethodName;
                 }
             }
@@ -930,7 +915,7 @@ private:
         if(constructor is null)
         {
             // probably should enforce required super when base class exists
-            constructor = new FunctionLiteralNode(classToken, [], [], className, true);
+            constructor = new FunctionLiteralNode(classToken, [], [], [], className, true);
         }
 
         if(baseClass !is null)
@@ -1271,19 +1256,10 @@ private:
         
         if(_currentToken.type != Token.Type.LPAREN)
             throw new ScriptCompileException("Expected '(' after function name", _currentToken);
-        nextToken();
+        nextToken(); // eat the (
         string[] argNames = [];
-        while(_currentToken.type != Token.Type.RPAREN)
-        {
-            if(_currentToken.type != Token.Type.IDENTIFIER)
-                throw new ScriptCompileException("Function argument names must be valid identifiers", _currentToken);
-            argNames ~= _currentToken.text;
-            nextToken();
-            if(_currentToken.type == Token.Type.COMMA)
-                nextToken();
-            else if(_currentToken.type != Token.Type.RPAREN)
-                throw new ScriptCompileException("Function argument names must be separated by comma", _currentToken);
-        }
+        ExpressionNode[] defaultArgs;
+        argNames = parseArgumentList(defaultArgs);
         nextToken(); // eat the )
 
         // make sure there are no duplicate parameter names
@@ -1299,7 +1275,7 @@ private:
         auto statements = parseStatements(Token.Type.RBRACE);
         _functionContextStack.pop();
         nextToken(); // eat the }
-        return new FunctionDeclarationStatementNode(lineNumber, name, argNames, statements, isGenerator);
+        return new FunctionDeclarationStatementNode(lineNumber, name, argNames, defaultArgs, statements, isGenerator);
     }
 
     TryCatchBlockStatementNode parseTryCatchBlockStatement()
@@ -1465,20 +1441,11 @@ private:
     LambdaNode parseLambda(bool hasParentheses)
     {
         string[] argList;
+        ExpressionNode[] defaultArgs;
         if(hasParentheses)
         {
             nextToken(); // eat the (
-            while(_currentToken.type != Token.Type.RPAREN)
-            {
-                if(_currentToken.type != Token.Type.IDENTIFIER)
-                    throw new ScriptCompileException("Lambda argument names must be valid identifiers", _currentToken);
-                argList ~= _currentToken.text;
-                nextToken();
-                if(_currentToken.type == Token.Type.COMMA)
-                    nextToken();
-                else if(_currentToken.type != Token.Type.RPAREN)
-                    throw new ScriptCompileException("Lambda argument names must be separated by comma", _currentToken);
-            }
+            argList = parseArgumentList(defaultArgs);
             nextToken(); // eat the )
         }
         else
@@ -1499,12 +1466,12 @@ private:
             nextToken(); // eat the {
             auto stmts = parseStatements(Token.Type.RBRACE);
             nextToken(); // eat the }
-            return new LambdaNode(arrow, argList, stmts);
+            return new LambdaNode(arrow, argList, defaultArgs, stmts);
         }
         else
         {
             auto expr = parseExpression();
-            return new LambdaNode(arrow, argList, expr);
+            return new LambdaNode(arrow, argList, defaultArgs, expr);
         }
     }
 
@@ -1528,6 +1495,35 @@ private:
         }
 
         return expressions;
+    }
+
+    string[] parseArgumentList(out ExpressionNode[] defaultArgs)
+    {
+        string[] argList;
+        defaultArgs = [];
+        while(_currentToken.type != Token.Type.RPAREN && _currentToken.type != Token.Type.EOF)
+        {
+            if(_currentToken.type != Token.Type.IDENTIFIER)
+                throw new ScriptCompileException("Argument name must be identifier", _currentToken);
+            argList ~= _currentToken.text;
+            nextToken(); // eat the identifier
+
+            if(_currentToken.type == Token.Type.ASSIGN)
+            {
+                nextToken(); // eat =
+                defaultArgs ~= parseExpression();
+            }
+            else if(defaultArgs.length != 0)
+            {
+                throw new ScriptCompileException("Default arguments must be last arguments", _currentToken);
+            }
+
+            if(_currentToken.type == Token.Type.COMMA)
+                nextToken(); // eat ,
+            else if(_currentToken.type != Token.Type.RPAREN)
+                throw new ScriptCompileException("Argument names must be separated by comma", _currentToken);
+        }
+        return argList;
     }
 
     void nextToken()

@@ -26,8 +26,9 @@ function testClass() {
             this.a = 42;
         }
         setTimer() {
+            let that = this;
             setTimeout(()=>{
-                console.log(this.a);
+                console.log(that.a);
             }, 100);
         }
     }
@@ -36,3 +37,5 @@ function testClass() {
     foo.setTimer();
 }
 testClass();
+
+// As of Feb 22 17:59 2021 This program works due to the "that=this" trick.

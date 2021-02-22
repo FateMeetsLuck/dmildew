@@ -1,0 +1,13 @@
+/*
+Default arguments are allowed, but unlike ES6, they must be the final arguments in the argument list. The default
+argument values may be expressions, but the expressions are evaluated inside the beginning of the function.
+ */
+function greet(person="Someone", greeting = "hi") {
+    console.log(person + " says " + greeting);
+}
+
+greet();
+greet("You");
+greet("I", "what up");
+
+// As of Feb 22 17:47 2021 This program produces the correct output
