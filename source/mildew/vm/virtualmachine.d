@@ -38,6 +38,7 @@ import mildew.util.regex: extract;
 import mildew.util.stack;
 import mildew.vm.chunk;
 import mildew.vm.consttable;
+import mildew.vm.debuginfo;
 import mildew.vm.fiber;
 
 /// 8-bit opcodes
@@ -144,10 +145,10 @@ private int throwRuntimeError(in string message, VirtualMachine vm, Chunk chunk,
     if(rethrow)
         vm._exc = rethrow;
     // unwind stack starting with current
-    if(chunk.bytecode in chunk.debugMap)
+    if(vm._latestDebugMap && chunk.bytecode in vm._latestDebugMap)
     {
-        immutable lineNum = chunk.debugMap[chunk.bytecode].getLineNumber(vm._ip);
-        vm._exc.scriptTraceback ~= tuple(lineNum, chunk.debugMap[chunk.bytecode].getSourceLine(lineNum));
+        immutable lineNum = vm._latestDebugMap[chunk.bytecode].getLineNumber(vm._ip);
+        vm._exc.scriptTraceback ~= tuple(lineNum, vm._latestDebugMap[chunk.bytecode].getSourceLine(lineNum));
     }
     // consume latest try-data entry if available
     if(vm._tryData.length > 0)
@@ -1706,6 +1707,8 @@ class VirtualMachine
         _stopped = false;
         _exc = null;
         _currentConstTable = chunk.constTable;
+        if(_latestDebugMap != chunk.debugMap && chunk.debugMap != null)
+            _latestDebugMap = chunk.debugMap;
         int retCSCallDepth = 1;
         while(_ip < chunk.bytecode.length && !_stopped)
         {
@@ -1930,6 +1933,7 @@ private:
     }
 
     Stack!CallData _callStack;
+    DebugMap _latestDebugMap;
     Environment _environment;
     ConstTable _currentConstTable; // for running functions from call and apply
     ScriptRuntimeException _exc; // exception flag
