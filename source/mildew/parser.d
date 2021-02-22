@@ -602,6 +602,7 @@ private:
                 else if(_currentToken.text == "function") // function literal
                 {
                     bool isGenerator = false;
+                    immutable token = _currentToken;
                     nextToken();
                     if(_currentToken.type == Token.Type.STAR)
                     {
@@ -643,7 +644,7 @@ private:
                     _functionContextStack.pop();
                     nextToken();
                     // auto func = new ScriptFunction(name, argNames, statements, null);
-                    left = new FunctionLiteralNode(argNames, statements, optionalName, false, isGenerator);
+                    left = new FunctionLiteralNode(token, argNames, statements, optionalName, false, isGenerator);
                 }
                 else if(_currentToken.text == "class")
                 {
@@ -824,6 +825,7 @@ private:
                 nextToken();
             }
             // then an identifier
+            immutable idToken = _currentToken;
             if(_currentToken.type != Token.Type.IDENTIFIER)
                 throw new ScriptCompileException("Method names must be valid identifiers", _currentToken);
             currentMethodName = _currentToken.text;
@@ -882,7 +884,7 @@ private:
                         throw new ScriptCompileException("Derived class constructors must have one super call", 
                                 classToken);
                 }
-                constructor = new FunctionLiteralNode(argNames, statements, className, true);
+                constructor = new FunctionLiteralNode(idToken, argNames, statements, className, true);
             }
             else // it's a normal method or getter/setter
             {
@@ -891,17 +893,17 @@ private:
                     auto trueName = currentMethodName;
                     if(className != "<anonymous class>" && className != "")
                         trueName = className ~ ".prototype." ~ currentMethodName;
-                    methods ~= new FunctionLiteralNode(argNames, statements, trueName);
+                    methods ~= new FunctionLiteralNode(idToken, argNames, statements, trueName);
                     methodNames ~= currentMethodName;
                 }
                 else if(ptype == PropertyType.GET)
                 {
-                    getMethods ~= new FunctionLiteralNode(argNames, statements, currentMethodName);
+                    getMethods ~= new FunctionLiteralNode(idToken, argNames, statements, currentMethodName);
                     getMethodNames ~= currentMethodName;                    
                 }
                 else if(ptype == PropertyType.SET)
                 {
-                    setMethods ~= new FunctionLiteralNode(argNames, statements, currentMethodName);
+                    setMethods ~= new FunctionLiteralNode(idToken, argNames, statements, currentMethodName);
                     setMethodNames ~= currentMethodName;                    
                 }
                 else if(ptype == PropertyType.STATIC)
@@ -909,7 +911,7 @@ private:
                     auto trueName = currentMethodName;
                     if(className != "<anonymous class>" && className != "")
                         trueName = className ~ "." ~ currentMethodName;
-                    staticMethods ~= new FunctionLiteralNode(argNames, statements, trueName);
+                    staticMethods ~= new FunctionLiteralNode(idToken, argNames, statements, trueName);
                     staticMethodNames ~= currentMethodName;
                 }
             }
@@ -928,7 +930,7 @@ private:
         if(constructor is null)
         {
             // probably should enforce required super when base class exists
-            constructor = new FunctionLiteralNode([], [], className, true);
+            constructor = new FunctionLiteralNode(classToken, [], [], className, true);
         }
 
         if(baseClass !is null)

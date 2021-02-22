@@ -82,8 +82,7 @@ public:
     }
 
     /**
-     * This is the main entry point for evaluating a script program. If the useVM option was set in the
-     * constructor, bytecode compilation and execution will be used, otherwise tree walking.
+     * This is the main entry point for evaluating a script program.
      * Params:
      *  code = This is the source code of a script to be executed.
      *  printDisasm = If VM mode is set, print the disassembly of bytecode before running if true.

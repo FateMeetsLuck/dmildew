@@ -118,8 +118,9 @@ class LiteralNode : ExpressionNode
 
 class FunctionLiteralNode : ExpressionNode
 {
-    this(string[] args, StatementNode[] stmts, string optional = "", bool isC = false, bool isG=false)
+    this(Token t, string[] args, StatementNode[] stmts, string optional = "", bool isC = false, bool isG=false)
     {
+        token = t;
         argList = args;
         statements = stmts;
         optionalName = optional;
@@ -150,6 +151,7 @@ class FunctionLiteralNode : ExpressionNode
         return output;
     }
 
+    Token token;
     string[] argList;
     StatementNode[] statements;
     string optionalName;

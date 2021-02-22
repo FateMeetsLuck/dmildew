@@ -1877,13 +1877,26 @@ class VirtualMachine
             foreach(fiber ; fibersRunning)
             {
                 fiber.call();
+                if(_exc)
+                {
+                    foreach(fib ; fibersRunning)
+                    {
+                        if(fiber != fib)
+                            _fibersQueued.insert(fib);
+                    }
+                    break;
+                }        
                 if(fiber.state != Fiber.State.TERM)
                     _fibersQueued.insert(fiber);
             }
 
             if(_gWaitingOnThreads > 0)
                 _gSync.wait();
+            if(_exc)
+                break;
         }
+        if(_exc)
+            throw _exc;
     }
 
 private:

@@ -164,13 +164,13 @@ public:
         if(lnode.returnExpression)
         {
             // lambda arrows should be on the same line as the expression unless the author is a psychopath
-            flnode = new FunctionLiteralNode(lnode.argList, [
+            flnode = new FunctionLiteralNode(lnode.arrowToken, lnode.argList, [
                     new ReturnStatementNode(lnode.arrowToken.position.line, lnode.returnExpression)
                 ], "<lambda>", false);
         }
         else
         {
-            flnode = new FunctionLiteralNode(lnode.argList, lnode.statements, "<lambda>", false);
+            flnode = new FunctionLiteralNode(lnode.arrowToken, lnode.argList, lnode.statements, "<lambda>", false);
         }
         flnode.accept(this);
         return Variant(null);
@@ -1017,6 +1017,7 @@ public:
                     Token.createFakeToken(Token.Type.ASSIGN, ""),
                     new VarAccessNode(Token.createFakeToken(Token.Type.IDENTIFIER, fdsnode.name)),
                     new FunctionLiteralNode(
+                        Token(Token.Type.KEYWORD, Position(cast(int)fdsnode.line, 1)),
                         fdsnode.argNames, fdsnode.statementNodes, fdsnode.name, false, fdsnode.isGenerator
                     )
                 )

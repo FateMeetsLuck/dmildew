@@ -58,6 +58,8 @@ Closure functions that refer to variables in an outer scope beyond the immediate
 
 The "super" keyword cannot be used to access static base class methods.
 
+When using the destructuring declarations, whichever variable name is associated with the spread operator is placed as the last variable name in the list during compilation. The spread variable in an object destructuring receives the entire object.
+
 Mildew is not optimized for computationally heavy tasks. The design of the language focuses on interoperability with D native functions and CPU intensive operations should be moved to native implementations and called from the scripting language.
 
 Mildew has only been tested on Windows and Linux x86_64 operating systems. Please test on other operating systems to report problems. Note that compiled bytecode is platform dependent (endianness matters) and bytecode scripts must be compiled for each type of CPU, similar to Lua.
