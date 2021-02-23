@@ -138,11 +138,12 @@ private int throwRuntimeError(in string message, VirtualMachine vm, Chunk chunk,
                             ScriptAny thrownValue = ScriptAny.UNDEFINED, 
                             ScriptRuntimeException rethrow = null)
 {
-    vm._exc = new ScriptRuntimeException(message);
-    if(thrownValue != ScriptAny.UNDEFINED)
-        vm._exc.thrownValue = thrownValue;
     if(rethrow)
         vm._exc = rethrow;
+    else
+        vm._exc = new ScriptRuntimeException(message);
+    if(thrownValue != ScriptAny.UNDEFINED)
+        vm._exc.thrownValue = thrownValue;
     // unwind stack starting with current
     if(vm._latestDebugMap && chunk.bytecode in vm._latestDebugMap)
     {
@@ -1885,6 +1886,9 @@ class VirtualMachine
         if(_exc)
             throw _exc;
     }
+
+    /// Whether or not there is an exception flag set
+    bool hasException() const { return _exc !is null; }
 
 private:
 

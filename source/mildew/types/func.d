@@ -255,6 +255,21 @@ package(mildew):
         return newFunc;
     }
 
+    /**
+     * Generic copying for all functions
+     */
+    ScriptFunction copy(Environment env)
+    {
+        if(_type == ScriptFunction.Type.SCRIPT_FUNCTION)
+            return copyCompiled(env);
+        else if(_type == ScriptFunction.Type.NATIVE_FUNCTION)
+            return new ScriptFunction(_functionName, _nativeFunction, _isClass);
+        else if(_type == ScriptFunction.Type.NATIVE_DELEGATE)
+            return new ScriptFunction(_functionName, _nativeDelegate, _isClass);
+        else
+            throw new Exception("Impossible ScriptFunction type");
+    }
+
     // must check type before using these properties or one gets an exception
 
     /// get the native function ONLY if it is one
