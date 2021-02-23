@@ -166,6 +166,8 @@ private ScriptAny native_Map_forEach(Environment env, ScriptAny* thisObj,
     foreach(key, value ; map.entries)
     {
         auto temp = native_Function_call(env, &args[0], [thisToUse, value, key, *thisObj], nfe);
+        if(env.g.interpreter.vm.hasException)
+            return temp;
         if(nfe != NativeFunctionError.NO_ERROR)
             return temp;
     }

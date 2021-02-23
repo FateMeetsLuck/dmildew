@@ -142,7 +142,7 @@ private ScriptAny native_Generator_ctor(Environment env, ScriptAny* thisObj,
 }
 
 private ScriptAny native_Generator_p_name(Environment env, ScriptAny* thisObj,
-                                        ScriptAny[] args, ref NativeFunctionError nfe)
+                                          ScriptAny[] args, ref NativeFunctionError nfe)
 {
     auto thisGen = thisObj.toNativeObject!ScriptGenerator;
     if(thisGen is null)
@@ -155,7 +155,7 @@ private ScriptAny native_Generator_p_name(Environment env, ScriptAny* thisObj,
 
 /// This is public for opIter
 ScriptAny native_Generator_next(Environment env, ScriptAny* thisObj,
-                                        ScriptAny[] args, ref NativeFunctionError nfe)
+                                ScriptAny[] args, ref NativeFunctionError nfe)
 {
     auto thisGen = thisObj.toNativeObject!ScriptGenerator;
     if(thisGen is null)
