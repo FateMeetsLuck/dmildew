@@ -100,7 +100,11 @@ class Foo {
     }
 }
 
-// runFile is temporary for finding a bug. DO NOT USE
 runFile("examples/test.mds");
 myExport();
 console.log("Test");
+
+// This works because the compiler will maintain ONE const table for the entire duration it exists.
+// This means all code run with one Interpreter instance can easily inter-operate. "Foreign" functions will
+//  only be an issue if functions from other Interpreter instances are called. Preparations have been made
+//  to account for this usage but have not been fully implemented yet.

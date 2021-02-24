@@ -61,8 +61,10 @@ class ScriptGenerator : Generator!ScriptAny
         _name = func.functionName;
 
         super({
-            _returnValue = vm.runFunction(func, thisObj, args, ScriptAny(new ScriptFunction("yield",
-                    &this.native_yield)));
+            ScriptAny[string] map;
+            map["__yield__"] = ScriptAny(new ScriptFunction("yield", &this.native_yield));
+            map["yield"] = map["__yield__"];
+            _returnValue = vm.runFunction(func, thisObj, args, map);
         });
     }
 

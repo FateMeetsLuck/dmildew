@@ -19,6 +19,6 @@ this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 module mildew.vm;
 
-public import mildew.vm.chunk;
 public import mildew.vm.consttable;
+public import mildew.vm.program;
 public import mildew.vm.virtualmachine;

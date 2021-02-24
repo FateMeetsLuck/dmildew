@@ -29,7 +29,7 @@ struct ScriptAny
 {
     import mildew.types.object: ScriptObject;
     import mildew.types.func: ScriptFunction;
-    import mildew.vm.chunk: Chunk;
+    import mildew.vm.program: Program;
     import mildew.vm.consttable: ConstTable;
 
 public:
@@ -132,17 +132,6 @@ public:
         }
         else
             static assert(false, "The binary operation " ~ op ~ " is not supported for this type");
-    }
-
-    /**
-     * A method so that (undefined || 22) results in 22.
-     */
-    ScriptAny orOp(ScriptAny other)
-    {
-        if(!cast(bool)this)
-            return other;
-        else
-            return this;
     }
 
     /**

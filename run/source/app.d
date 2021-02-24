@@ -22,17 +22,16 @@ import mildew.types;
  * of extra code is added to capture the result of the previous expression, but all one really needs is
  * a call to evaluate or evaluateFile and runVMFibers call surrounded by a try-catch.
  */
-void evaluateWithErrorChecking(Terminal* term, Interpreter interpreter, in string source, in string fileName, 
-                               bool printDisasm)
+void evaluateWithErrorChecking(Terminal* term, Interpreter interpreter, in string source, in string fileName)
 {
     try 
     {
         ScriptAny result;
         if(source == "" && fileName != "<stdin>")
-            result = interpreter.evaluateFile(fileName, printDisasm);
+            result = interpreter.evaluateFile(fileName);
         else
         {
-            result = interpreter.evaluate(source, printDisasm);
+            result = interpreter.evaluate(source);
             if(result != ScriptAny.UNDEFINED)
             {
                 interpreter.forceSetGlobal("_", result, false);
@@ -107,14 +106,14 @@ int main(string[] args)
         return 64;
     }
 
-    auto interpreter = new Interpreter(printVMDebugInfo);
+    auto interpreter = new Interpreter(printDisasm, printVMDebugInfo);
     interpreter.initializeStdlib();
 
     if(args.length > 1)
     {
         string[] fileNames = args[1..$];
         foreach(fileName ; fileNames)
-            evaluateWithErrorChecking(&terminal, interpreter, "", fileName, printDisasm);
+            evaluateWithErrorChecking(&terminal, interpreter, "", fileName);
     }    
     else
     {
@@ -133,7 +132,7 @@ int main(string[] args)
                 }
                 // terminal.writeln(":");
                 stdout.writeln();
-                evaluateWithErrorChecking(&terminal, interpreter, input, "<stdin>", printDisasm);
+                evaluateWithErrorChecking(&terminal, interpreter, input, "<stdin>");
             }
             catch(UserInterruptionException ex)
             {

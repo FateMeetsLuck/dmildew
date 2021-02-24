@@ -45,12 +45,11 @@ public:
      * Params:
      *  printVMDebugInfo = This option, if true, indicates to print very verbose data while executing bytecode.
      */
-    this(bool printVMDebugInfo = false)
+    this(bool printDisasm = false, bool printSteps = false)
     {
         _globalEnvironment = new Environment(this);
         _compiler = new Compiler();
-        _printVMDebugInfo = printVMDebugInfo;
-        _vm = new VirtualMachine(_globalEnvironment);
+        _vm = new VirtualMachine(_globalEnvironment, printDisasm, printSteps);
     }
 
     /**
@@ -91,24 +90,13 @@ public:
      *  If the script has a return statement with an expression, this value will be the result of that expression
      *  otherwise it will be ScriptAny.UNDEFINED
      */
-    ScriptAny evaluate(in string code, bool printDisasm=false, bool fromScript=false)
+    ScriptAny evaluate(in string code, string name="<program>")
     {
         // TODO: evaluate should run all compiled chunks as a function call with module and exports
         // parameters.
-        auto chunk = _compiler.compile(code);
-        if(printDisasm)
-            _vm.printChunk(chunk, true);
+        auto program = _compiler.compile(code, name);
 
-        if(fromScript)
-        {
-            auto func = new ScriptFunction("chunk", [], chunk.bytecode, false, false, chunk.constTable);
-            func = func.copyCompiled(_globalEnvironment);
-            return _vm.runFunction(func, ScriptAny.UNDEFINED, []);
-        }
-        else
-        {
-            return _vm.run(chunk, _printVMDebugInfo);
-        }
+        return _vm.runProgram(program, []);
     }
 
     /**
@@ -120,7 +108,7 @@ public:
      * Returns:
      *  The result of evaluating the file, undefined if no return statement.
      */
-    ScriptAny evaluateFile(in string pathName, bool printDisasm=false, bool fromScript=false)
+    ScriptAny evaluateFile(in string pathName)
     {
         // TODO if fromScript is true, module and exports parameter that can be checked
         // and made the return value
@@ -132,24 +120,13 @@ public:
         raw = inputFile.rawRead(raw);
         if(raw.length > 0 && raw[0] == 0x01)
         {
-            auto chunk = Chunk.deserialize(raw);
-            if(printDisasm)
-                _vm.printChunk(chunk);
-            if(fromScript)
-            {
-                auto func = new ScriptFunction(pathName, [], chunk.bytecode, false, false, chunk.constTable);
-                func = func.copyCompiled(_globalEnvironment);
-                return _vm.runFunction(func, ScriptAny.UNDEFINED, []);
-            }
-            else
-            {
-                return _vm.run(chunk, _printVMDebugInfo);
-            }
+            auto program = Program.deserialize(raw, pathName);
+            return _vm.runProgram(program, []);
         }
         else
         {
             auto source = cast(string)raw;
-            return evaluate(source, printDisasm, fromScript);
+            return evaluate(source, pathName);
         }
     }
 
@@ -188,12 +165,6 @@ public:
         _vm.runQueue();
     }
 
-    /// whether or not debug info should be printed between each VM instruction
-    bool printVMDebugInfo() const 
-    {
-        return _printVMDebugInfo;
-    }
-
     /// Virtual machine property should never at any point be null
     VirtualMachine vm() { return _vm; }
 
@@ -202,7 +173,6 @@ private:
     // TODO a registry to keep track of loaded/run files. 
 
     Compiler _compiler;
-    bool _printVMDebugInfo;
     VirtualMachine _vm;
     Environment _globalEnvironment;
 }

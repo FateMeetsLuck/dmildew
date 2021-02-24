@@ -19,7 +19,7 @@ switch(()=>69) {
         console.log("That's odd but it works");
         break;
     default:
-        console.log("Oh well");
+        console.log("This feature is broken");
 }
-
-// As of Feb 18 15:41 2021 This program produces the correct output
+// Switch case broken. It is impossible for Parser CTFE to understand the const table layout
+// Oh well, Node.js cannot successfully run this file at all so there's that.

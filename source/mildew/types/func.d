@@ -137,7 +137,7 @@ public:
     /// Returns the name of the function
     auto functionName() const { return _functionName; }
     /// Property argNames. Note: native functions do not have this.
-    auto argNames() { return _argNames; }
+    auto argNames() const { return _argNames; }
     /// Compiled form cached
     ubyte[] compiled() { return _compiled; }
     /// bound this property. change with bind()
@@ -204,20 +204,30 @@ public:
         return 0;
     }
 
-    override size_t toHash() const @safe nothrow
+    override size_t toHash() const @trusted nothrow
     {
-        if(_compiled.length > 0)
-        {
+        if(_type == Type.SCRIPT_FUNCTION)
             return typeid(_compiled).getHash(&_compiled);
-        }
-        // lacking but not sure what else to do
+        else if(_type == Type.NATIVE_FUNCTION)
+            return typeid(_nativeFunction).getHash(&_nativeFunction);
+        else if(_type == Type.NATIVE_DELEGATE)
+            return typeid(_nativeDelegate).getHash(&_nativeDelegate);
+        // unreachable code
         return typeid(_functionName).getHash(&_functionName);
     }
 
     alias opEquals = ScriptObject.opEquals;
     bool opEquals(ScriptFunction other) const
     {
-        return opCmp(other) == 0;
+        if(_type != other._type || _functionName != other._functionName)
+            return false;
+        if(_type == Type.SCRIPT_FUNCTION)
+            return _compiled == other._compiled;
+        else if(_type == Type.NATIVE_FUNCTION)
+            return _nativeFunction == other._nativeFunction;
+        else if(_type == Type.NATIVE_DELEGATE)
+            return _nativeDelegate == other._nativeDelegate;
+        return false;
     }
 
     /// ct property

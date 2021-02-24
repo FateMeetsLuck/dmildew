@@ -36,9 +36,9 @@ import mildew.types;
 import mildew.util.encode;
 import mildew.util.regex: extract;
 import mildew.util.stack;
-import mildew.vm.chunk;
 import mildew.vm.consttable;
 import mildew.vm.debuginfo;
+import mildew.vm.program;
 import mildew.vm.fiber;
 
 /// 8-bit opcodes
@@ -114,14 +114,12 @@ enum OpCode : ubyte
     BITAND, // bitwise and
     BITOR, // bitwise or
     BITXOR, // bitwise xor
-    AND, // and
-    OR, // or
 
     RETURN, // return from a function, should leave exactly one value on stack
     HALT, // completely stop the vm
 }
 
-alias OpCodeFunction = int function(VirtualMachine, Chunk chunk);
+alias OpCodeFunction = size_t function(VirtualMachine, const ubyte[] chunk, size_t ip);
 
 private ScriptAny getLocalThis(Environment env)
 {
@@ -133,22 +131,37 @@ private ScriptAny getLocalThis(Environment env)
         return *thisPtr;
 }
 
-/// helper function. TODO rework entire call stack system
-private int throwRuntimeError(in string message, VirtualMachine vm, Chunk chunk, 
-                            ScriptAny thrownValue = ScriptAny.UNDEFINED, 
+/**
+ * Attempts to recover from or throw a ScriptRuntimeException. Returns an instruction pointer to the nearest
+ * catch if on the current stack frame, and failing that, throws the exception.
+ * Params:
+ *  message = The message of the exception
+ *  vm = The VirtualMachine associated with the exception
+ *  chunk = The bytecode currently being executed
+ *  ip = The current instruction pointer
+ *  thrownValue = (Optional) If a ScriptAny is being thrown, this is the value
+ *  rethrow = (Optional) If the exception is being rethrown, the value should be vm._exc
+ * Returns:
+ *  The instruction pointer pointing to the nearest catch block. If none exists, the exception is thrown instead
+ *  of returning.
+ */
+private size_t throwRuntimeError(in string message, VirtualMachine vm, const ubyte[] chunk, 
+                            size_t ip, ScriptAny thrownValue = ScriptAny.UNDEFINED, 
                             ScriptRuntimeException rethrow = null)
 {
     if(rethrow)
         vm._exc = rethrow;
     else
         vm._exc = new ScriptRuntimeException(message);
+    
     if(thrownValue != ScriptAny.UNDEFINED)
         vm._exc.thrownValue = thrownValue;
     // unwind stack starting with current
-    if(vm._latestDebugMap && chunk.bytecode in vm._latestDebugMap)
+    if(chunk && vm._latestDebugMap && chunk in vm._latestDebugMap)
     {
-        immutable lineNum = vm._latestDebugMap[chunk.bytecode].getLineNumber(vm._ip);
-        vm._exc.scriptTraceback ~= tuple(lineNum, vm._latestDebugMap[chunk.bytecode].getSourceLine(lineNum));
+        // TODO fix error reporting
+        immutable lineNum = vm._latestDebugMap[chunk].getLineNumber(ip);
+        vm._exc.scriptTraceback ~= tuple(lineNum, vm._latestDebugMap[chunk].getSourceLine(lineNum));
     }
     // consume latest try-data entry if available
     if(vm._tryData.length > 0)
@@ -159,40 +172,18 @@ private int throwRuntimeError(in string message, VirtualMachine vm, Chunk chunk,
         for(int i = 0; i < depthToReduce; ++i)
             vm._environment = vm._environment.parent;
         vm._stack.size = tryData.stackSize;
-        vm._ip = tryData.catchGoto;
-        return 1;
+        return tryData.catchGoto;
     }
-    while(vm._callStack.size > 0)
-    {
-        auto csData = vm._callStack.pop(); // @suppress(dscanner.suspicious.unmodified)
-        vm._ip = csData.ip;
-        chunk.bytecode = csData.bc;
-        vm._tryData = csData.tryData;
-        vm._environment = csData.env;
-        if(chunk.bytecode in chunk.debugMap)
-        {
-            immutable lineNum = chunk.debugMap[chunk.bytecode].getLineNumber(vm._ip);
-            vm._exc.scriptTraceback ~= tuple(lineNum, chunk.debugMap[chunk.bytecode].getSourceLine(lineNum));
-        }
-        // look for a try-data entry from the popped call stack
-        if(vm._tryData.length > 0)
-        {
-            immutable tryData = vm._tryData[$-1];
-            vm._tryData = vm._tryData[0..$-1];
-            immutable depthToReduce = vm._environment.depth - tryData.depth;
-            for(int i = 0; i < depthToReduce; ++i)
-                vm._environment = vm._environment.parent;
-            vm._stack.size = tryData.stackSize;
-            vm._ip = tryData.catchGoto;
-            return 1;
-        }
-    }
-    if(vm._parent)
-    {
-        vm._parent._exc = vm._exc;
-    }
-    // there is no available script exception handler found so clear stack and throw the exception
-    vm._stack.size = 0;
+    // only set parent at end of chain
+    throw vm._exc;
+}
+
+/// Similar to the above function except directly throws because there are no try-data blocks in native code
+private void throwNativeRuntimeError(string reason, VirtualMachine vm, ScriptAny thrownValue = ScriptAny.UNDEFINED)
+{
+    vm._exc = new ScriptRuntimeException(reason);
+    if(thrownValue != ScriptAny.UNDEFINED)
+        vm._exc.thrownValue = thrownValue;
     throw vm._exc;
 }
 
@@ -202,126 +193,114 @@ private string opCodeToString(const OpCode op)
 }
 
 pragma(inline, true)
-private int opNop(VirtualMachine vm, Chunk chunk)
+private size_t opNop(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opConst(VirtualMachine vm, Chunk chunk)
+private size_t opConst(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable constID = decode!uint(chunk.bytecode[vm._ip + 1..$]);
-    auto value = chunk.constTable.get(constID);
+    immutable constID = decode!uint(chunk[ip + 1..$]);
+    auto value = vm._latestConstTable.get(constID);
     if(value.type == ScriptAny.Type.FUNCTION)
         value = value.toValue!ScriptFunction().copyCompiled(vm._environment);
     vm._stack.push(value);
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opConst0(VirtualMachine vm, Chunk chunk)
+private size_t opConst0(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     vm._stack.push(ScriptAny(0));
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opConst1(VirtualMachine vm, Chunk chunk)
+private size_t opConst1(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     vm._stack.push(ScriptAny(1));
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opPush(VirtualMachine vm, Chunk chunk)
+private size_t opPush(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable index = decode!int(chunk.bytecode[vm._ip + 1..$]);
+    immutable index = decode!int(chunk[ip + 1..$]);
     if(index < 0)
         vm._stack.push(vm._stack.array[$ + index]);
     else
         vm._stack.push(vm._stack.array[index]);
-    vm._ip += 1 + int.sizeof;
-    return 0;
+    return ip + 1 + int.sizeof;
 }
 
 pragma(inline, true)
-private int opPop(VirtualMachine vm, Chunk chunk)
+private size_t opPop(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     vm._lastValuePopped = vm._stack.pop();
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opPopN(VirtualMachine vm, Chunk chunk)
+private size_t opPopN(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable amount = decode!uint(chunk.bytecode[vm._ip + 1..$]);
+    immutable amount = decode!uint(chunk[ip + 1..$]);
     vm._stack.pop(amount);
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opSet(VirtualMachine vm, Chunk chunk)
+private size_t opSet(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable index = decode!uint(chunk.bytecode[vm._ip + 1..$]);
+    immutable index = decode!uint(chunk[ip + 1..$]);
     vm._stack.array[index] = vm._stack.array[$-1];
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opStack(VirtualMachine vm, Chunk chunk)
+private size_t opStack(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable n = decode!uint(chunk.bytecode[vm._ip + 1..$]);
+    immutable n = decode!uint(chunk[ip + 1..$]);
     ScriptAny[] undefineds = new ScriptAny[n];
     vm._stack.push(undefineds);
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opStack1(VirtualMachine vm, Chunk chunk)
+private size_t opStack1(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     vm._stack.push(ScriptAny.UNDEFINED);
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opArray(VirtualMachine vm, Chunk chunk)
+private size_t opArray(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable n = decode!uint(chunk.bytecode[vm._ip + 1..$]);
+    immutable n = decode!uint(chunk[ip + 1..$]);
     auto arr = vm._stack.pop(n);
     vm._stack.push(ScriptAny(arr));
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opObject(VirtualMachine vm, Chunk chunk)
+private size_t opObject(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable n = decode!uint(chunk.bytecode[vm._ip + 1..$]) * 2;
+    immutable n = decode!uint(chunk[ip + 1..$]) * 2;
     auto pairList = vm._stack.pop(n);
     auto obj = new ScriptObject("object", null, null);
     for(uint i = 0; i < n; i += 2)
         obj[pairList[i].toString()] = pairList[i+1];
     vm._stack.push(ScriptAny(obj));
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opClass(VirtualMachine vm, Chunk chunk)
+private size_t opClass(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable numMethods = decode!ubyte(chunk.bytecode[vm._ip + 1..$]);
-    immutable numGetters = decode!ubyte(chunk.bytecode[vm._ip + 2..$]);
-    immutable numSetters = decode!ubyte(chunk.bytecode[vm._ip + 3..$]);
-    immutable numStatics = decode!ubyte(chunk.bytecode[vm._ip + 4..$]);
+    immutable numMethods = decode!ubyte(chunk[ip + 1..$]);
+    immutable numGetters = decode!ubyte(chunk[ip + 2..$]);
+    immutable numSetters = decode!ubyte(chunk[ip + 3..$]);
+    immutable numStatics = decode!ubyte(chunk[ip + 4..$]);
     auto baseClass = vm._stack.pop();
     auto ctor = vm._stack.pop(); // @suppress(dscanner.suspicious.unmodified)
     auto statics = vm._stack.pop(numStatics);
@@ -335,13 +314,13 @@ private int opClass(VirtualMachine vm, Chunk chunk)
 
     auto constructor = ctor.toValue!ScriptFunction;
     if(constructor is null)
-        throw new VMException("Malformed class instruction: invalid constructor", vm._ip, OpCode.CLASS);
+        throw new VMException("Malformed class instruction: invalid constructor", ip, OpCode.CLASS);
 
     for(auto i = 0; i < numMethods; ++i)
     {
         auto method = methods[i].toValue!ScriptFunction; // @suppress(dscanner.suspicious.unmodified)
         if(method is null)
-            throw new VMException("Malformed class instruction: invalid method", vm._ip, OpCode.CLASS);
+            throw new VMException("Malformed class instruction: invalid method", ip, OpCode.CLASS);
         constructor["prototype"][methodNames[i].toString] = method;
     }
 
@@ -349,7 +328,7 @@ private int opClass(VirtualMachine vm, Chunk chunk)
     {
         auto getter = getters[i].toValue!ScriptFunction;
         if(getter is null)
-            throw new VMException("Malformed class instruction: invalid get property", vm._ip, OpCode.CLASS);
+            throw new VMException("Malformed class instruction: invalid get property", ip, OpCode.CLASS);
         constructor["prototype"].addGetterProperty(getterNames[i].toString(), getter);
     }
 
@@ -357,7 +336,7 @@ private int opClass(VirtualMachine vm, Chunk chunk)
     {
         auto setter = setters[i].toValue!ScriptFunction;
         if(setter is null)
-            throw new VMException("Malformed class instruction: invalid set property", vm._ip, OpCode.CLASS);
+            throw new VMException("Malformed class instruction: invalid set property", ip, OpCode.CLASS);
         constructor["prototype"].addSetterProperty(setterNames[i].toString(), setter);
     }
 
@@ -370,7 +349,7 @@ private int opClass(VirtualMachine vm, Chunk chunk)
     {
         auto baseClassCtor = baseClass.toValue!ScriptFunction;
         if(baseClassCtor is null)
-            return throwRuntimeError("Invalid base class " ~ baseClass.toString(), vm, chunk);
+            return throwRuntimeError("Invalid base class " ~ baseClass.toString(), vm, chunk, ip);
         auto ctorPrototype = constructor["prototype"].toValue!ScriptObject;
         ctorPrototype.prototype = baseClassCtor["prototype"].toValue!ScriptObject;
         constructor.prototype = baseClassCtor;
@@ -379,29 +358,27 @@ private int opClass(VirtualMachine vm, Chunk chunk)
     // push the resulting modified constructor
     vm._stack.push(ScriptAny(constructor));
 
-    vm._ip += 1 + 4 * ubyte.sizeof;
-    return 0;
+    return ip + 1 + 4 * ubyte.sizeof;
 }
 
 pragma(inline, true)
-private int opRegex(VirtualMachine vm, Chunk chunk)
+private size_t opRegex(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     auto regexString = vm._stack.pop().toString();
     auto parts = extract(regexString);
     auto regexResult = ScriptAny(new ScriptObject("RegExp", getRegExpProto, new ScriptRegExp(parts[0], parts[1])));
     vm._stack.push(regexResult);
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opIter(VirtualMachine vm, Chunk chunk)
+private size_t opIter(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     auto objToIterate = vm._stack.pop();
     // can be a string, array, or object
     // FUTURE: a Generator returned by a Generator function
     if(!(objToIterate.isObject))
-        return throwRuntimeError("Cannot iterate over non-object " ~ objToIterate.toString, vm, chunk);
+        return throwRuntimeError("Cannot iterate over non-object " ~ objToIterate.toString, vm, chunk, ip);
     if(objToIterate.type == ScriptAny.Type.STRING)
     {
         immutable elements = objToIterate.toValue!string;
@@ -517,101 +494,54 @@ private int opIter(VirtualMachine vm, Chunk chunk)
             })));
         }
     }
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opDel(VirtualMachine vm, Chunk chunk)
+private size_t opDel(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     auto memberToDelete = vm._stack.pop().toString();
     auto objToDelete = vm._stack.pop();
     auto obj = objToDelete.toValue!ScriptObject;
     if(obj is null)
         return throwRuntimeError("Cannot delete member of non-object " ~ objToDelete.toString,
-            vm, chunk);
+            vm, chunk, ip);
     obj.dictionary.remove(memberToDelete);
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opNew(VirtualMachine vm, Chunk chunk)
+private size_t opNew(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable n = decode!uint(chunk.bytecode[vm._ip + 1..$]) + 1;
+    immutable n = decode!uint(chunk[ip + 1..$]) + 1;
     auto callInfo = vm._stack.pop(n);
     auto funcAny = callInfo[0];
     auto args = callInfo[1..$];
-    
-    NativeFunctionError nfe = NativeFunctionError.NO_ERROR;
+
     if(funcAny.type != ScriptAny.Type.FUNCTION)
-        return throwRuntimeError("Unable to instantiate new object from non-function " ~ funcAny.toString(), vm, chunk);
+        return throwRuntimeError("Unable to instantiate new object from non-function " ~ funcAny.toString(), 
+            vm, chunk, ip);
     auto func = funcAny.toValue!ScriptFunction; // @suppress(dscanner.suspicious.unmodified)
 
     ScriptAny thisObj = new ScriptObject(func.functionName, func["prototype"].toValue!ScriptObject, null);
 
-    if(func.type == ScriptFunction.Type.SCRIPT_FUNCTION)
+    try 
     {
-        if(func.compiled.length == 0)
-            throw new VMException("Empty script function cannot be called", vm._ip, OpCode.CALL);
-        if(func.isGenerator)
-            return throwRuntimeError("Cannot use new with a Generator Function", vm, chunk);
-        vm._callStack.push(VirtualMachine.CallData(VirtualMachine.FuncCallType.NEW, chunk.bytecode, 
-                vm._ip, vm._environment, vm._tryData));
-        vm._environment = new Environment(func.closure, func.functionName);
-        vm._ip = 0;
-        chunk.bytecode = func.compiled;
-        vm._tryData = [];
-        // set this
-        vm._environment.forceSetVarOrConst("this", thisObj, true);
-        // set args
-        for(size_t i = 0; i < func.argNames.length; ++i)
-        {
-            if(i >= args.length)
-                vm._environment.forceSetVarOrConst(func.argNames[i], ScriptAny.UNDEFINED, false);
-            else
-                vm._environment.forceSetVarOrConst(func.argNames[i], args[i], false);
-        }
-        vm._environment.forceSetVarOrConst("arguments", ScriptAny(args), false);
-        return 0;
+        ScriptAny[string] values;
+        values["__new"] = ScriptAny(true);
+        auto newObject = vm.runFunction(func, thisObj, args, values);
+        vm._stack.push(newObject);
     }
-    else if(func.type == ScriptFunction.Type.NATIVE_FUNCTION)
+    catch(ScriptRuntimeException ex)
     {
-        auto nativeFunc = func.nativeFunction;
-        auto possibleError = nativeFunc(vm._environment, &thisObj, args, nfe);
-        if(nfe == NativeFunctionError.RETURN_VALUE_IS_EXCEPTION)
-            vm._stack.push(possibleError);
-        else
-            vm._stack.push(thisObj);
+        return throwRuntimeError(null, vm, chunk, ip, ex.thrownValue, ex);
     }
-    else if(func.type == ScriptFunction.Type.NATIVE_DELEGATE)
-    {
-        auto nativeDelegate = func.nativeDelegate;
-        auto possibleError = nativeDelegate(vm._environment, &thisObj, args, nfe);
-        if(nfe == NativeFunctionError.RETURN_VALUE_IS_EXCEPTION)
-            vm._stack.push(possibleError);
-        else
-            vm._stack.push(thisObj);
-    }
-    final switch(nfe)
-    {
-    case NativeFunctionError.NO_ERROR:
-        break;
-    case NativeFunctionError.RETURN_VALUE_IS_EXCEPTION:
-        return throwRuntimeError(vm._stack.pop().toString(), vm, chunk);
-    case NativeFunctionError.WRONG_NUMBER_OF_ARGS:
-        return throwRuntimeError("Wrong number of arguments to native function", vm, chunk);
-    case NativeFunctionError.WRONG_TYPE_OF_ARG:
-        return throwRuntimeError("Wrong type of argument to native function", vm, chunk);
-    }
-    if(vm._exc)
-        return throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opThis(VirtualMachine vm, Chunk chunk)
+private size_t opThis(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     bool _; // @suppress(dscanner.suspicious.unmodified)
     auto thisPtr = vm._environment.lookupVariableOrConst("this", _);
@@ -619,105 +549,98 @@ private int opThis(VirtualMachine vm, Chunk chunk)
         vm._stack.push(ScriptAny.UNDEFINED);
     else
         vm._stack.push(*thisPtr);
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opOpenScope(VirtualMachine vm, Chunk chunk)
+private size_t opOpenScope(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     vm._environment = new Environment(vm._environment);
     // debug writefln("Opening environment from parent %s", vm._environment.parent);
     // debug writefln("VM{ environment depth=%s", vm._environment.depth);
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opCloseScope(VirtualMachine vm, Chunk chunk)
+private size_t opCloseScope(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     vm._environment = vm._environment.parent;
     // debug writefln("Closing environment: %s", vm._environment);
     // debug writefln("VM} environment depth=%s", vm._environment.depth);
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opDeclVar(VirtualMachine vm, Chunk chunk)
+private size_t opDeclVar(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    auto constID = decode!uint(chunk.bytecode[vm._ip + 1..$]);
-    auto varName = chunk.constTable.get(constID).toString();
+    auto constID = decode!uint(chunk[ip + 1..$]);
+    auto varName = vm._latestConstTable.get(constID).toString();
     auto value = vm._stack.pop();
     immutable ok = vm._globals.declareVariableOrConst(varName, value, false);
     if(!ok)
-        return throwRuntimeError("Cannot redeclare global " ~ varName, vm, chunk);
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+        return throwRuntimeError("Cannot redeclare global " ~ varName, vm, chunk, ip);
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opDeclLet(VirtualMachine vm, Chunk chunk)
+private size_t opDeclLet(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    auto constID = decode!uint(chunk.bytecode[vm._ip + 1..$]);
-    auto varName = chunk.constTable.get(constID).toString();
+    auto constID = decode!uint(chunk[ip + 1..$]);
+    auto varName = vm._latestConstTable.get(constID).toString();
     auto value = vm._stack.pop();
     immutable ok = vm._environment.declareVariableOrConst(varName, value, false);
     if(!ok)
-        return throwRuntimeError("Cannot redeclare local " ~ varName, vm, chunk);
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+        return throwRuntimeError("Cannot redeclare local " ~ varName, vm, chunk, ip);
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opDeclConst(VirtualMachine vm, Chunk chunk)
+private size_t opDeclConst(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    auto constID = decode!uint(chunk.bytecode[vm._ip + 1..$]);
-    auto varName = chunk.constTable.get(constID).toString();
+    auto constID = decode!uint(chunk[ip + 1..$]);
+    auto varName = vm._latestConstTable.get(constID).toString();
     auto value = vm._stack.pop();
     immutable ok = vm._environment.declareVariableOrConst(varName, value, true);
     if(!ok)
-        return throwRuntimeError("Cannot redeclare const " ~ varName, vm, chunk);
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+        return throwRuntimeError("Cannot redeclare const " ~ varName, vm, chunk, ip);
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opGetVar(VirtualMachine vm, Chunk chunk)
+private size_t opGetVar(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    auto constID = decode!uint(chunk.bytecode[vm._ip + 1..$]);   
-    auto varName = chunk.constTable.get(constID).toString();
+    auto constID = decode!uint(chunk[ip + 1..$]);   
+    auto varName = vm._latestConstTable.get(constID).toString();
     bool isConst; // @suppress(dscanner.suspicious.unmodified)
     auto valuePtr = vm._environment.lookupVariableOrConst(varName, isConst);
     if(valuePtr == null)
-        return throwRuntimeError("Variable lookup failed: " ~ varName, vm, chunk);
+        return throwRuntimeError("Variable lookup failed: " ~ varName, vm, chunk, ip);
     vm._stack.push(*valuePtr);
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opSetVar(VirtualMachine vm, Chunk chunk)
+private size_t opSetVar(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    auto constID = decode!uint(chunk.bytecode[vm._ip + 1..$]);
-    auto varName = chunk.constTable.get(constID).toString();
+    auto constID = decode!uint(chunk[ip + 1..$]);
+    auto varName = vm._latestConstTable.get(constID).toString();
     bool isConst; // @suppress(dscanner.suspicious.unmodified)
     auto varPtr = vm._environment.lookupVariableOrConst(varName, isConst);
     if(varPtr == null)
     {
-        return throwRuntimeError("Cannot assign to undefined variable: " ~ varName, vm, chunk);
+        // maybe someday this will be the only way to declare globals
+        return throwRuntimeError("Cannot assign to undefined variable: " ~ varName, vm, chunk, ip);
     }
     auto value = vm._stack.peek(); // @suppress(dscanner.suspicious.unmodified)
     if(value == ScriptAny.UNDEFINED)
         vm._environment.unsetVariable(varName);
     else
         *varPtr = value;
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opObjGet(VirtualMachine vm, Chunk chunk)
+private size_t opObjGet(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     import std.utf: UTFException;
 
@@ -727,7 +650,7 @@ private int opObjGet(VirtualMachine vm, Chunk chunk)
     // TODO handle getters
     // if field is integer it is array access
     if(field.isNumber 
-    && (objToAccess.type == ScriptAny.Type.ARRAY || objToAccess.type == ScriptAny.Type.STRING))
+      && (objToAccess.type == ScriptAny.Type.ARRAY || objToAccess.type == ScriptAny.Type.STRING))
     {
         auto index = field.toValue!long;
         if(objToAccess.type == ScriptAny.Type.ARRAY)
@@ -736,7 +659,7 @@ private int opObjGet(VirtualMachine vm, Chunk chunk)
             if(index < 0)
                 index = arr.length + index;
             if(index < 0 || index >= arr.length)
-                return throwRuntimeError("Out of bounds array access", vm, chunk);
+                return throwRuntimeError("Out of bounds array access", vm, chunk, ip);
             vm._stack.push(arr[index]);
         }
         else if(objToAccess.type == ScriptAny.Type.STRING)
@@ -745,7 +668,7 @@ private int opObjGet(VirtualMachine vm, Chunk chunk)
             if(index < 0)
                 index = str.length + index;
             if(index < 0 || index >= str.length)
-                return throwRuntimeError("Out of bounds string access", vm, chunk);
+                return throwRuntimeError("Out of bounds string access", vm, chunk, ip);
             try 
             {
                 vm._stack.push(ScriptAny([str[index]]));
@@ -768,39 +691,43 @@ private int opObjGet(VirtualMachine vm, Chunk chunk)
                 // this might be a super property call
                 auto thisObj = getLocalThis(vm._environment);
                 ScriptAny retVal;
-                if(ScriptFunction.isInstanceOf(thisObj.toValue!ScriptObject, 
-                  objToAccess["constructor"].toValue!ScriptFunction))
+                try 
                 {
-                    retVal = vm.runFunction(getter, thisObj, []);
+                    if(ScriptFunction.isInstanceOf(thisObj.toValue!ScriptObject, 
+                    objToAccess["constructor"].toValue!ScriptFunction))
+                    {
+                        retVal = vm.runFunction(getter, thisObj, []);
+                    }
+                    else
+                    {
+                        retVal = vm.runFunction(getter, objToAccess, []);
+                    }
+                    vm._stack.push(retVal);
                 }
-                else
+                catch(ScriptRuntimeException ex)
                 {
-                    retVal = vm.runFunction(getter, objToAccess, []);
+                    return throwRuntimeError(null, vm, chunk, ip, ex.thrownValue, ex);
                 }
-                vm._stack.push(retVal);
-                if(vm._exc)
-                    throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
             }
             else
                 vm._stack.push(objToAccess[index]);
         }
         else
-            throwRuntimeError("Unable to access members of non-object " ~ objToAccess.toString(),
-                    vm, chunk);
+            return throwRuntimeError("Unable to access member " ~ index ~ " of non-object " ~ objToAccess.toString(),
+                    vm, chunk, ip);
     }
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opObjSet(VirtualMachine vm, Chunk chunk)
+private size_t opObjSet(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     auto objToAccess = vm._stack.array[$-3];
     auto fieldToAssign = vm._stack.array[$-2]; // @suppress(dscanner.suspicious.unmodified)
     auto value = vm._stack.array[$-1];
     vm._stack.pop(3);
     if(fieldToAssign.isNumber 
-    && (objToAccess.type == ScriptAny.Type.ARRAY || objToAccess.type == ScriptAny.Type.STRING))
+      && (objToAccess.type == ScriptAny.Type.ARRAY || objToAccess.type == ScriptAny.Type.STRING))
     {
         auto index = fieldToAssign.toValue!long;
         if(objToAccess.type == ScriptAny.Type.ARRAY)
@@ -809,7 +736,7 @@ private int opObjSet(VirtualMachine vm, Chunk chunk)
             if(index < 0)
                 index = arr.length + index;
             if(index < 0 || index >= arr.length)
-                return throwRuntimeError("Out of bounds array assignment", vm, chunk);
+                return throwRuntimeError("Out of bounds array assignment", vm, chunk, ip);
             arr[index] = value;
             vm._stack.push(value);
         }
@@ -818,7 +745,8 @@ private int opObjSet(VirtualMachine vm, Chunk chunk)
     {
         auto index = fieldToAssign.toValue!string;
         if(!objToAccess.isObject)
-            return throwRuntimeError("Unable to assign member of non-object " ~ objToAccess.toString(), vm, chunk);
+            return throwRuntimeError("Unable to assign member " ~ index ~ " of non-object " 
+                ~ objToAccess.toString(), vm, chunk, ip);
         auto obj = objToAccess.toValue!ScriptObject; // @suppress(dscanner.suspicious.unmodified)
         auto setter = obj.findSetter(index);
         if(setter)
@@ -826,281 +754,220 @@ private int opObjSet(VirtualMachine vm, Chunk chunk)
             auto thisObj = getLocalThis(vm._environment);
             immutable isSuperProp = ScriptFunction.isInstanceOf(thisObj.toValue!ScriptObject, 
                     objToAccess["constructor"].toValue!ScriptFunction);
-            if(isSuperProp)
-                vm.runFunction(setter, thisObj, [value]);
-            else
-                vm.runFunction(setter, objToAccess, [value]);
-            if(vm._exc)
-                throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
-            // if getter push that or else undefined
-            auto getter = obj.findGetter(index);
-            if(getter)
+            try 
             {
                 if(isSuperProp)
-                    vm._stack.push(vm.runFunction(getter, thisObj, []));
+                    vm.runFunction(setter, thisObj, [value]);
                 else
-                    vm._stack.push(vm.runFunction(getter, objToAccess, []));
+                    vm.runFunction(setter, objToAccess, [value]);
+                // if getter push that or else undefined
+                auto getter = obj.findGetter(index);
+                if(getter)
+                {
+                    if(isSuperProp)
+                        vm._stack.push(vm.runFunction(getter, thisObj, []));
+                    else
+                        vm._stack.push(vm.runFunction(getter, objToAccess, []));
+                }
+                else
+                {
+                    vm._stack.push(ScriptAny.UNDEFINED);
+                }
             }
-            else
+            catch(ScriptRuntimeException ex)
             {
-                vm._stack.push(ScriptAny.UNDEFINED);
+                return throwRuntimeError(null, vm, chunk, ip, ex.thrownValue, ex);
             }
-            
-            if(vm._exc)
-                return throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
         }
         else
         {
             if(obj.hasGetter(index))
                 return throwRuntimeError("Object " ~ obj.toString() ~ " has getter for property "
-                    ~ index ~ " but no setter.", vm, chunk);
+                    ~ index ~ " but no setter.", vm, chunk, ip);
             objToAccess[index] = value;
             vm._stack.push(value);
         }
     }
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opCall(VirtualMachine vm, Chunk chunk)
+private size_t opCall(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable n = decode!uint(chunk.bytecode[vm._ip + 1..$]) + 2;
+    immutable n = decode!uint(chunk[ip + 1..$]) + 2;
     if(vm._stack.size < n)
     {
         vm.printStack();
-        throw new VMException("opCall failure, stack < " ~ n.to!string, vm._ip, OpCode.CALL);
+        throw new VMException("opCall failure, stack < " ~ n.to!string, ip, OpCode.CALL);
     }
     auto callInfo = vm._stack.pop(n);
     auto thisObj = callInfo[0]; // @suppress(dscanner.suspicious.unmodified)
     auto funcAny = callInfo[1];
     auto args = callInfo[2..$];
-    NativeFunctionError nfe = NativeFunctionError.NO_ERROR;
     if(funcAny.type != ScriptAny.Type.FUNCTION)
-        return throwRuntimeError("Unable to call non-function " ~ funcAny.toString(), vm, chunk);
+        return throwRuntimeError("Unable to call non-function " ~ funcAny.toString(), vm, chunk, ip);
     auto func = funcAny.toValue!ScriptFunction; // @suppress(dscanner.suspicious.unmodified)
-    if(func.boundThis != ScriptAny.UNDEFINED)
-        thisObj = func.boundThis;
-    if(func.type == ScriptFunction.Type.SCRIPT_FUNCTION)
+    if(func.isGenerator)
     {
-        if(func.compiled.length == 0)
-            throw new VMException("Empty script function cannot be called", vm._ip, OpCode.CALL);
-        
-        if(!func.isGenerator) // only script functions can be marked as generators
-        {
-            vm._callStack.push(VirtualMachine.CallData(VirtualMachine.FuncCallType.NORMAL, chunk.bytecode, 
-                    vm._ip, vm._environment, vm._tryData));
-            vm._environment = new Environment(func.closure, func.functionName);
-            vm._ip = 0;
-            chunk.bytecode = func.compiled;
-            vm._tryData = [];
-            // set this
-            vm._environment.forceSetVarOrConst("this", thisObj, true);
-            // set args
-            for(size_t i = 0; i < func.argNames.length; ++i)
-            {
-                if(i >= args.length)
-                    vm._environment.forceSetVarOrConst(func.argNames[i], ScriptAny.UNDEFINED, false);
-                else
-                    vm._environment.forceSetVarOrConst(func.argNames[i], args[i], false);
-            }
-            // set arguments variable
-            vm._environment.forceSetVarOrConst("arguments", ScriptAny(args), false);
-            // check exc in case exception was thrown during call or apply
-            if(vm._exc)
-                return throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
-            return 0;
-        }
-        else
-        {
-            ScriptObject newGen = new ScriptObject("Generator", getGeneratorPrototype,
-                    new ScriptGenerator(vm._environment, func, args, thisObj));
-            vm._stack.push(ScriptAny(newGen));
-            vm._ip += 1 + uint.sizeof;
-            return 0;
-        }
+        ScriptObject newGen = new ScriptObject("Generator", getGeneratorPrototype,
+            new ScriptGenerator(vm._environment, func, args, thisObj));
+        vm._stack.push(ScriptAny(newGen));
+        return ip + 1 + uint.sizeof;
     }
-    else if(func.type == ScriptFunction.Type.NATIVE_FUNCTION)
+
+    try 
     {
-        auto nativeFunc = func.nativeFunction;
-        vm._stack.push(nativeFunc(vm._environment, &thisObj, args, nfe));
+        vm._stack.push(vm.runFunction(func, thisObj, args, null));
     }
-    else if(func.type == ScriptFunction.Type.NATIVE_DELEGATE)
+    catch(ScriptRuntimeException ex)
     {
-        auto nativeDelegate = func.nativeDelegate;
-        vm._stack.push(nativeDelegate(vm._environment, &thisObj, args, nfe));
+        return throwRuntimeError(null, vm, chunk, ip, ex.thrownValue, ex);
     }
-    final switch(nfe)
-    {
-    case NativeFunctionError.NO_ERROR:
-        break;
-    case NativeFunctionError.RETURN_VALUE_IS_EXCEPTION:
-        return throwRuntimeError(vm._stack.peek().toString(), vm, chunk);
-    case NativeFunctionError.WRONG_NUMBER_OF_ARGS:
-        return throwRuntimeError("Wrong number of arguments to native function", vm, chunk);
-    case NativeFunctionError.WRONG_TYPE_OF_ARG:
-        return throwRuntimeError("Wrong type of argument to native function", vm, chunk);
-    }
-    if(vm._exc)
-        return throwRuntimeError(null, vm, chunk, ScriptAny.UNDEFINED, vm._exc);
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opJmpFalse(VirtualMachine vm, Chunk chunk)
+private size_t opJmpFalse(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable jmpAmount = decode!int(chunk.bytecode[vm._ip + 1..$]);
+    immutable jmpAmount = decode!int(chunk[ip + 1..$]);
     immutable shouldJump = vm._stack.pop();
     if(!shouldJump)
-        vm._ip += jmpAmount;
+        return ip + jmpAmount;
     else
-        vm._ip += 1 + int.sizeof;
-    return 0;
+        return ip + 1 + int.sizeof;
 }
 
 pragma(inline, true)
-private int opJmp(VirtualMachine vm, Chunk chunk)
+private size_t opJmp(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable jmpAmount = decode!int(chunk.bytecode[vm._ip + 1..$]);
-    vm._ip += jmpAmount;
-    return 0;
+    immutable jmpAmount = decode!int(chunk[ip + 1..$]);
+    return ip + jmpAmount;
 }
 
 pragma(inline, true)
-private int opSwitch(VirtualMachine vm, Chunk chunk)
+private size_t opSwitch(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable relAbsJmp = decode!uint(chunk.bytecode[vm._ip + 1..$]);
+    immutable relAbsJmp = decode!uint(chunk[ip + 1..$]);
     auto valueToTest = vm._stack.pop();
     auto jumpTableArray = vm._stack.pop();
     // build the jump table out of the entries
     if(jumpTableArray.type != ScriptAny.Type.ARRAY)
-        throw new VMException("Invalid jump table", vm._ip, OpCode.SWITCH);
+        throw new VMException("Invalid jump table", ip, OpCode.SWITCH);
     int[ScriptAny] jmpTable;
     foreach(entry ; jumpTableArray.toValue!(ScriptAny[]))
     {
         if(entry.type != ScriptAny.Type.ARRAY)
-            throw new VMException("Invalid jump table entry", vm._ip, OpCode.SWITCH);
+            throw new VMException("Invalid jump table entry", ip, OpCode.SWITCH);
         auto entryArray = entry.toValue!(ScriptAny[]);
         if(entryArray.length < 2)
-            throw new VMException("Invalid jump table entry size", vm._ip, OpCode.SWITCH);
+            throw new VMException("Invalid jump table entry size", ip, OpCode.SWITCH);
         jmpTable[entryArray[0]] = entryArray[1].toValue!int;
     }
     if(valueToTest in jmpTable)
-        vm._ip = jmpTable[valueToTest];
+        return jmpTable[valueToTest];
     else
-        vm._ip = relAbsJmp;
-    return 0;
+        return relAbsJmp;
 }
 
 pragma(inline, true)
-private int opGoto(VirtualMachine vm, Chunk chunk)
+private size_t opGoto(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable address = decode!uint(chunk.bytecode[vm._ip + 1..$]);
-    immutable depth = decode!ubyte(chunk.bytecode[vm._ip+1+uint.sizeof..$]);
+    immutable address = decode!uint(chunk[ip + 1..$]);
+    immutable depth = decode!ubyte(chunk[ip+1+uint.sizeof..$]);
     for(ubyte i = 0; i < depth; ++i)
     {
         vm._environment = vm._environment.parent;
     }
-    vm._ip = address;
-    return 0;
+    return address;
 }
 
 pragma(inline, true)
-private int opThrow(VirtualMachine vm, Chunk chunk)
+private size_t opThrow(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     auto valToThrow = vm._stack.pop();
-    return throwRuntimeError("Uncaught script exception", vm, chunk, valToThrow);
+    return throwRuntimeError("Uncaught script exception", vm, chunk, ip, valToThrow);
 }
 
 pragma(inline, true)
-private int opRethrow(VirtualMachine vm, Chunk chunk)
+private size_t opRethrow(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     if(vm._exc)
-        return throwRuntimeError(vm._exc.msg, vm, chunk, vm._exc.thrownValue, vm._exc);
-    ++vm._ip;
-    return 0;
+        return throwRuntimeError(vm._exc.msg, vm, chunk, ip, vm._exc.thrownValue, vm._exc);
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opTry(VirtualMachine vm, Chunk chunk)
+private size_t opTry(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable catchGoto = decode!uint(chunk.bytecode[vm._ip + 1..$]);
+    immutable catchGoto = decode!uint(chunk[ip + 1..$]);
     immutable depth = cast(int)vm._environment.depth();
     vm._tryData ~= VirtualMachine.TryData(depth, vm._stack.size, catchGoto);
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opEndTry(VirtualMachine vm, Chunk chunk)
+private size_t opEndTry(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     vm._tryData = vm._tryData[0..$-1];
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opLoadExc(VirtualMachine vm, Chunk chunk)
+private size_t opLoadExc(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     if(vm._exc is null)
-        throw new VMException("An exception was never thrown", vm._ip, OpCode.LOADEXC);
+        throw new VMException("An exception was never thrown", ip, OpCode.LOADEXC);
     if(vm._exc.thrownValue != ScriptAny.UNDEFINED)
         vm._stack.push(vm._exc.thrownValue);
     else
         vm._stack.push(ScriptAny(vm._exc.msg));
     vm._exc = null; // once loaded by a catch block it should be cleared
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opConcat(VirtualMachine vm, Chunk chunk)
+private size_t opConcat(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    immutable n = decode!uint(chunk.bytecode[vm._ip + 1..$]);
+    immutable n = decode!uint(chunk[ip + 1..$]);
     string result = "";
     auto values = vm._stack.pop(n);
     foreach(value ; values)
         result ~= value.toString();
     vm._stack.push(ScriptAny(result));
-    vm._ip += 1 + uint.sizeof;
-    return 0;
+    return ip + 1 + uint.sizeof;
 }
 
 pragma(inline, true)
-private int opBitNot(VirtualMachine vm, Chunk chunk)
+private size_t opBitNot(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     vm._stack.array[$-1] = ~vm._stack.array[$-1];
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opNot(VirtualMachine vm, Chunk chunk)
+private size_t opNot(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     vm._stack.array[$-1] = ScriptAny(!vm._stack.array[$-1]);
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opNegate(VirtualMachine vm, Chunk chunk)
+private size_t opNegate(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     vm._stack.array[$-1] = -vm._stack.array[$-1];
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opTypeof(VirtualMachine vm, Chunk chunk)
+private size_t opTypeof(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     vm._stack.array[$-1] = ScriptAny(vm._stack.array[$-1].typeToString());
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 pragma(inline, true)
-private int opInstanceOf(VirtualMachine vm, Chunk chunk)
+private size_t opInstanceOf(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     auto operands = vm._stack.pop(2);
     if(!operands[0].isObject)
@@ -1117,15 +984,13 @@ private int opInstanceOf(VirtualMachine vm, Chunk chunk)
             if(proto["constructor"].toValue!ScriptFunction is rhsFunc)
             {
                 vm._stack.push(ScriptAny(true));
-                ++vm._ip;
-                return 0;
+                return ip + 1;
             }
             proto = proto.prototype;
         }
     }
     vm._stack.push(ScriptAny(false));
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 private string DEFINE_BIN_OP(string name, string op)()
@@ -1133,12 +998,11 @@ private string DEFINE_BIN_OP(string name, string op)()
     import std.format: format;
     return format(q{
 pragma(inline, true)
-private int %1$s(VirtualMachine vm, Chunk chunk)
+private size_t %1$s(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     auto operands = vm._stack.pop(2);
     vm._stack.push(operands[0] %2$s operands[1]);
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
     }, name, op);
 }
@@ -1158,12 +1022,11 @@ private string DEFINE_BIN_BOOL_OP(string name, string op)()
     import std.format: format;
     return format(q{
 pragma(inline, true)
-private int %1$s(VirtualMachine vm, Chunk chunk)
+private size_t %1$s(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     auto operands = vm._stack.pop(2);
     vm._stack.push(ScriptAny(operands[0] %2$s operands[1]));
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
     }, name, op);
 }
@@ -1176,64 +1039,28 @@ mixin(DEFINE_BIN_BOOL_OP!("opEQ", "=="));
 mixin(DEFINE_BIN_BOOL_OP!("opNEQ", "!="));
 
 pragma(inline, true)
-private int opStrictEquals(VirtualMachine vm, Chunk chunk)
+private size_t opStrictEquals(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     auto operands = vm._stack.pop(2);
     vm._stack.push(ScriptAny(operands[0].strictEquals(operands[1])));
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 mixin(DEFINE_BIN_OP!("opBitAnd", "&"));
 mixin(DEFINE_BIN_OP!("opBitOr", "|"));
 mixin(DEFINE_BIN_OP!("opBitXor", "^"));
 
-mixin(DEFINE_BIN_BOOL_OP!("opAnd", "&&"));
-
 pragma(inline, true)
-private int opOr(VirtualMachine vm, Chunk chunk)
+private size_t opReturn(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
-    auto operands = vm._stack.pop(2);
-    vm._stack.push(operands[0].orOp(operands[1]));
-    ++vm._ip;
-    return 0;
+    throw new VMException("opReturn should never be called directly", ip, OpCode.RETURN);
 }
 
 pragma(inline, true)
-private int opReturn(VirtualMachine vm, Chunk chunk)
-{
-    if(vm._stack.size < 1)
-        throw new VMException("Return value missing from return", vm._ip, OpCode.RETURN);
-
-    if(vm._callStack.size > 0)
-    {
-        auto fcdata = vm._callStack.pop(); // @suppress(dscanner.suspicious.unmodified)
-        chunk.bytecode = fcdata.bc;
-        if(fcdata.fct == VirtualMachine.FuncCallType.NEW)
-        {
-            // pop whatever was returned and push the "this"
-            vm._stack.pop();
-            bool _;
-            vm._stack.push(*vm._environment.lookupVariableOrConst("this", _));
-        }
-        vm._ip = fcdata.ip;
-        vm._environment = fcdata.env;
-        vm._tryData = fcdata.tryData;
-    }
-    else
-    {
-        vm._ip = chunk.bytecode.length;
-    }
-    vm._ip += 1 + uint.sizeof; // the size of call()    
-    return 0;
-}
-
-pragma(inline, true)
-private int opHalt(VirtualMachine vm, Chunk chunk)
+private size_t opHalt(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
     vm._stopped = true;
-    ++vm._ip;
-    return 0;
+    return ip + 1;
 }
 
 /**
@@ -1244,10 +1071,12 @@ private int opHalt(VirtualMachine vm, Chunk chunk)
 class VirtualMachine
 {
     /// ctor
-    this(Environment globalEnv)
+    this(Environment globalEnv, bool printDisasm = false, bool printSteps = false)
     {
         _environment = globalEnv;
         _globals = globalEnv;
+        _printDisassembly = printDisasm;
+        _printSteps = printSteps;
         _ops[] = &opNop;
         _ops[OpCode.CONST] = &opConst;
         _ops[OpCode.CONST_0] = &opConst0;
@@ -1310,30 +1139,26 @@ class VirtualMachine
         _ops[OpCode.BITAND] = &opBitAnd;
         _ops[OpCode.BITOR] = &opBitOr;
         _ops[OpCode.BITXOR] = &opBitXor;
-        _ops[OpCode.AND] = &opAnd;
-        _ops[OpCode.OR] = &opOr;
         _ops[OpCode.RETURN] = &opReturn;
         _ops[OpCode.HALT] = &opHalt;
         _stack.reserve(256);
     }
 
     /// print a chunk instruction by instruction, using the const table to indicate values
-    void printChunk(Chunk chunk, bool printConstTable=false)
+    void printProgram(Program program, bool printConstTable=false)
     {
         if(printConstTable)
         {
             writeln("===== CONST TABLE =====");
-            foreach(index, value ; chunk.constTable)
+            foreach(index, value ; program.constTable)
             {
                 writef("#%s: ", index);
                 if(value.type == ScriptAny.Type.FUNCTION)
                 {
                     auto fn = value.toValue!ScriptFunction;
                     writeln("<function> " ~ fn.functionName);
-                    auto funcChunk = new Chunk();
-                    funcChunk.constTable = chunk.constTable;
-                    funcChunk.bytecode = fn.compiled;
-                    printChunk(funcChunk, false);
+                    auto funcProgram = new Program(program.constTable, fn);
+                    printProgram(funcProgram, false);
                 }
                 else
                 {
@@ -1348,10 +1173,10 @@ class VirtualMachine
         if(printConstTable)
             writeln("===== DISASSEMBLY =====");
         size_t ip = 0;
-        while(ip < chunk.bytecode.length)
+        while(ip < program.mainFunction.compiled.length)
         {
-            auto op = cast(OpCode)chunk.bytecode[ip];
-            printInstruction(ip, chunk);
+            auto op = cast(OpCode)program.mainFunction.compiled[ip];
+            printInstruction(ip, program.mainFunction.compiled);
             switch(op)
             {
             case OpCode.NOP:
@@ -1468,8 +1293,6 @@ class VirtualMachine
             case OpCode.BITAND:
             case OpCode.BITOR:
             case OpCode.BITXOR:
-            case OpCode.AND:
-            case OpCode.OR:
                 ++ip;
                 break;
             case OpCode.RETURN:
@@ -1484,17 +1307,17 @@ class VirtualMachine
     }
 
     /// prints an individual instruction without moving the ip
-    void printInstruction(in size_t ip, Chunk chunk)
+    void printInstruction(in size_t ip, const ubyte[] chunk)
     {
-        auto op = cast(OpCode)chunk.bytecode[ip];
+        auto op = cast(OpCode)chunk[ip];
         switch(op)
         {
         case OpCode.NOP:
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.CONST: {
-            immutable constID = decode!uint(chunk.bytecode[ip + 1..$]);
-            printInstructionWithConstID(ip, op, constID, chunk);
+            immutable constID = decode!uint(chunk[ip + 1..$]);
+            printInstructionWithConstID(ip, op, constID, _latestConstTable);
             break;
         }
         case OpCode.CONST_0:
@@ -1502,7 +1325,7 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.PUSH: {
-            immutable index = decode!int(chunk.bytecode[ip + 1..$]);
+            immutable index = decode!int(chunk[ip + 1..$]);
             writefln("%05d: %s index=%s", ip, op.opCodeToString, index);
             break;
         }
@@ -1510,17 +1333,17 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.POPN: {
-            immutable amount = decode!uint(chunk.bytecode[ip + 1..$]);
+            immutable amount = decode!uint(chunk[ip + 1..$]);
             writefln("%05d: %s amount=%s", ip, op.opCodeToString, amount);
             break;
         }
         case OpCode.SET: {
-            immutable index = decode!uint(chunk.bytecode[ip + 1..$]);
+            immutable index = decode!uint(chunk[ip + 1..$]);
             writefln("%05d: %s index=%s", ip, op.opCodeToString, index);
             break;
         }
         case OpCode.STACK: {
-            immutable n = decode!uint(chunk.bytecode[ip + 1..$]);
+            immutable n = decode!uint(chunk[ip + 1..$]);
             writefln("%05d: %s n=%s", ip, op.opCodeToString, n);
             break;
         }
@@ -1528,20 +1351,20 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.ARRAY: {
-            immutable n = decode!uint(chunk.bytecode[ip + 1..$]);
+            immutable n = decode!uint(chunk[ip + 1..$]);
             writefln("%05d: %s n=%s", ip, op.opCodeToString, n);
             break;
         }
         case OpCode.OBJECT: {
-            immutable n = decode!uint(chunk.bytecode[ip + 1..$]);
+            immutable n = decode!uint(chunk[ip + 1..$]);
             writefln("%05d: %s n=%s", ip, op.opCodeToString, n);
             break;
         }
         case OpCode.CLASS: {
-            immutable numMethods = decode!ubyte(chunk.bytecode[ip + 1..$]);
-            immutable numGetters = decode!ubyte(chunk.bytecode[ip + 2..$]);
-            immutable numSetters = decode!ubyte(chunk.bytecode[ip + 3..$]);
-            immutable numStatics = decode!ubyte(chunk.bytecode[ip + 4..$]);
+            immutable numMethods = decode!ubyte(chunk[ip + 1..$]);
+            immutable numGetters = decode!ubyte(chunk[ip + 2..$]);
+            immutable numSetters = decode!ubyte(chunk[ip + 3..$]);
+            immutable numStatics = decode!ubyte(chunk[ip + 4..$]);
             writefln("%05d: %s %s,%s,%s,%s", ip, op.opCodeToString, numMethods, numGetters, numSetters, numStatics);
             break;
         }
@@ -1550,7 +1373,7 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.NEW: {
-            immutable args = decode!uint(chunk.bytecode[ip + 1..$]);
+            immutable args = decode!uint(chunk[ip + 1..$]);
             writefln("%05d: %s args=%s", ip, op.opCodeToString, args);
             break;
         }
@@ -1564,14 +1387,14 @@ class VirtualMachine
         case OpCode.DECLVAR: 
         case OpCode.DECLLET:
         case OpCode.DECLCONST: {
-            immutable constID = decode!uint(chunk.bytecode[ip + 1..$]);
-            printInstructionWithConstID(ip, op, constID, chunk);
+            immutable constID = decode!uint(chunk[ip + 1..$]);
+            printInstructionWithConstID(ip, op, constID, _latestConstTable);
             break;
         }
         case OpCode.GETVAR:
         case OpCode.SETVAR: {
-            immutable constID = decode!uint(chunk.bytecode[ip + 1..$]);
-            printInstructionWithConstID(ip, op, constID, chunk);
+            immutable constID = decode!uint(chunk[ip + 1..$]);
+            printInstructionWithConstID(ip, op, constID, _latestConstTable);
             break;
         }
         case OpCode.OBJSET:
@@ -1579,24 +1402,24 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.CALL: {
-            immutable args = decode!uint(chunk.bytecode[ip + 1..$]);
+            immutable args = decode!uint(chunk[ip + 1..$]);
             writefln("%05d: %s args=%s", ip, op.opCodeToString, args);
             break;
         }
         case OpCode.JMPFALSE: 
         case OpCode.JMP: {
-            immutable jump = decode!int(chunk.bytecode[ip + 1..$]);
+            immutable jump = decode!int(chunk[ip + 1..$]);
             writefln("%05d: %s jump=%s", ip, op.opCodeToString, jump);
             break;
         }
         case OpCode.SWITCH: {
-            immutable def = decode!uint(chunk.bytecode[ip + 1..$]);
+            immutable def = decode!uint(chunk[ip + 1..$]);
             writefln("%05d: %s default=%s", ip, op.opCodeToString, def);
             break;
         }
         case OpCode.GOTO: {
-            immutable instruction = decode!uint(chunk.bytecode[ip + 1..$]);
-            immutable depth = decode!ubyte(chunk.bytecode[ip + 1 + uint.sizeof..$]);
+            immutable instruction = decode!uint(chunk[ip + 1..$]);
+            immutable depth = decode!ubyte(chunk[ip + 1 + uint.sizeof..$]);
             writefln("%05d: %s instruction=%s, depth=%s", ip, op.opCodeToString, instruction, depth);
             break;
         }
@@ -1605,7 +1428,7 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.TRY: {
-            immutable catchGoto = decode!uint(chunk.bytecode[ip + 1..$]);
+            immutable catchGoto = decode!uint(chunk[ip + 1..$]);
             writefln("%05d: %s catch=%s", ip, op.opCodeToString, catchGoto);
             break;
         }
@@ -1614,7 +1437,7 @@ class VirtualMachine
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.CONCAT: {
-            immutable n = decode!uint(chunk.bytecode[ip + 1..$]);
+            immutable n = decode!uint(chunk[ip + 1..$]);
             writefln("%05d: %s n=%s", ip, op.opCodeToString, n);
             break;
         }
@@ -1639,8 +1462,6 @@ class VirtualMachine
         case OpCode.BITAND:
         case OpCode.BITOR:
         case OpCode.BITXOR:
-        case OpCode.AND:
-        case OpCode.OR:
             writefln("%05d: %s", ip, op.opCodeToString);
             break;
         case OpCode.RETURN:
@@ -1684,126 +1505,137 @@ class VirtualMachine
         writeln("]");
     }
 
-    /// run a chunk of bytecode with a given const table
-    ScriptAny run(Chunk chunk, bool printDebugInfo=false, bool retCS=false)
+    /// Runs a compiled program
+    ScriptAny runProgram(Program program, ScriptAny[] args)
     {
-        _ip = 0;
-        ubyte op;
-        _stopped = false;
         _exc = null;
-        _currentConstTable = chunk.constTable;
-        if(_latestDebugMap != chunk.debugMap && chunk.debugMap != null)
-            _latestDebugMap = chunk.debugMap;
-        int retCSCallDepth = 1;
-        while(_ip < chunk.bytecode.length && !_stopped)
+        _stopped = false;
+        auto prevConstTable = _latestConstTable; // @suppress(dscanner.suspicious.unmodified)
+        _latestConstTable = program.constTable;
+        auto prevDebugMap = _latestDebugMap; // @suppress(dscanner.suspicious.unmodified)
+        _latestDebugMap = program.debugMap;
+        auto oldEnv = _environment; // @suppress(dscanner.suspicious.unmodified)
+        _environment = new Environment(_environment, program.mainFunction.functionName);
+        debug if(_printDisassembly)
+            printProgram(program, true);
+        try 
         {
-            op = chunk.bytecode[_ip];
-            // handle runFunction
-            if(retCS)
-            {
-                if(op == OpCode.RETURN)
-                {
-                    --retCSCallDepth;
-                    if(retCSCallDepth <= 0)
-                        return _stack.pop();
-                }
-                else if(op == OpCode.CALL || op == OpCode.NEW)
-                    ++retCSCallDepth;
-            }
-            if(printDebugInfo)
-                printInstruction(_ip, chunk);
-            _ops[op](this, chunk);
-            if(printDebugInfo)
-                printStack();
+            return runFunction(program.mainFunction, ScriptAny.UNDEFINED, args, null);
         }
-        // if something is on the stack, that's the return value
-        ScriptAny retVal;
-        if(_stack.size > 0)
-            retVal = _stack.pop();
-        
-        // runQueue();
-
-        return retVal;
+        finally 
+        {
+            // leave them non-null for async loop
+            if(prevConstTable)
+                _latestConstTable = prevConstTable;
+            if(prevDebugMap)
+                _latestDebugMap = prevDebugMap;
+            _environment = oldEnv;
+        }
     }
 
-    /// For calling script functions with call or apply. Ugly hackish function that needs
-    /// to be reworked.
-    package(mildew) ScriptAny runFunction(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args, 
-                                          ScriptAny yieldFunc=ScriptAny.UNDEFINED) // this parameter is necessary
+    /**
+     * This method provides a common interface for calling any ScriptFunction under the same
+     * compilation unit as the initial program. It should not be used to run "foreign" functions
+     * with a different const table. Use runProgram for that. This method may throw ScriptRuntimeException. Such
+     * an exception is caught at opNew and opCall boundaries and propagated or caught by the script.
+     * Params:
+     *  func = The function to be run.
+     *  thisObj = The "this" object to be used.
+     *  args = The arguments to be passed to the function. If this is a SCRIPT_FUNCTION the arguments
+     *         will be set up by this method.
+     *  contextValues = Special meaning variables that are added to the SCRIPT_FUNCTION environment. For example,
+     *      \_\_new:true means that a modified thisObj will be returned. \_\_yield\_\_:yieldFunc is used for Generator
+     *      functions.
+     * Returns:
+     *   The return value of the function if an exception is not thrown in most cases (see contextValues).
+     */
+    ScriptAny runFunction(ScriptFunction func, ScriptAny thisObj, ScriptAny[] args, 
+                          ScriptAny[string] contextValues=null)
     {
-        ScriptAny result;
-        NativeFunctionError nfe;
-        if(func.type == ScriptFunction.Type.SCRIPT_FUNCTION)
+        ScriptAny retVal;
+        NativeFunctionError nfe = NativeFunctionError.NO_ERROR;
+        if(func.boundThis != ScriptAny.UNDEFINED)
+            thisObj = func.boundThis;
+        final switch(func.type)
         {
-            auto chunk = new Chunk();
-            chunk.constTable = _currentConstTable;
-            chunk.bytecode = func.compiled;
-            auto oldTryData = _tryData; // @suppress(dscanner.suspicious.unmodified)
-            _tryData = [];
-            immutable oldIP = _ip;
+        case ScriptFunction.Type.SCRIPT_FUNCTION: {
             auto oldEnv = _environment; // @suppress(dscanner.suspicious.unmodified)
-            _environment = new Environment(func.closure);
-            // THIS MAY NOT BE TEMPORARY
-            if(yieldFunc != ScriptAny.UNDEFINED)
-            {
-                _environment.forceSetVarOrConst("yield", yieldFunc, true);
-                // allow for __yield__ syntax inside of manually created Generators
-                _environment.forceSetVarOrConst("__yield__", yieldFunc, true);
-            }
-            // ^
+            _environment = func.closure is null ? 
+                new Environment(_environment, func.functionName) :
+                new Environment(func.closure, func.functionName);
+            auto oldTrys = _tryData; // @suppress(dscanner.suspicious.unmodified)
+            _tryData = [];
+            immutable oldStack = _stack.size();
             _environment.forceSetVarOrConst("this", thisObj, false);
             _environment.forceSetVarOrConst("arguments", ScriptAny(args), false);
             for(size_t i = 0; i < func.argNames.length; ++i)
             {
-                if(i >= args.length)
-                    _environment.forceSetVarOrConst(func.argNames[i], ScriptAny.UNDEFINED, false);
-                else
+                if(i < args.length)
                     _environment.forceSetVarOrConst(func.argNames[i], args[i], false);
+                else
+                    _environment.forceSetVarOrConst(func.argNames[i], ScriptAny.UNDEFINED, false);
             }
-            try
+            foreach(name, value ; contextValues)
+                _environment.forceSetVarOrConst(name, value, true);
+            try 
             {
-                // debug writefln("_environment=%s", _environment);
-                // debug writefln("_environment.g.interpreter=%s", _environment.getGlobalEnvironment.interpreter);
-                result = run(chunk, _globals.interpreter.printVMDebugInfo, true);
-
-            }
-            catch(ScriptRuntimeException ex)
-            {
-                _exc = ex;
+                retVal = runBytecode(func.compiled);
+                if("__new" in contextValues)
+                    return thisObj;
+                else
+                    return retVal;
             }
             finally 
             {
                 _environment = oldEnv;
-                _ip = oldIP;
-                _tryData = oldTryData;
+                _tryData = oldTrys;
+                _stack.size = oldStack;
             }
-            return result;
         }
-        else if(func.type == ScriptFunction.Type.NATIVE_FUNCTION)
-        {
-            auto nf = func.nativeFunction;
-            result = nf(_environment, &thisObj, args, nfe);
+        case ScriptFunction.Type.NATIVE_FUNCTION:
+            retVal = func.nativeFunction()(_environment, &thisObj, args, nfe);
+            break;
+        case ScriptFunction.Type.NATIVE_DELEGATE:
+            retVal = func.nativeDelegate()(_environment, &thisObj, args, nfe);
+            break;
         }
-        else if(func.type == ScriptFunction.Type.NATIVE_DELEGATE)
-        {
-            auto nd = func.nativeDelegate;
-            result = nd(_environment, &thisObj, args, nfe);
-        }
+
         final switch(nfe)
         {
         case NativeFunctionError.NO_ERROR:
             break;
-        case NativeFunctionError.RETURN_VALUE_IS_EXCEPTION:
-            _exc = new ScriptRuntimeException(result.toString);
-            break;
         case NativeFunctionError.WRONG_NUMBER_OF_ARGS:
-            _exc = new ScriptRuntimeException("Wrong number of argumentss to native function");
+            throwNativeRuntimeError("Wrong number of arguments to " ~ func.functionName, this);
             break;
         case NativeFunctionError.WRONG_TYPE_OF_ARG:
-            _exc = new ScriptRuntimeException("Wrong type of arguments to native function");
+            throwNativeRuntimeError("Wrong type of argument to " ~ func.functionName, this);
             break;
+        case NativeFunctionError.RETURN_VALUE_IS_EXCEPTION:
+            throwNativeRuntimeError("Native exception", this, retVal);
         }
-        return result;
+        if("__new" in contextValues)
+            return thisObj;
+        else
+            return retVal;
+    }
+
+    private ScriptAny runBytecode(const ubyte[] chunk)
+    {
+        size_t ip = 0;
+        ubyte op;
+        while(ip < chunk.length && !_stopped)
+        {
+            op = chunk[ip];
+            if(op == OpCode.RETURN)
+                return _stack.pop();
+            if(_printSteps)
+                printInstruction(ip, chunk);
+            ip = _ops[op](this, chunk, ip);
+            if(_printSteps)
+                printStack();
+        }
+        debug writeln("Warning: missing return op");
+        return ScriptAny.UNDEFINED;
     }
 
     /**
@@ -1813,7 +1645,7 @@ class VirtualMachine
     {
         auto vm = new VirtualMachine(_globals);
         vm._environment = _environment;
-        vm._currentConstTable = _currentConstTable;
+        vm._latestConstTable = _latestConstTable;
         vm._ops = _ops;
         if(copyStack)
             vm._stack = _stack;
@@ -1829,11 +1661,20 @@ class VirtualMachine
         return retVal; 
     }
 
-    /// Queue a fiber. TODO rewrite to accept a ScriptFiber
-    ScriptObject async(string name, ScriptFunction func, ScriptAny thisToUse, ScriptAny[] args)
+    /// Queue a fiber last.
+    ScriptObject addFiber(string name, ScriptFunction func, ScriptAny thisToUse, ScriptAny[] args)
     {
         auto fiber = new ScriptFiber(name, this, func, thisToUse, args);
-        _fibersQueued.insert(fiber);
+        // _fibersQueued.insert(fiber);
+        _fibersQueued.insertAfter(_fibersQueued[], fiber);
+        return new ScriptObject(name, null, fiber);
+    }
+
+    /// Add fiber to front.
+    ScriptObject addFiberFirst(string name, ScriptFunction func, ScriptAny thisToUse, ScriptAny[] args)
+    {
+        auto fiber = new ScriptFiber(name, this, func, thisToUse, args);
+        _fibersQueued.insertFront(fiber);
         return new ScriptObject(name, null, fiber);
     }
 
@@ -1892,16 +1733,6 @@ class VirtualMachine
 
 private:
 
-    enum FuncCallType { NORMAL, NEW }
-    struct CallData
-    {
-        FuncCallType fct;
-        ubyte[] bc;
-        size_t ip;
-        Environment env;
-        TryData[] tryData;
-    }
-
     struct TryData
     {
         int depth;
@@ -1909,32 +1740,35 @@ private:
         uint catchGoto;
     }
 
-    void printInstructionWithConstID(size_t ip, OpCode op, uint constID, Chunk chunk)
+    void printInstructionWithConstID(size_t ip, OpCode op, uint constID, ConstTable ct)
     {
-        if(chunk.constTable.get(constID).toString().length < 100)
+        if(ct.get(constID).toString().length < 100)
             writefln("%05d: %s #%s // <%s> %s", 
-                ip, op.opCodeToString, constID, chunk.constTable.get(constID).typeToString(),
-                chunk.constTable.get(constID));
+                ip, op.opCodeToString, constID, ct.get(constID).typeToString(),
+                ct.get(constID));
         else
             writefln("%05d: %s #%s // <%s>", 
-                ip, op.opCodeToString, constID, chunk.constTable.get(constID).typeToString());
+                ip, op.opCodeToString, constID, ct.get(constID).typeToString());
     }
 
-    Stack!CallData _callStack;
     DebugMap _latestDebugMap;
-    Environment _environment;
-    ConstTable _currentConstTable; // for running functions from call and apply
+    ConstTable _latestConstTable;
     ScriptRuntimeException _exc; // exception flag
+    Environment _environment;
     Environment _globals;
-    size_t _ip;
     OpCodeFunction[ubyte.max + 1] _ops;
     Stack!ScriptAny _stack;
-    TryData[] _tryData;
+    TryData[] _tryData; // latest
     VirtualMachine _parent = null; // the VM that spawned this VM
     ScriptAny _lastValuePopped;
+    // async stuff
     SList!ScriptFiber _fibersQueued = SList!ScriptFiber();
     size_t _gWaitingOnThreads = 0;
     __gshared Semaphore _gSync;
+
+    // bytecode debugging
+    bool _printDisassembly;
+    bool _printSteps;
 
     /// stops the machine
     bool _stopped;

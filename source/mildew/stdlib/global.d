@@ -34,12 +34,14 @@ void initializeGlobalLibrary(Interpreter interpreter)
 {
     // experimental: runFile
     interpreter.forceSetGlobal("runFile", new ScriptFunction("runFile", &native_runFile));
+    interpreter.forceSetGlobal("clearImmediate", new ScriptFunction("clearImmediate", &native_clearImmediate));
     interpreter.forceSetGlobal("clearTimeout", new ScriptFunction("clearTimeout", &native_clearTimeout));
     interpreter.forceSetGlobal("isdefined", new ScriptFunction("isdefined", &native_isdefined));
     interpreter.forceSetGlobal("isFinite", new ScriptFunction("isFinite", &native_isFinite));
     interpreter.forceSetGlobal("isNaN", new ScriptFunction("isNaN", &native_isNaN));
     interpreter.forceSetGlobal("parseFloat", new ScriptFunction("parseFloat", &native_parseFloat));
     interpreter.forceSetGlobal("parseInt", new ScriptFunction("parseInt", &native_parseInt));
+    interpreter.forceSetGlobal("setImmediate", new ScriptFunction("setImmediate", &native_setImmediate));
     interpreter.forceSetGlobal("setTimeout", new ScriptFunction("setTimeout", &native_setTimeout));
 }
 
@@ -59,7 +61,7 @@ private ScriptAny native_runFile(Environment env, ScriptAny* thisObj,
     auto fileName = args[0].toString();
     try 
     {
-        return env.g.interpreter.evaluateFile(fileName, false, true);
+        return env.g.interpreter.evaluateFile(fileName);
 
     }
     catch(Exception ex)
@@ -67,6 +69,28 @@ private ScriptAny native_runFile(Environment env, ScriptAny* thisObj,
         nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
         return ScriptAny(ex.msg);
     }
+}
+
+private ScriptAny native_clearImmediate(Environment env, ScriptAny* thisObj,
+                                      ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import mildew.vm.virtualmachine: VirtualMachine;
+    import mildew.vm.fiber: ScriptFiber;
+
+    if(args.length < 1)
+    {
+        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
+        return ScriptAny.UNDEFINED;
+    }
+    auto sfib = args[0].toNativeObject!ScriptFiber;
+    if(sfib is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    if(sfib.toString() != "Immediate")
+        return ScriptAny(false);
+    return ScriptAny(env.g.interpreter.vm.removeFiber(sfib));
 }
 
 private ScriptAny native_clearTimeout(Environment env, ScriptAny* thisObj,
@@ -163,12 +187,38 @@ private ScriptAny native_parseInt(Environment env, ScriptAny* thisObj,
     }
 }
 
+private ScriptAny native_setImmediate(Environment env, ScriptAny* thisObj,
+                                      ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import mildew.types.bindings: getLocalThis;
+    // all environments are supposed to be linked to the global one. if not, there is a bug
+    auto vm = env.g.interpreter.vm;
+    if(args.length < 1)
+    {
+        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
+        return ScriptAny.UNDEFINED;
+    }
+    auto func = args[0].toValue!ScriptFunction;
+    if(func is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    args = args[1..$];
+    auto thisToUse = args.length > 0 ? getLocalThis(env, args[0]) : ScriptAny.UNDEFINED;
+    ScriptFunction funcToAsync = new ScriptFunction(func.functionName, 
+        delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError) {
+            return vm.runFunction(func, thisToUse, args);
+    });
+    auto retVal = vm.addFiberFirst("Immediate", funcToAsync, thisToUse, args);
+    return ScriptAny(retVal);
+}
+
 // experimental. TODO: subclass Fiber just for the toString and name properties.
 // TODO setInterval and a cancel function
 private ScriptAny native_setTimeout(Environment env, ScriptAny* thisObj,
                                     ScriptAny[] args, ref NativeFunctionError nfe)
 {
-    import core.thread: Thread;
     import std.datetime: dur, Clock;
     import std.concurrency: yield;
     import mildew.types.bindings: getLocalThis;
@@ -188,9 +238,8 @@ private ScriptAny native_setTimeout(Environment env, ScriptAny* thisObj,
     }
     auto timeout = args[1].toValue!size_t;
     args = args[2..$];
-    bool _; // @suppress(dscanner.suspicious.unmodified)
     auto thisToUse = args.length > 0 ? getLocalThis(env, args[0]) : ScriptAny.UNDEFINED;
-    ScriptFunction funcToAsync = new ScriptFunction("callback", 
+    ScriptFunction funcToAsync = new ScriptFunction(func.functionName, 
         delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError) {
             immutable start = Clock.currStdTime() / 10_000;
             long current = start;
@@ -202,6 +251,6 @@ private ScriptAny native_setTimeout(Environment env, ScriptAny* thisObj,
             return vm.runFunction(func, thisToUse, args);
     });
 
-    auto retVal = vm.async("Timeout", funcToAsync, thisToUse, args);
+    auto retVal = vm.addFiber("Timeout", funcToAsync, thisToUse, args);
     return ScriptAny(retVal);
 }

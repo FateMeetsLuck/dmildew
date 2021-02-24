@@ -347,15 +347,15 @@ private:
     {
         import mildew.environment: Environment;
         import mildew.compiler: Compiler;
-        import mildew.vm.chunk: Chunk;
+        import mildew.vm.program: Program;
         import mildew.vm.virtualmachine: VirtualMachine;
         auto ret = new ReturnStatementNode(0, expr);
         auto compiler = new Compiler();
-        auto chunk = compiler.compile([ret]);
+        auto program = compiler.compile([ret]);
         auto vm = new VirtualMachine(new Environment(null, "<ctfe>"));
         try 
         {
-            return vm.run(chunk);
+            return vm.runProgram(program, []);
         }
         catch(Exception ex)
         {
