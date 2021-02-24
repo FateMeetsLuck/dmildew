@@ -1,6 +1,8 @@
 /**
 This module implements the VirtualMachine that executes compiled bytecode.
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -111,6 +113,7 @@ enum OpCode : ubyte
     EQUALS, // equals
     NEQUALS, // !equals
     STREQUALS, // strict equals (===)
+    NSTREQUALS, // not strict equals (!==)
     BITAND, // bitwise and
     BITOR, // bitwise or
     BITXOR, // bitwise xor
@@ -174,7 +177,7 @@ private size_t throwRuntimeError(in string message, VirtualMachine vm, const uby
         vm._stack.size = tryData.stackSize;
         return tryData.catchGoto;
     }
-    // only set parent at end of chain
+    // only set parent at end of chain (TODO)
     throw vm._exc;
 }
 
@@ -818,6 +821,8 @@ private size_t opCall(VirtualMachine vm, const ubyte[] chunk, size_t ip)
     try 
     {
         vm._stack.push(vm.runFunction(func, thisObj, args, null));
+        if(vm._exc) // flag could be set by Generator
+            return throwRuntimeError(null, vm, chunk, ip, vm._exc.thrownValue, vm._exc);
     }
     catch(ScriptRuntimeException ex)
     {
@@ -1046,6 +1051,15 @@ private size_t opStrictEquals(VirtualMachine vm, const ubyte[] chunk, size_t ip)
     return ip + 1;
 }
 
+pragma(inline, true)
+private size_t opNotStrictEquals(VirtualMachine vm, const ubyte[] chunk, size_t ip)
+{
+    auto operands = vm._stack.pop(2);
+    vm._stack.push(ScriptAny(!operands[0].strictEquals(operands[1])));
+    return ip + 1;
+}
+
+
 mixin(DEFINE_BIN_OP!("opBitAnd", "&"));
 mixin(DEFINE_BIN_OP!("opBitOr", "|"));
 mixin(DEFINE_BIN_OP!("opBitXor", "^"));
@@ -1136,15 +1150,22 @@ class VirtualMachine
         _ops[OpCode.EQUALS] = &opEQ;
         _ops[OpCode.NEQUALS] = &opNEQ;
         _ops[OpCode.STREQUALS] = &opStrictEquals;
+        _ops[OpCode.NSTREQUALS] = &opNotStrictEquals;
         _ops[OpCode.BITAND] = &opBitAnd;
         _ops[OpCode.BITOR] = &opBitOr;
         _ops[OpCode.BITXOR] = &opBitXor;
         _ops[OpCode.RETURN] = &opReturn;
         _ops[OpCode.HALT] = &opHalt;
-        _stack.reserve(256);
+        _stack.reserve(64); // TODO tweak this number as necessary
     }
 
-    /// print a chunk instruction by instruction, using the const table to indicate values
+    /// Sets the exception flag of the VM. This is checked after each opCall for Generators
+    package(mildew) void setException(ScriptRuntimeException ex)
+    {
+        _exc = ex;
+    }
+
+    /// print a program instruction by instruction, using the const table to indicate values
     void printProgram(Program program, bool printConstTable=false)
     {
         if(printConstTable)
@@ -1290,6 +1311,7 @@ class VirtualMachine
             case OpCode.EQUALS:
             case OpCode.NEQUALS:
             case OpCode.STREQUALS:
+            case OpCode.NSTREQUALS:
             case OpCode.BITAND:
             case OpCode.BITOR:
             case OpCode.BITXOR:
@@ -1459,6 +1481,7 @@ class VirtualMachine
         case OpCode.EQUALS:
         case OpCode.NEQUALS:
         case OpCode.STREQUALS:
+        case OpCode.NSTREQUALS:
         case OpCode.BITAND:
         case OpCode.BITOR:
         case OpCode.BITXOR:
@@ -1639,7 +1662,7 @@ class VirtualMachine
     }
 
     /**
-     * For coroutines and threads.
+     * For coroutines (and in the future threads.)
      */
     VirtualMachine copy(bool copyStack = false)
     {
@@ -1649,7 +1672,6 @@ class VirtualMachine
         vm._ops = _ops;
         if(copyStack)
             vm._stack = _stack;
-        vm._parent = this;
         return vm;
     }
 
@@ -1690,12 +1712,12 @@ class VirtualMachine
         return _fibersQueued.linearRemoveElement(fiber);
     }
 
-    // TODO await for when it is possible to await a async function?
+    // TODO await functionality for running a specific fiber to completion and waiting on it
 
     /**
-     * Runs the asyncs queued up. This is called by Interpreter.runVMFibers
+     * Runs the queued fibers repeatedly until they are done. This is called by Interpreter.runVMFibers
      */
-    void runQueue()
+    void runFibersToCompletion()
     {
         _gSync = new Semaphore;
         
@@ -1728,6 +1750,8 @@ class VirtualMachine
             throw _exc;
     }
 
+    // TODO: runFibersOnce for game event loops
+
     /// Whether or not there is an exception flag set
     bool hasException() const { return _exc !is null; }
 
@@ -1759,7 +1783,6 @@ private:
     OpCodeFunction[ubyte.max + 1] _ops;
     Stack!ScriptAny _stack;
     TryData[] _tryData; // latest
-    VirtualMachine _parent = null; // the VM that spawned this VM
     ScriptAny _lastValuePopped;
     // async stuff
     SList!ScriptFiber _fibersQueued = SList!ScriptFiber();
@@ -1797,11 +1820,12 @@ unittest
 {
     auto vm = new VirtualMachine(new Environment(null, "<global>"));
     vm = vm.copy();
-    auto chunk = new Chunk();
+    ubyte[] chunk;
+    auto constTable = new ConstTable();
 
     ubyte[] getConst(T)(T value)
     {
-        return encode(chunk.constTable.addValueUint(ScriptAny(value)));
+        return encode(constTable.addValueUint(ScriptAny(value)));
     }
 
     ScriptAny native_tpropGet(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
@@ -1823,14 +1847,15 @@ unittest
     testObj.addGetterProperty("tprop", new ScriptFunction("tpropGet", &native_tpropGet));
     testObj.addSetterProperty("tprop", new ScriptFunction("tpropSet", &native_tpropSet));
 
-    chunk.bytecode ~= OpCode.CONST ~ getConst(testObj);
-    chunk.bytecode ~= OpCode.CONST ~ getConst("tprop");
-    chunk.bytecode ~= OpCode.OBJGET;
-    chunk.bytecode ~= OpCode.CONST ~ getConst(testObj);
-    chunk.bytecode ~= OpCode.CONST ~ getConst("tprop");
-    chunk.bytecode ~= OpCode.CONST_1;
-    chunk.bytecode ~= OpCode.OBJSET;
-    
-    vm.printChunk(chunk);
-    vm.run(chunk);
+    chunk ~= OpCode.CONST ~ getConst(testObj);
+    chunk ~= OpCode.CONST ~ getConst("tprop");
+    chunk ~= OpCode.OBJGET;
+    chunk ~= OpCode.CONST ~ getConst(testObj);
+    chunk ~= OpCode.CONST ~ getConst("tprop");
+    chunk ~= OpCode.CONST_1;
+    chunk ~= OpCode.OBJSET;
+
+    auto program = new Program(constTable, new ScriptFunction("<test>", [], chunk));
+
+    vm.runProgram(program, []);
 }

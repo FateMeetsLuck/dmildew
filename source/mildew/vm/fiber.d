@@ -24,7 +24,7 @@ import mildew.types;
 import mildew.vm.virtualmachine;
 
 /**
- * This is ultimately the return value of setTimeout
+ * This is ultimately the return value of setTimeout and the like
  */
 class ScriptFiber : Fiber
 {

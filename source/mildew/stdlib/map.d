@@ -40,6 +40,8 @@ class ScriptMap
 /** 
  * Initializes the Map class in the scripts. Documentation for usage can be found at
  * https://pillager86.github.io/dmildew/Map.html
+ * Params:
+ *  interpreter = The Interpreter instance to load the Map constructor as a global into.
  */
 void initializeMapLibrary(Interpreter interpreter)
 {

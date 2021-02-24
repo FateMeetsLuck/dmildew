@@ -89,6 +89,7 @@ void initializeTypesLibrary(Interpreter interpreter)
 
 package(mildew):
 
+/// Gets the prototype of Object
 ScriptObject getObjectPrototype()
 {
     if(_objectPrototype is null)
@@ -103,6 +104,7 @@ ScriptObject getObjectPrototype()
     return _objectPrototype;
 }
 
+/// Gets the prototype of all arrays
 ScriptObject getArrayPrototype()
 {
     if(_arrayPrototype is null)
@@ -112,6 +114,7 @@ ScriptObject getArrayPrototype()
         _arrayPrototype["concat"] = new ScriptFunction("Array.prototype.concat", &native_Array_concat);
         _arrayPrototype["copyWithin"] = new ScriptFunction("Array.prototype.copyWithin",
                 &native_Array_copyWithin);
+        _arrayPrototype["entries"] = new ScriptFunction("Array.prototype.entries", &native_Array_entries);
         _arrayPrototype["every"] = new ScriptFunction("Array.prototype.every", &native_Array_every);
         _arrayPrototype["fill"] = new ScriptFunction("Array.prototype.fill", &native_Array_fill);
         _arrayPrototype["filter"] = new ScriptFunction("Array.prototype.filter", &native_Array_filter);
@@ -123,6 +126,7 @@ ScriptObject getArrayPrototype()
         _arrayPrototype["includes"] = new ScriptFunction("Array.prototype.includes", &native_Array_includes);
         _arrayPrototype["indexOf"] = new ScriptFunction("Array.prototype.indexOf", &native_Array_indexOf);
         _arrayPrototype["join"] = new ScriptFunction("Array.prototype.join", &native_Array_join);
+        _arrayPrototype["keys"] = new ScriptFunction("Array.prototype.keys", &native_Array_keys);
         _arrayPrototype["lastIndexOf"] = new ScriptFunction("Array.prototype.lastIndexOf",
                 &native_Array_lastIndexOf);
         _arrayPrototype.addGetterProperty("length", new ScriptFunction("Array.prototype.length", 
@@ -142,10 +146,12 @@ ScriptObject getArrayPrototype()
         _arrayPrototype["sort"] = new ScriptFunction("Array.prototype.sort", &native_Array_sort);
         _arrayPrototype["splice"] = new ScriptFunction("Array.prototype.splice", &native_Array_splice);
         _arrayPrototype["unshift"] = new ScriptFunction("Array.prototype.unshift", &native_Array_unshift);
+        _arrayPrototype["values"] = new ScriptFunction("Array.prototype.values", &native_Array_values);
     }
     return _arrayPrototype;
 }
 
+/// Gets the prototype of all functions
 ScriptObject getFunctionPrototype()
 {
     import mildew.exceptions: ScriptRuntimeException;
@@ -165,6 +171,7 @@ ScriptObject getFunctionPrototype()
     return _functionPrototype;
 }
 
+/// Gets the prototype of all strings
 ScriptObject getStringPrototype()
 {
     if(_stringPrototype is null)
@@ -194,6 +201,7 @@ ScriptObject getStringPrototype()
         _stringPrototype["replace"] = new ScriptFunction("String.prototype.replace", &native_String_replace);
         _stringPrototype["replaceAll"] = new ScriptFunction("String.prototype.replaceAll",
                 &native_String_replaceAll);
+        _stringPrototype["search"] = new ScriptFunction("String.prototype.search", &native_String_search);
         _stringPrototype["slice"] = new ScriptFunction("String.prototype.slice", &native_String_slice);
         _stringPrototype["split"] = new ScriptFunction("String.prototype.split", &native_String_split);
         _stringPrototype["startsWith"] = new ScriptFunction("String.prototype/startsWith", &native_String_startsWith);
@@ -403,7 +411,7 @@ private ScriptAny native_Object_s_entries(Environment env,
     return ScriptAny(entries);
 }
 
-// TODO s_freeze, which will require a redo of VM mechanics. May be done once interpreted mode is removed.
+// TODO s_freeze, which will require modification of VM's opObjGet and opObjSet
 
 private ScriptAny native_Object_s_fromEntries(Environment env, ScriptAny* thisObj,
                                               ScriptAny[] args, ref NativeFunctionError nfe)
@@ -538,7 +546,7 @@ private ScriptAny native_Object_s_keys(Environment env,
 
 // Object.prototype.propertyIsEnumerable doesn't really apply, and may never will
 
-// Object.seal doesn't really apply yet
+// Object.seal doesn't really apply yet. Maybe someday
 
 private ScriptAny native_Object_s_setPrototypeOf(Environment env, ScriptAny* thisObj,
                                                  ScriptAny[] args, ref NativeFunctionError nfe)
@@ -665,7 +673,31 @@ private ScriptAny native_Array_copyWithin(Environment env, ScriptAny* thisObj,
     return *thisObj;
 }
 
-// TODO: entries once Generators are a thing
+private ScriptAny native_Array_entries(Environment env, ScriptAny* thisObj,
+                                       ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.concurrency: yield;
+
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto genFunc = new ScriptFunction("Iterator", 
+        delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+        {
+            auto arr = args[0].toValue!(ScriptAny[]);
+            foreach(index, value ; arr)
+            {
+                auto entry = new ScriptAny[2];
+                entry[0] = ScriptAny(index);
+                entry[1] = ScriptAny(value);
+                yield!ScriptAny(ScriptAny(entry));
+            }
+            return ScriptAny.UNDEFINED;
+        }
+    );
+    auto generator = new ScriptGenerator(env, genFunc, [*thisObj]);
+    auto iterator = new ScriptObject("Iterator", getGeneratorPrototype, generator);
+    return ScriptAny(iterator);
+}
 
 private ScriptAny native_Array_every(Environment env, ScriptAny* thisObj,
                                      ScriptAny[] args, ref NativeFunctionError nfe)
@@ -993,7 +1025,26 @@ private ScriptAny native_Array_join(Environment env, ScriptAny* thisObj, ScriptA
     return ScriptAny(result);
 }
 
-// TODO Array.prototype.keys once Generators are a thing
+private ScriptAny native_Array_keys(Environment env, ScriptAny* thisObj,
+                                    ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.concurrency: yield;
+
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto genFunc = new ScriptFunction("Iterator", 
+        delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+        {
+            auto arr = args[0].toValue!(ScriptAny[]);
+            foreach(key, value ; arr)
+                yield!ScriptAny(ScriptAny(key));
+            return ScriptAny.UNDEFINED;
+        }
+    );
+    auto generator = new ScriptGenerator(env, genFunc, [ *thisObj ]);
+    auto iterator = new ScriptObject("Iterator", getGeneratorPrototype, generator);
+    return ScriptAny(iterator);
+}
 
 private ScriptAny native_Array_lastIndexOf(Environment env, ScriptAny* thisObj,
                                            ScriptAny[] args, ref NativeFunctionError nfe)
@@ -1281,6 +1332,26 @@ private ScriptAny native_Array_unshift(Environment env, ScriptAny* thisObj,
     return ScriptAny(arr.length);
 }
 
+private ScriptAny native_Array_values(Environment env, ScriptAny* thisObj,
+                                      ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.concurrency: yield;
+    if(thisObj.type != ScriptAny.Type.ARRAY)
+        return ScriptAny.UNDEFINED;
+    auto genFunc = new ScriptFunction("Iterator",
+        delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
+        {
+            auto arr = args[0].toValue!(ScriptAny[]);
+            foreach(value ; arr)
+                yield!ScriptAny( value );
+            return ScriptAny.UNDEFINED;
+        }
+    );
+    auto generator = new ScriptGenerator(env, genFunc, [*thisObj]);
+    auto iterator = new ScriptObject("Iterator", getGeneratorPrototype, generator);
+    return ScriptAny(iterator);
+}
+
 //
 // Function methods ///////////////////////////////////////////////////////////
 //
@@ -1311,36 +1382,21 @@ private ScriptAny native_Function_apply(Environment env, ScriptAny* thisIsFn, Sc
         return ScriptAny.UNDEFINED;
     }
     auto argList = args[1].toValue!(ScriptAny[]);
-    try 
+    if(fn.isGenerator)
     {
-        if(fn.isGenerator)
-        {
-            auto obj = new ScriptObject("Generator", getGeneratorPrototype, new ScriptGenerator(
-                env, fn, argList, thisToUse));
-            return ScriptAny(obj);
-        }
-        else
-        {
-            auto interpreter = env.interpreter;
-            if(interpreter is null)
-            {
-                nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
-                return ScriptAny("Interpreter was improperly created without global environment");
-            }
-            if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
-                return interpreter.vm.runFunction(fn, thisToUse, args);
-            else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
-                return fn.nativeFunction()(env, &thisToUse, argList, nfe);
-            else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
-                return fn.nativeDelegate()(env, &thisToUse, argList, nfe);
-            else
-                return ScriptAny.UNDEFINED; // impossible state
-        }
+        auto obj = new ScriptObject("Generator", getGeneratorPrototype, new ScriptGenerator(
+            env, fn, argList, thisToUse));
+        return ScriptAny(obj);
     }
-    catch(ScriptRuntimeException ex)
+    else
     {
-        nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
-        return ScriptAny(ex.msg);
+        auto interpreter = env.interpreter;
+        if(interpreter is null)
+        {
+            nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+            return ScriptAny("Interpreter was improperly created without global environment");
+        }
+        return interpreter.vm.runFunction(fn, thisToUse, args);
     }
 }
 
@@ -1392,36 +1448,21 @@ ScriptAny native_Function_call(Environment env, ScriptAny* thisIsFn, ScriptAny[]
     auto thisToUse = args[0];
     // now send the remainder of the args to a called function with this setup
     args = args[1..$];
-    try 
+    if(fn.isGenerator)
     {
-        if(fn.isGenerator)
-        {
-            auto obj = new ScriptObject("Generator", getGeneratorPrototype, new ScriptGenerator(
-                env, fn, args, thisToUse));
-            return ScriptAny(obj);
-        }
-        else
-        {
-            auto interpreter = env.interpreter;
-            if(interpreter is null)
-            {
-                nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
-                return ScriptAny("Interpreter was improperly created without global environment");
-            }
-            if(fn.type == ScriptFunction.Type.SCRIPT_FUNCTION)
-                return interpreter.vm.runFunction(fn, thisToUse, args);
-            else if(fn.type == ScriptFunction.Type.NATIVE_FUNCTION)
-                return fn.nativeFunction()(env, &thisToUse, args, nfe);
-            else if(fn.type == ScriptFunction.Type.NATIVE_DELEGATE)
-                return fn.nativeDelegate()(env, &thisToUse, args, nfe);
-            else
-                return ScriptAny.UNDEFINED; // impossible state
-        }
+        auto obj = new ScriptObject("Generator", getGeneratorPrototype, new ScriptGenerator(
+            env, fn, args, thisToUse));
+        return ScriptAny(obj);
     }
-    catch(ScriptRuntimeException ex)
+    else
     {
-        nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
-        return ScriptAny(ex.msg);
+        auto interpreter = env.interpreter;
+        if(interpreter is null)
+        {
+            nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+            return ScriptAny("Interpreter was improperly created without global environment");
+        }
+        return interpreter.vm.runFunction(fn, thisToUse, args);
     }
 }
 
@@ -1909,7 +1950,21 @@ import std.array: replace;
     }
 }
 
-// TODO String.prototype.search(someRegex)
+private ScriptAny native_String_search(Environment env, ScriptAny* thisObj,
+                                       ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.STRING)
+        return ScriptAny.UNDEFINED;
+    
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+    
+    ScriptRegExp regex = args[0].toNativeObject!ScriptRegExp;
+    if(regex is null)
+        regex = new ScriptRegExp(args[0].toString());
+    
+    return ScriptAny(regex.search(thisObj.toString()));
+}
 
 private ScriptAny native_String_slice(Environment env, ScriptAny* thisObj,
                                       ScriptAny[] args, ref NativeFunctionError nfe)

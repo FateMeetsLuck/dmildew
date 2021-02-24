@@ -141,6 +141,8 @@ public:
     auto search(string str)
     {
         auto m = std.regex.match(str, _regex);
+        if(m.pre.length == str.length)
+            return -1;
         return m.pre.length;
     }
 
@@ -209,6 +211,8 @@ private:
  * Initializes the RegExp constructor. This is not necessary as regex literals are a first class
  * language feature. Documentation for this library can be found at
  * https://pillager86.github.io/dmildew/RegExp.html
+ * Params:
+ *  interpreter = The Interpreter instance to load the RegExp constructor into.
  */
 void initializeRegExpLibrary(Interpreter interpreter)
 {

@@ -33,6 +33,8 @@ import mildew.vm;
  * returning a string.
  * If an exception is thrown directly inside a native function, the user will not be able to
  * see a traceback of the script source code lines where the error occurred.
+ * Note: with the redesign of the virtual machine, native bindings can now directly throw
+ * a ScriptRuntimeException as long as the native function is called from a script.
  */
 enum NativeFunctionError 
 {
@@ -117,7 +119,7 @@ public:
     }
 
     /**
-     * Binds a specific this to be used no matter what. Internal users of ScriptFunction such as
+     * Binds a specific "this" to be used no matter what. Internal users of ScriptFunction such as
      * mildew.vm.virtualmachine.VirtualMachine must manually check the boundThis property and set this up.
      * Unbinding is done by passing UNDEFINED as the parameter.
      */
@@ -146,6 +148,7 @@ public:
     bool isGenerator() const { return _isGenerator; }
 
     alias opCmp = ScriptObject.opCmp;
+    /// Compares two ScriptFunctions
     int opCmp(const ScriptFunction other) const
     {
         if(_type != other._type)
@@ -204,6 +207,7 @@ public:
         return 0;
     }
 
+    /// Generates a hash from a ScriptFunction
     override size_t toHash() const @trusted nothrow
     {
         if(_type == Type.SCRIPT_FUNCTION)
@@ -217,6 +221,7 @@ public:
     }
 
     alias opEquals = ScriptObject.opEquals;
+    /// Tests two ScriptFunctions for equality
     bool opEquals(ScriptFunction other) const
     {
         if(_type != other._type || _functionName != other._functionName)
@@ -314,12 +319,6 @@ package(mildew):
     /// Property isClass
     auto isClass() const { return _isClass; }
 
-    /// used by the parser for missing constructors in classes that don't extend
-    static deprecated ScriptFunction emptyFunction(in string name, bool isClass)
-    {
-        return new ScriptFunction(name, &native_EMPTY_FUNCTION, isClass);
-    }
-
 private:
     Type _type;
     string _functionName;
@@ -344,11 +343,5 @@ private:
 
     ubyte[] _compiled;
 
-}
-
-deprecated private ScriptAny native_EMPTY_FUNCTION(Environment e, ScriptAny* thisObj, ScriptAny[] args, 
-                                        ref NativeFunctionError nfe)
-{
-    return ScriptAny.UNDEFINED;
 }
 

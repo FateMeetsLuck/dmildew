@@ -43,7 +43,6 @@ private int unaryOpPrecedence(Token opToken, bool isPost = false)
     // see grammar.txt for explanation of magic constants
     switch(opToken.type)
     {
-        // TODO handle ++, -- postfix
         case Token.Type.BIT_NOT: 
         case Token.Type.NOT:
         case Token.Type.PLUS:
@@ -65,7 +64,7 @@ private int unaryOpPrecedence(Token opToken, bool isPost = false)
 
 private int binaryOpPrecedence(Token opToken)
 {
-    // TODO handle keywords in as 12 here
+    // TODO handle keywords in as 12 here (???)
     if(opToken.isKeyword("instanceof"))
         return 12;
 
@@ -128,11 +127,14 @@ private int binaryOpPrecedence(Token opToken)
         default:
             return 0;
     }
-    // TODO null coalesce 5,yield 2, comma 1?
+    // TODO null coalesce 5? yield and commma are already handled differently
 }
 
 private bool isBinaryOpLeftAssociative(in Token opToken)
 {
+    if(opToken.isKeyword("instanceof"))
+        return true;
+
     switch(opToken.type)
     {
         case Token.Type.LBRACKET:
@@ -202,12 +204,12 @@ private bool tokenBeginsLoops(const Token tok)
 }
 
 /**
- * The parser is used by the interpreter to generate a syntax tree out of tokens.
+ * The parser is used by the Compiler to generate a syntax tree out of tokens.
  */
 struct Parser
 {
     /**
-     * The constructor takes all tokens so that in the future, looking ahead for specific tokens
+     * The constructor takes all tokens so that looking ahead for specific tokens
      * can allow support for lambdas and other complex language features.
      */
     this(Token[] tokens)
@@ -218,7 +220,7 @@ struct Parser
 
     /**
      * The main starting point. Also the "program" grammar rule. This method generates a block statement
-     * node where the interpreter iterates through each statement and executes it.
+     * node where the Compiler iterates through each statement and emits bytecode for it.
      */
     BlockStatementNode parseProgram()
     {
@@ -342,7 +344,8 @@ package:
 
 private:
 
-    // very weird way of doing things but it works, may need rework to allow undefined to be a case
+    // TODO: parser needs to take an optional compiler object so that lambdas can be switch-case
+    // expressions and work at runtime.
     ScriptAny evaluateCTFE(ExpressionNode expr)
     {
         import mildew.environment: Environment;
@@ -551,7 +554,7 @@ private:
                 if(_currentToken.literalFlag == Token.LiteralFlag.NONE)
                     left = new LiteralNode(_currentToken, ScriptAny(to!double(_currentToken.text)));
                 else
-                    throw new ScriptCompileException("Malformed floating point token detected", _currentToken);
+                    throw new ScriptCompileException("Malformed decimal number token", _currentToken);
                 nextToken();
                 break;
             case Token.Type.INTEGER:
@@ -721,6 +724,7 @@ private:
         string currentLiteral = "";
         ExpressionNode[] nodes;
         TSState state = TSState.LIT;
+        int bracketStack = 0;
 
         string peekTwo(in string text, size_t i)
         {
@@ -750,25 +754,35 @@ private:
             {
                 if(_currentToken.text[textIndex] == '}')
                 {
-                    currentLiteral = "";
-                    textIndex++;
-                    state = TSState.LIT;
-                    if(currentExpr.length > 0)
+                    if(bracketStack)
                     {
-                        auto lexer = Lexer(currentExpr);
-                        auto tokens = lexer.tokenize();
-                        auto parser = Parser(tokens);
-                        nodes ~= parser.parseExpression();
-                        if(parser._currentToken.type != Token.Type.EOF)
+                        currentExpr ~= _currentToken.text[textIndex++];
+                        --bracketStack;
+                    }
+                    else
+                    {
+                        currentLiteral = "";
+                        textIndex++;
+                        state = TSState.LIT;
+                        if(currentExpr.length > 0)
                         {
-                            parser._currentToken.position = _currentToken.position;
-                            throw new ScriptCompileException("Unexpected token in template expression", 
-                                    parser._currentToken);
+                            auto lexer = Lexer(currentExpr);
+                            auto tokens = lexer.tokenize();
+                            auto parser = Parser(tokens);
+                            nodes ~= parser.parseExpression();
+                            if(parser._currentToken.type != Token.Type.EOF)
+                            {
+                                parser._currentToken.position = _currentToken.position;
+                                throw new ScriptCompileException("Unexpected token in template expression", 
+                                        parser._currentToken);
+                            }
                         }
                     }
                 }
                 else
                 {
+                    if(_currentToken.text[textIndex] == '{')
+                        ++bracketStack;
                     currentExpr ~= _currentToken.text[textIndex++];
                 }
             }
@@ -845,7 +859,7 @@ private:
             if(currentMethodName == "constructor")
             {
                 if(ptype != PropertyType.NONE)
-                    throw new ScriptCompileException("Get and set not allowed for constructor", classToken);
+                    throw new ScriptCompileException("Get, set, or static not allowed for constructor", classToken);
                 if(constructor !is null)
                     throw new ScriptCompileException("Classes may only have one constructor", classToken);
                 // if this is extending a class it MUST have ONE super call
@@ -864,8 +878,10 @@ private:
                         }
                     }
                     if(numSupers != 1)
-                        throw new ScriptCompileException("Derived class constructors must have one super call", 
-                                classToken);
+                        throw new ScriptCompileException(
+                            "Derived class constructors must have one super call at the top level", 
+                            classToken
+                        );
                 }
                 constructor = new FunctionLiteralNode(idToken, argNames, defaultArgs, statements, className, true);
             }
@@ -914,7 +930,7 @@ private:
 
         if(constructor is null)
         {
-            // probably should enforce required super when base class exists
+            // probably should enforce required super when base class exists. or not
             constructor = new FunctionLiteralNode(classToken, [], [], [], className, true);
         }
 
@@ -996,9 +1012,9 @@ private:
                     {
                         nextToken();
                         if(_currentToken.type != Token.Type.IDENTIFIER)
-                            throw new ScriptCompileException("Remainder must be identifier", _currentToken);
+                            throw new ScriptCompileException("Spread variable must be identifier", _currentToken);
                         if(remainderName != "")
-                            throw new ScriptCompileException("Only one remainder allowed", _currentToken);
+                            throw new ScriptCompileException("Only one spread variable allowed", _currentToken);
                         remainderName = _currentToken.text;
                     }
                     else if(_currentToken.type == Token.Type.IDENTIFIER)
@@ -1106,6 +1122,11 @@ private:
             ++_functionContextStack.top.loopStack;
             statement = parseForStatement(label);
             --_functionContextStack.top.loopStack;
+        }
+        else
+        {
+            throw new ScriptCompileException("Labels may only be used before loop statements", 
+                _currentToken);
         }
         if(label != "")
         {
@@ -1310,7 +1331,7 @@ private:
         }
         // can't be missing both catch and finally
         if(catchBlock is null && finallyBlock is null)
-            throw new ScriptCompileException("Try-catch blocks must have catch and/or finally block", tryToken);
+            throw new ScriptCompileException("Try statements must have catch and/or finally block", tryToken);
         return new TryCatchBlockStatementNode(lineNumber, tryBlock, name, catchBlock, finallyBlock);
     }
 
@@ -1399,10 +1420,6 @@ private:
                 caseStarted = true;
                 auto caseExpression = parseExpression();
                 // it has to be evaluatable at compile time
-                /*auto vr = caseExpression.accept(interpreter).get!(Interpreter.VisitResult);
-                if(vr.exception !is null || vr.result == ScriptAny.UNDEFINED)
-                    throw new ScriptCompileException("Case expression must be determined at compile time", switchToken);
-                */
                 auto result = evaluateCTFE(caseExpression);
                 if(result == ScriptAny.UNDEFINED)
                     throw new ScriptCompileException(

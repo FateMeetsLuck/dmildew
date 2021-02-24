@@ -101,7 +101,8 @@ class Program
         stream = stream[bytecode.length * ubyte.sizeof .. $];
         auto mainFunc = new ScriptFunction(name, ["module", "exports"], bytecode, false);
         
-        constTable.seal(); // there is no hashmap so it's not possible to add anymore values
+        // constTable.seal(); // there is no hashmap so it's not possible to add anymore values
+        // actually compiled scripts may call uncompiled scripts. const table deserialization rebuilds the hash map
 
         return new Program(constTable, mainFunc);
     }

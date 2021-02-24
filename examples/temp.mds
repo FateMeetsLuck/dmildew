@@ -1,17 +1,1 @@
-let foo = undefined;
-const func = function() {
-    [1,2,3,4,5].forEach(item => {
-        if(item % 2 == 0) {
-            foo = item;
-            return item;
-        }
-    });
-};
-func();
-function printFoo() {
-    console.log(foo);
-}
-printFoo();
-setTimeout(printFoo, 0);
 
-// Failure to recreate strange undefined variable bug in old promise test.

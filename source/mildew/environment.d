@@ -37,7 +37,7 @@ class Environment
 {
 public:
     /**
-     * Constructs a new Environment.
+     * Constructs a new Environment. This constructor cannot be used to create the global Environment.
      * Params:
      *  par = The parent environment, which should be null when the global environment is created
      *  nam = The name of the environment. When script functions are called this is set to the name
@@ -245,7 +245,7 @@ public:
         return null;
     }
 
-    /// returns the parent property
+    /// returns the parent Environment
     Environment parent()
     {
         return _parent;
@@ -264,7 +264,7 @@ public:
         return d;
     }
 
-    /// returns the name property of the Environment
+    /// returns the name of the Environment
     string name() const
     {
         return _name;
@@ -273,7 +273,7 @@ public:
     /// Returns a string representing the type and name
     override string toString() const
     {
-        return "Environment: " ~ _name;
+        return "Environment " ~ _name;
     }
 
     /// Returns the level of depth, relative to this Environment, 0-N for a variable location, or -1 if not found

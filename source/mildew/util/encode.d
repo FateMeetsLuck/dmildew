@@ -56,7 +56,7 @@ ubyte[] encode(T)(T value)
 /** 
  * decode a value from an ubyte range.
  * Params:
- *  data = An ubyte[] that should be large enough to contain T.sizeof otherwise an exception is thrown.
+ *  data = An ubyte[] that should be large enough to contain the size of T otherwise an exception is thrown.
  * Returns:
  *  The decoded piece of data described by type T.
  */

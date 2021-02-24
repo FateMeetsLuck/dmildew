@@ -77,7 +77,8 @@ public:
      * Implements binary math operations between two ScriptAnys and returns a ScriptAny. For
      * certain operations that make no sense the result will be NaN or UNDEFINED. Addition
      * involving any number of ScriptStrings will always coerce the values to string and
-     * perform a concatenation, as per Mildew language semantics.
+     * perform a concatenation, as per Mildew language semantics. Bitwise operations always
+     * coerce the result to long (Type.INTEGER).
      */
     auto opBinary(string op)(auto ref const ScriptAny rhs) const
     {   
@@ -242,7 +243,7 @@ public:
     }
 
     /**
-     * Add a get method to an object
+     * Add a get method to an object. Throws exception if this is not a ScriptObject
      */
     void addGetterProperty(in string name, ScriptFunction func)
     {
@@ -252,7 +253,7 @@ public:
     }
 
     /**
-     * Add a set method to an object
+     * Add a set method to an object. Throws exception if this is not a ScriptObject
      */
     void addSetterProperty(in string name, ScriptFunction func)
     {
@@ -281,7 +282,7 @@ public:
         {
             return this; // no effect
         }
-        // bit not only works on integers
+        // bit not
         else static if(op == "~")
         {
             if(!isNumber)
@@ -416,7 +417,6 @@ public:
         if(_type != other._type)
             return cast(int)_type - cast(int)other._type;
 
-        // TODO write opCmp for object
         if(isObject)
         {
             return _asObject.opCmp(other._asObject);
@@ -426,8 +426,7 @@ public:
     }
 
     /**
-     * This allows ScriptAny to be used as a key index in a table, however the scripting language currently
-     * only uses strings. In the future a Map class will take advantage of this.
+     * This allows ScriptAny to be used as a key index in a table. The Map class uses this feature.
      */
     size_t toHash() const nothrow
     {
@@ -457,7 +456,7 @@ public:
                     return typeid(arr).getHash(&arr);
                 }
                 case Type.FUNCTION: 
-                    // todo: function hash?
+                    return (cast(ScriptFunction)_asObject).toHash();
                 case Type.OBJECT:
                     return _asObject.toHash();
             }
@@ -492,12 +491,20 @@ public:
                 return _asDouble == other._asDouble;
             case Type.STRING:
                 return toString() == other.toString();
-            case Type.ARRAY:
-                return cast(ScriptArray)_asObject == cast(ScriptArray)other._asObject;
+            case Type.ARRAY: {
+                auto left = (cast(ScriptArray)_asObject).array;
+                auto right = (cast(ScriptArray)other._asObject).array;
+                if(left.length != right.length)
+                    return false;
+                for(size_t i = 0; i < left.length; ++i)
+                    if(!left[i].strictEquals(right[i]))
+                        return false;
+                return true;
+            }
             case Type.FUNCTION:
-                return cast(ScriptFunction)_asObject == cast(ScriptFunction)other._asObject;
+                return (cast(ScriptFunction)_asObject).opEquals(cast(ScriptFunction)other._asObject);
             case Type.OBJECT:
-                return _asObject == other._asObject;
+                return _asObject.opEquals(other._asObject);
         }
     }
 

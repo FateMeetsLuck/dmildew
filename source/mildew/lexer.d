@@ -235,7 +235,7 @@ struct Token
     }
 
     /**
-     * Used by the parser
+     * Used by the parser and compiler
      */
     static Token createFakeToken(in Type t, in string txt)
     {
@@ -496,7 +496,6 @@ private:
         if(lflag != Token.LiteralFlag.NONE && _text[start] != '0')
             throw new ScriptCompileException("Malformed integer literal", Token.createInvalidToken(startpos));
         
-        // while(peekChar.isDigit || peekChar == '.' || peekChar.toLower == 'e')
         while(peekChar.charIsValidDigit(lflag))
         {
             advanceChar();
@@ -513,7 +512,7 @@ private:
                 {
                     ++eCounter;
                     if(eCounter > 1)
-                        throw new ScriptCompileException("Numbers can only have one exponent specifier", 
+                        throw new ScriptCompileException("Numbers may only have one exponent specifier", 
                             Token.createInvalidToken(_position));
                     if(peekChar == '+' || peekChar == '-')
                         advanceChar();
@@ -563,7 +562,7 @@ private:
             else if(currentChar == '\n' && lflag != Token.LiteralFlag.TEMPLATE_STRING)
                 throw new ScriptCompileException("Line breaks inside regular string literals are not allowed", 
                     Token.createInvalidToken(_position, text));
-            else if(currentChar == '\\' && escapeChars) // TODO handle \u0000 and \u00 sequences
+            else if(currentChar == '\\' && escapeChars)
             {
                 advanceChar();
                 if(currentChar in ESCAPE_CHARS)

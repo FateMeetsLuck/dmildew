@@ -113,6 +113,9 @@ public:
                 ct._constants[i].toValue!ScriptFunction().constTable = ct;
             }
         }
+        // build hash table in case the program calls scripts
+        foreach(index, value ; ct._constants)
+            ct._lookup[value] = index;
         return ct;
     }
 

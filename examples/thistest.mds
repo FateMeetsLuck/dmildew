@@ -26,6 +26,6 @@ let a = "global";
 	showA();
 } // wrong output still
 
-// As of Feb 18 16:02 2021 This program does not produce the correct output, however, the program doesn't run at all in Node.js
+// This program does not produce the correct output, however, the program doesn't run at all in Node.js
 // due to complaints of an uninitialized variable. Extra work will be required to implement a variable scope resolver in both
 // The VM and compiler. 

@@ -162,7 +162,7 @@ public:
      */
     void runVMFibers()
     {
-        _vm.runQueue();
+        _vm.runFibersToCompletion();
     }
 
     /// Virtual machine property should never at any point be null

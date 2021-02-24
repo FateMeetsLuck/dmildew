@@ -28,7 +28,9 @@ import mildew.interpreter;
 import mildew.types;
 import mildew.vm;
 
-/// Generator class
+/**
+ * The Generator class implementation.
+ */
 class ScriptGenerator : Generator!ScriptAny
 {
     /// ctor
@@ -56,7 +58,9 @@ class ScriptGenerator : Generator!ScriptAny
         // next get a VM copy that will live in the following closure
         if(env.g.interpreter is null)
             throw new Exception("Global environment has null interpreter");
-        auto vm = env.g.interpreter.vm.copy();
+        
+        auto parentVM = env.g.interpreter.vm;
+        auto childVM = parentVM.copy();
 
         _name = func.functionName;
 
@@ -64,7 +68,14 @@ class ScriptGenerator : Generator!ScriptAny
             ScriptAny[string] map;
             map["__yield__"] = ScriptAny(new ScriptFunction("yield", &this.native_yield));
             map["yield"] = map["__yield__"];
-            _returnValue = vm.runFunction(func, thisObj, args, map);
+            try 
+            {
+                _returnValue = childVM.runFunction(func, thisObj, args, map);
+            }
+            catch(ScriptRuntimeException ex)
+            {
+                parentVM.setException(ex);
+            }
         });
     }
 
@@ -96,6 +107,8 @@ private:
  * Initializes the public Generator constructor. Generator functions are a first class language
  * feature so this is unnecessary. See https://pillager86.github.io/dmildew/Generator.html for how
  * to use the constructor and methods in Mildew.
+ * Params:
+ *  interpreter = The Interpreter instance to load the Generator constructor into.
  */
 void initializeGeneratorLibrary(Interpreter interpreter)
 {

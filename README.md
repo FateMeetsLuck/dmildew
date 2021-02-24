@@ -1,18 +1,18 @@
 # DMildew
 
-Mildew is a scripting language for the D programming language inspired by Lua and JavaScript. While there are other scripting languages for D such as Lua, one cannot easily use D delegates as C function pointers in those languages. Other languages require modification of the D class in order to bind. With Mildew, bindings for any public method or property can be written without touching the original D class module. The downside is that there are no ways to trivialize this binding process with metaprogramming yet. The prototype inheritance system of Mildew allows scripts to extend D classes in powerful ways.
+Mildew is a scripting language for the D programming language inspired by Lua and JavaScript. While there are other scripting languages for D such as Lua, one cannot easily use D delegates as C function pointers in those languages. Other languages require modification of the D class in order to bind. With Mildew, bindings for any public method or property can be written without touching the original D class module. The downside is that there is no way to trivialize this binding process with metaprogramming yet. The prototype inheritance system of Mildew allows scripts to extend D classes in powerful ways.
 
-The ideal use case for this software is for embedding in D games needing a dynamic scriptable GUI. It is not intended to replace Node.js.
+The ideal use case for this software is for embedding in D applications with an event loop that require scriptable components. It is not intended to replace Node.js.
 
 This software is licensed under the GNU General Public License version 3.0 so that it may be used in free and open software. For a commercial software usage license, please contact the author. In the future, the license will be changed to LGPL3 when the software is more stable and ready for production use.
 
 ## Usage 
 
-The `examples/` folder contains example scripts. It should look familiar to anyone who knows JavaScript. However, Mildew is not a full feature ES6 JavaScript implementation.
+The examples/ folder contains example scripts. It should look familiar to anyone who knows JavaScript. However, Mildew is not a full feature ES6 JavaScript implementation.
 
 This project is in its early stages so one should probably use the ~main version to get the latest bug fixes. The release tags are only so that it is usable in dub.
 
-The REPL sub-project dmildew:run shows how to instantiate an Interpreter instance and evaluate lines of Mildew code. Documentation for the D library API can be found [here](https://dmildew.dpldocs.info/mildew.html). The main interface for the API is `mildew.interpreter.Interpreter`. The asynchronous callback API is still a work in progress and will require the host application to have some sort of event loop that calls the appropriate Interpreter method at the end each cycle.
+The REPL sub-project dmildew:run shows how to instantiate an Interpreter instance and evaluate lines of Mildew code. Documentation for the D library API can be found [here](https://dmildew.dpldocs.info/mildew.html). The main interface for the API is `mildew.interpreter.Interpreter`. The asynchronous callback API is still a work in progress and will require the host application to have some sort of event loop that calls the appropriate Interpreter method at the end each cycle, or an Interpreter method that runs all pending Fibers to completion before exiting.
 
 ## Mildew Standard Library Documentation 
 
@@ -20,17 +20,17 @@ The documentation for the standard library usable by scripts, which is only load
 
 ## Building 
 
-Building the library is as simple as writing `dub build` in a terminal in the main project directory. To build the REPL and script runner one can write `dub build dmildew:run` in the same directory as the main project. Add `-b release` to the build commands to generate an optimized binary that performs slightly better than the default debugging build.
+Building the library is as simple as writing `dub build` in a terminal in the main project directory. To build the REPL and script runner one can write `dub build dmildew:run` in the same directory as the main project. Add `-b release` to the build and run commands to generate an optimized binary that performs slightly better than the default debugging build.
 
 ## Compiling and Running Bytecode Files
 
-A script can be compiled with `dub run dmildew:bccompiler -- <name of script file.mds> -o <name of binary.mdc>` and the resulting binary bytecode file can be run directly with the REPL as if it were a normal text file of source code.
+A script can be compiled with `dub run dmildew:bccompiler -- <name of script file.mds> -o <name of binary.mdc>` and the resulting binary bytecode file can be run directly with the REPL as if it were a normal text file of source code. The API is not stable yet so bytecode programs may need to be recompiled each pre-release.
 
 ## Running the Examples
 
-In a terminal in the main project directory run `dub run dmildew:run -- examples/<nameofexample>.mds`. To try out the interactive shell simply type `dub run dmilew:run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Note that functions and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after. One can also store anonymous class expressions in a global variable such as `var Foo = class {};`.
+In a terminal in the main project directory run `dub run dmildew:run -- examples/<nameofexample>.mds`. To try the interactive shell simply type `dub run dmilew:run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Functions, variables, and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after. One can also store anonymous class expressions in a global variable such as `var Foo = class {};`.
 
-The option `-d` prints bytecode disassembly before running each chunk of code. The option `-v` prints highly verbose step by step execution of bytecode in the virtual machine.
+The option `-d` prints bytecode disassembly before running each chunk of code. The option `-v` prints highly verbose step by step execution of bytecode in the virtual machine. For example, to print detailed information while running the REPL, the dub command would be `dub run dmildew:run -- -v -d`.
 
 ## Binding
 
@@ -66,7 +66,7 @@ If any complex data type is used as a key to a Map, modifying the key causes und
 
 Mildew is not optimized for computationally heavy tasks. The design of the language focuses on interoperability with D native functions and CPU intensive operations should be moved to native implementations and called from the scripting language.
 
-Mildew has only been tested on Windows and Linux x86_64 operating systems. Please test on other operating systems to report problems. Note that compiled bytecode is platform dependent (endianness matters) and bytecode scripts must be compiled for each type of CPU, similar to Lua.
+Mildew has only been tested on Windows and Linux x86_64 operating systems and built with DMD v2.094.2. Please test on other operating systems and compilers to report problems. Note that compiled bytecode is platform dependent (endianness matters) and bytecode scripts must be compiled for each type of CPU, similar to Lua.
 
 ## Help
 
@@ -74,10 +74,10 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 
 ## Current Goals
 
-* Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML/JSON table of contents and their own solution. The `runFile` stdlib function exists but is not intended for production use and will be replaced or removed.
+* Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML/JSON tables of contents and their own solution. The `runFile` stdlib function exists but is not intended for production use and will be replaced or removed.
 * Optional possibly asynchronous file I/O library not loaded by the default library loading function due to security. This would be enabled in the REPL only by a specific option.
 * The Promise class for wrapping asynchronous APIs.
 * Bind native classes and functions with one line of code with mixins and template metaprogramming. Or write software that will analyze D source files and generate bindings.
 * Write a more complete and robust standard library for the scripting language. (In progress.)
-* Allow certain unicode characters as components of variable names.
+* Allow all alphanumeric unicode characters as components of identifier and label tokens. Currently identifiers are limited to ASCII characters.
 * Implement asynchronous functions and function calls. (In progress.)

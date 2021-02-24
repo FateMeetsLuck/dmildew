@@ -26,6 +26,7 @@ import mildew.nodes;
 
 package:
 
+/// Defines an interface that can visit ExpressionNodes
 interface IExpressionVisitor
 {
 	Variant visitLiteralNode(LiteralNode lnode);
@@ -48,6 +49,7 @@ interface IExpressionVisitor
     Variant visitYieldNode(YieldNode ynode);
 }
 
+/// Defines an interface that can visit StatementNodes
 interface IStatementVisitor 
 {
 	Variant visitVarDeclarationStatementNode(VarDeclarationStatementNode vdsnode);
@@ -69,4 +71,5 @@ interface IStatementVisitor
 	Variant visitExpressionStatementNode(ExpressionStatementNode esnode);
 }
 
+/// Defines an interface that can visit both ExpressionNodes and StatementNodes
 interface INodeVisitor : IExpressionVisitor, IStatementVisitor {}

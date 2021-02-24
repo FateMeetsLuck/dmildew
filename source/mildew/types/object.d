@@ -167,6 +167,7 @@ public:
      */
     bool opEquals(const ScriptObject other) const
     {
+        // TODO rework this to account for __proto__
         return opCmp(other) == 0;
     }
 
@@ -273,6 +274,8 @@ public:
     /**
      * Returns a property descriptor without searching the prototype chain. The object returned is
      * an object possibly containing get, set, or value fields.
+     * Returns:
+     *  A ScriptObject whose dictionary contains possible "get", "set", and "value" fields.
      */
     ScriptObject getOwnPropertyOrFieldDescriptor(in string propName)
     {
@@ -289,6 +292,12 @@ public:
         return property;
     }
 
+    /**
+     * Get all fields and properties for this object without searching the prototype chain.
+     * Returns:
+     *  A ScriptObject whose dictionary entry keys are names of properties and fields, and the value
+     *  of which is a ScriptObject containing possible "get", "set", and "value" fields.
+     */
     ScriptObject getOwnFieldOrPropertyDescriptors()
     {
         auto property = new ScriptObject("descriptors", null);
@@ -333,7 +342,7 @@ public:
     /**
      * If a native object was stored inside this ScriptObject, it can be retrieved with this function.
      * Note that one must always check that the return value isn't null because all functions can be
-     * called with invalid "this" objects using functionName.call.
+     * called with invalid "this" objects using Function.prototype.call.
      */
     T nativeObject(T)() const
     {

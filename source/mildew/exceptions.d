@@ -57,9 +57,8 @@ class ScriptCompileException : Exception
 
 /**
  * This exception is only thrown once a traceback of lines is collected from the script source code
- * and there are no surrounding try-catch blocks around where the exception occurred. D bindings
- * to native functions should not directly throw this, but instead set the NativeFunctionError
- * flag and return.
+ * and there are no surrounding try-catch blocks around where the exception occurred. Native bindings
+ * may either throw this directly (if called from a script) or set the NativeFunctionError flag
  */
 class ScriptRuntimeException : Exception
 {

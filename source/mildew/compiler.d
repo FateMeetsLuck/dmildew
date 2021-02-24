@@ -416,9 +416,8 @@ public:
         case Token.Type.STRICT_EQUALS:
             _chunk ~= OpCode.STREQUALS;
             break;
-        case Token.Type.STRICT_NEQUALS: // TODO add yet another OpCode as an optimization
-            _chunk ~= OpCode.STREQUALS;
-            _chunk ~= OpCode.NOT;
+        case Token.Type.STRICT_NEQUALS:
+            _chunk ~= OpCode.NSTREQUALS;
             break;
         case Token.Type.BIT_AND:
             _chunk ~= OpCode.BITAND;
