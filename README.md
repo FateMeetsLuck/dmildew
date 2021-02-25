@@ -2,7 +2,7 @@
 
 Mildew is a scripting language for the D programming language inspired by Lua and JavaScript. While there are other scripting languages for D such as Lua, one cannot easily use D delegates as C function pointers in those languages. Other languages require modification of the D class in order to bind. With Mildew, bindings for any public method or property can be written without touching the original D class module. The downside is that there is no way to trivialize this binding process with metaprogramming yet. The prototype inheritance system of Mildew allows scripts to extend D classes in powerful ways.
 
-The ideal use case for this software is for embedding in D applications with an event loop that require scriptable components. It is not intended to replace Node.js.
+The ideal use case for this software is for embedding in D applications with an event loop that require scriptable components. It is not intended to replace Node.js. Usage of this library on embedded devices may be limited due to file size.
 
 This software is licensed under the GNU General Public License version 3.0 so that it may be used in free and open software. For a commercial software usage license, please contact the author. In the future, the license will be changed to LGPL3 when the software is more stable and ready for production use.
 
