@@ -71,7 +71,7 @@ function tryCallTwo(fn, a, b) {
     }
 }
 
-function Promise(fn) {
+var Promise = function Promise(fn) {
     if (typeof this !== 'object') {
         throw 'Promises must be constructed via new';
     }
@@ -85,22 +85,28 @@ function Promise(fn) {
     // this._action = fn;
     if (fn === noop) return;
     doResolve(fn, this);
-}
+};
+
 Promise._onHandle = null;
 Promise._onReject = null;
 Promise._noop = noop;
 
 Promise.all = function(promises) {
     let resolved = 0;
-    let results = [];
+    let results = new Array(promises.length);
     return new Promise((resolve, reject)=>{
+        let i = 0;
         for(let promise of promises) {
             promise
                 .then(result => {
-                    results.push(result);
+                    // results.push(result);
+                    results[i] = result;
                     if(++resolved === promises.length) resolve(results);
                 })
-                .catch(e => { reject(e); });
+                .catch(e => { 
+                    reject(e);
+                });
+            ++i;
         }
     });
 };
@@ -131,6 +137,7 @@ Promise.prototype.finally = function (f) {
 };
 
 Promise.prototype.then = function(onFulfilled, onRejected) {
+    console.log('Thenning ' + this + ' with ' + onFulfilled + ' and ' + onRejected);
     if (this.constructor !== Promise) {
         return safeThen(this, onFulfilled, onRejected);
     }
@@ -294,17 +301,14 @@ function delayedCodePoints(s1) {
     return new Promise((resolve, reject)=>{
         if(typeof s1 === "string" && s1.length > 0) {
             let result = s1.split("").map(ch => ch.charCodeAt(0));
-            // console.log("The array I'm gonna send is " + result);
-            setTimeout(resolve, 0, result);
-            // resolve(result);
-            // setImmediate(resolve, result);
+            setTimeout(resolve, 150, result);
         } else {
-            reject("Not a string");
+            reject("Not a string containing any characters");
         }
     });
 }
 
-calculate(5, "-", 10)
+/*calculate(5, "-", 10)
     .then(result => console.log("Result is " + result))
     .catch(err => console.error("Could not calculate -: " + err));
 
@@ -318,7 +322,10 @@ calculate(69, "+", 420)
 
 delayedCodePoints("foo")
     .then(result => console.log("Result of foo: " + result))
-    .catch(err => console.error("Couldn't do foo: " + err));
+    .catch(err => console.error("Couldn't do foo: " + err));*/
+
+delayedCodePoints("blah blah")
+    .done(result => console.log("Done " + result));
 
 function testPromiseAll() 
 {
@@ -327,16 +334,14 @@ function testPromiseAll()
         .catch(err => console.error("Something went wrong with all these promises: " + err))
         .finally(()=> console.log("Finally always do this"));
 
-    Promise.all([delayedCodePoints("foo bar"), calculate(9, "+", 9)])
+    Promise.all([delayedCodePoints("foo bar"), calculate(9, "-", 9)])
         .then(result => console.log("The mixed result is " + result))
-        .catch(err => "Something wrong with the mixed results: " + err);
+        .catch(err => console.log("Something wrong with the mixed results: " + err))
+        .finally(obj => console.log("Finally all " + obj));
 
-    Promise.all([delayedCodePoints("foo"), delayedCodePoints("bc")])
+    Promise.all([delayedCodePoints(""), delayedCodePoints("bc")])
         .then(result => console.log(result))
-        .catch(err => "I got a problem with these results: " + err);
+        .catch(err => console.log("I got a problem with these results: " + err));
 }
 
-testPromiseAll();
-
-
-
+// testPromiseAll();

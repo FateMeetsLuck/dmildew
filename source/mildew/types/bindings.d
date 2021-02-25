@@ -1375,13 +1375,13 @@ private ScriptAny native_Function_apply(Environment env, ScriptAny* thisIsFn, Sc
     auto fn = thisIsFn.toValue!ScriptFunction;
     // set up the "this" to use
     auto thisToUse = args[0];
-    // set up the arg array
+    // set up the arg array. TODO handle all iterables?
     if(args[1].type != ScriptAny.Type.ARRAY)
     {
         nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
         return ScriptAny.UNDEFINED;
     }
-    auto argList = args[1].toValue!(ScriptAny[]);
+    ScriptAny[] argList = args[1].toValue!(ScriptAny[]);
     if(fn.isGenerator)
     {
         auto obj = new ScriptObject("Generator", getGeneratorPrototype, new ScriptGenerator(
@@ -1396,7 +1396,7 @@ private ScriptAny native_Function_apply(Environment env, ScriptAny* thisIsFn, Sc
             nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
             return ScriptAny("Interpreter was improperly created without global environment");
         }
-        return interpreter.vm.runFunction(fn, thisToUse, args);
+        return interpreter.vm.runFunction(fn, thisToUse, argList);
     }
 }
 

@@ -1,0 +1,6 @@
+function test(a, b) {
+    console.log("a=" + a + ", b=" + b);
+    return 22;
+}
+
+1 == 1 ? test.apply(null, [5, 10]) : test(3, 4);
