@@ -87,9 +87,9 @@ public void initializeMathLibrary(Interpreter interpreter)
 // TODO rewrite half of this mess with mixins
 
 private ScriptAny native_Math_abs(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                  ScriptAny* thisObj,
+                                  ScriptAny[] args,
+                                  ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -101,9 +101,9 @@ private ScriptAny native_Math_abs(Environment env,
 }
 
 private ScriptAny native_Math_acos(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                   ScriptAny* thisObj,
+                                   ScriptAny[] args,
+                                   ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -113,9 +113,9 @@ private ScriptAny native_Math_acos(Environment env,
 }
 
 private ScriptAny native_Math_acosh(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                    ScriptAny* thisObj,
+                                    ScriptAny[] args,
+                                    ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -125,9 +125,9 @@ private ScriptAny native_Math_acosh(Environment env,
 }
 
 private ScriptAny native_Math_asin(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                   ScriptAny* thisObj,
+                                   ScriptAny[] args,
+                                   ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -137,9 +137,9 @@ private ScriptAny native_Math_asin(Environment env,
 }
 
 private ScriptAny native_Math_asinh(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                    ScriptAny* thisObj,
+                                    ScriptAny[] args,
+                                    ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -149,9 +149,9 @@ private ScriptAny native_Math_asinh(Environment env,
 }
 
 private ScriptAny native_Math_atan(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                   ScriptAny* thisObj,
+                                   ScriptAny[] args,
+                                   ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -161,9 +161,9 @@ private ScriptAny native_Math_atan(Environment env,
 }
 
 private ScriptAny native_Math_atan2(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                    ScriptAny* thisObj,
+                                    ScriptAny[] args,
+                                    ref NativeFunctionError nfe)
 {
     if(args.length < 2)
         return ScriptAny(double.nan);
@@ -173,9 +173,9 @@ private ScriptAny native_Math_atan2(Environment env,
 }
 
 private ScriptAny native_Math_cbrt(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                   ScriptAny* thisObj,
+                                   ScriptAny[] args,
+                                   ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -185,9 +185,9 @@ private ScriptAny native_Math_cbrt(Environment env,
 }
 
 private ScriptAny native_Math_ceil(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                   ScriptAny* thisObj,
+                                   ScriptAny[] args,
+                                   ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -199,9 +199,9 @@ private ScriptAny native_Math_ceil(Environment env,
 }
 
 private ScriptAny native_Math_clz32(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                    ScriptAny* thisObj,
+                                    ScriptAny[] args,
+                                    ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(0);
@@ -212,9 +212,9 @@ private ScriptAny native_Math_clz32(Environment env,
 }
 
 private ScriptAny native_Math_cos(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                  ScriptAny* thisObj,
+                                  ScriptAny[] args,
+                                  ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -224,9 +224,9 @@ private ScriptAny native_Math_cos(Environment env,
 }
 
 private ScriptAny native_Math_cosh(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                   ScriptAny* thisObj,
+                                   ScriptAny[] args,
+                                   ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -236,9 +236,9 @@ private ScriptAny native_Math_cosh(Environment env,
 }
 
 private ScriptAny native_Math_exp(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                  ScriptAny* thisObj,
+                                  ScriptAny[] args,
+                                  ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -248,9 +248,9 @@ private ScriptAny native_Math_exp(Environment env,
 }
 
 private ScriptAny native_Math_expm1(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                    ScriptAny* thisObj,
+                                    ScriptAny[] args,
+                                    ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -260,9 +260,9 @@ private ScriptAny native_Math_expm1(Environment env,
 }
 
 private ScriptAny native_Math_floor(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                    ScriptAny* thisObj,
+                                    ScriptAny[] args,
+                                    ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -274,9 +274,9 @@ private ScriptAny native_Math_floor(Environment env,
 }
 
 private ScriptAny native_Math_fround(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                     ScriptAny* thisObj,
+                                     ScriptAny[] args,
+                                     ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -287,9 +287,9 @@ private ScriptAny native_Math_fround(Environment env,
 }
 
 private ScriptAny native_Math_hypot(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                    ScriptAny* thisObj,
+                                    ScriptAny[] args,
+                                    ref NativeFunctionError nfe)
 {
     double sum = 0;
     foreach(arg ; args)
@@ -302,9 +302,9 @@ private ScriptAny native_Math_hypot(Environment env,
 }
 
 private ScriptAny native_Math_imul(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                   ScriptAny* thisObj,
+                                   ScriptAny[] args,
+                                   ref NativeFunctionError nfe)
 {
     if(args.length < 2)
         return ScriptAny(double.nan);
@@ -316,9 +316,9 @@ private ScriptAny native_Math_imul(Environment env,
 }
 
 private ScriptAny native_Math_log(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                  ScriptAny* thisObj,
+                                  ScriptAny[] args,
+                                  ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -328,9 +328,9 @@ private ScriptAny native_Math_log(Environment env,
 }
 
 private ScriptAny native_Math_log10(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                    ScriptAny* thisObj,
+                                    ScriptAny[] args,
+                                    ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -340,9 +340,9 @@ private ScriptAny native_Math_log10(Environment env,
 }
 
 private ScriptAny native_Math_log1p(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                    ScriptAny* thisObj,
+                                    ScriptAny[] args,
+                                    ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -352,9 +352,9 @@ private ScriptAny native_Math_log1p(Environment env,
 }
 
 private ScriptAny native_Math_log2(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                   ScriptAny* thisObj,
+                                   ScriptAny[] args,
+                                   ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -364,9 +364,9 @@ private ScriptAny native_Math_log2(Environment env,
 }
 
 private ScriptAny native_Math_max(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                  ScriptAny* thisObj,
+                                  ScriptAny[] args,
+                                  ref NativeFunctionError nfe)
 {
     import std.algorithm: max;
     if(args.length < 1)
@@ -386,9 +386,9 @@ private ScriptAny native_Math_max(Environment env,
 }
 
 private ScriptAny native_Math_min(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                  ScriptAny* thisObj,
+                                  ScriptAny[] args,
+                                  ref NativeFunctionError nfe)
 {
     import std.algorithm: max;
     if(args.length < 1)
@@ -408,9 +408,9 @@ private ScriptAny native_Math_min(Environment env,
 }
 
 private ScriptAny native_Math_pow(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                  ScriptAny* thisObj,
+                                  ScriptAny[] args,
+                                  ref NativeFunctionError nfe)
 {
     if(args.length < 2)
         return ScriptAny(double.nan);
@@ -420,18 +420,18 @@ private ScriptAny native_Math_pow(Environment env,
 }
 
 private ScriptAny native_Math_random(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                     ScriptAny* thisObj,
+                                     ScriptAny[] args,
+                                     ref NativeFunctionError nfe)
 {
     import std.random : uniform;
     return ScriptAny(uniform(0.0, 1.0));
 }
 
 private ScriptAny native_Math_round(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                    ScriptAny* thisObj,
+                                    ScriptAny[] args,
+                                    ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -443,9 +443,9 @@ private ScriptAny native_Math_round(Environment env,
 }
 
 private ScriptAny native_Math_sign(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                   ScriptAny* thisObj,
+                                   ScriptAny[] args,
+                                   ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -461,9 +461,9 @@ private ScriptAny native_Math_sign(Environment env,
 }
 
 private ScriptAny native_Math_sin(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                  ScriptAny* thisObj,
+                                  ScriptAny[] args,
+                                  ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -485,9 +485,9 @@ private ScriptAny native_Math_sinh(Environment env,
 }
 
 private ScriptAny native_Math_sqrt(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                   ScriptAny* thisObj,
+                                   ScriptAny[] args,
+                                   ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny.UNDEFINED;
@@ -497,9 +497,9 @@ private ScriptAny native_Math_sqrt(Environment env,
 }
 
 private ScriptAny native_Math_tan(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                  ScriptAny* thisObj,
+                                  ScriptAny[] args,
+                                  ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -509,9 +509,9 @@ private ScriptAny native_Math_tan(Environment env,
 }
 
 private ScriptAny native_Math_tanh(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                   ScriptAny* thisObj,
+                                   ScriptAny[] args,
+                                   ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);
@@ -521,9 +521,9 @@ private ScriptAny native_Math_tanh(Environment env,
 }
 
 private ScriptAny native_Math_trunc(Environment env,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                    ScriptAny* thisObj,
+                                    ScriptAny[] args,
+                                    ref NativeFunctionError nfe)
 {
     if(args.length < 1)
         return ScriptAny(double.nan);

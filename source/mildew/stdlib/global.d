@@ -214,8 +214,6 @@ private ScriptAny native_setImmediate(Environment env, ScriptAny* thisObj,
     return ScriptAny(retVal);
 }
 
-// experimental. TODO: subclass Fiber just for the toString and name properties.
-// TODO setInterval and a cancel function
 private ScriptAny native_setTimeout(Environment env, ScriptAny* thisObj,
                                     ScriptAny[] args, ref NativeFunctionError nfe)
 {

@@ -177,7 +177,7 @@ private size_t throwRuntimeError(in string message, VirtualMachine vm, const uby
         vm._stack.size = tryData.stackSize;
         return tryData.catchGoto;
     }
-    // only set parent at end of chain (TODO)
+    // Generators will set parent VM exception flag. This is checked in opCall
     throw vm._exc;
 }
 
@@ -1666,10 +1666,9 @@ class VirtualMachine
      */
     VirtualMachine copy(bool copyStack = false)
     {
-        auto vm = new VirtualMachine(_globals);
+        auto vm = new VirtualMachine(_globals, _printDisassembly, _printSteps);
         vm._environment = _environment;
         vm._latestConstTable = _latestConstTable;
-        vm._ops = _ops;
         if(copyStack)
             vm._stack = _stack;
         return vm;

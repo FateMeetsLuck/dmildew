@@ -1,7 +1,9 @@
 /**
 This module implements the ScriptFiber class, used internally by VirtualMachine
 to schedule asynchronous calls to ScriptFunctions.
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 

@@ -40,6 +40,8 @@ void initializeDateLibrary(Interpreter interpreter)
 {
     auto Date_ctor = new ScriptFunction("Date", &native_Date_ctor, true);
     Date_ctor["now"] = new ScriptFunction("Date.now", &native_Date_s_now);
+    // TODO separate the prototype so that Dates can be constructed with Date(). This will become the
+    // sole use case as to why thisObj is passed by pointer rather than value.
     Date_ctor["prototype"]["getDate"] = new ScriptFunction("Date.prototype.getDate", &native_Date_getDate);
     Date_ctor["prototype"]["getDay"] = new ScriptFunction("Date.prototype.getDay", &native_Date_getDay);
     Date_ctor["prototype"]["getFullYear"] = new ScriptFunction("Date.prototype.getFullYear", 
@@ -83,7 +85,7 @@ void initializeDateLibrary(Interpreter interpreter)
     interpreter.forceSetGlobal("Date", Date_ctor, false);
 }
 
-package:
+private:
 
 /**
  * The Date class
@@ -259,8 +261,6 @@ private:
     SysTime _sysTime;
 }
 
-private:
-
 ScriptAny native_Date_ctor(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(!thisObj.isObject)
@@ -303,9 +303,9 @@ ScriptAny native_Date_ctor(Environment env, ScriptAny* thisObj, ScriptAny[] args
 }
 
 ScriptAny native_Date_s_now(Environment environment,
-                                          ScriptAny* thisObj,
-                                          ScriptAny[] args,
-                                          ref NativeFunctionError nfe)
+                            ScriptAny* thisObj,
+                            ScriptAny[] args,
+                            ref NativeFunctionError nfe)
 {
     return ScriptAny(ScriptDate.now());
 }

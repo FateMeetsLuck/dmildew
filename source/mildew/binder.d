@@ -38,7 +38,7 @@ string CHECK_MINIMUM_ARGS(int num)()
 }
 
 /**
- * Shorthand for validating a this object as a native type
+ * Shorthand for validating a "this" object as a native type
  */
 string CHECK_THIS_NATIVE_OBJECT(string varName, alias dclass)()
 {
@@ -53,7 +53,7 @@ string CHECK_THIS_NATIVE_OBJECT(string varName, alias dclass)()
 }
 
 /**
- * Uses .init value of a variable if argument doesn't exist. Arguments length MUST be checked first
+ * Must check minimum arguments before using this. Gets an argument without regard to type.
  */
 string TO_ARG(string varName, int index, alias type)()
 {
@@ -63,7 +63,7 @@ string TO_ARG(string varName, int index, alias type)()
 }
 
 /**
- * Get an optional argument and default value
+ * Get an optional argument and assign it a default value if it doesn't exist
  */
 string TO_ARG_OPT(string varName, int index, alias defaultValue, alias type)()
 {

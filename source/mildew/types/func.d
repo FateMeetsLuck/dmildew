@@ -140,7 +140,7 @@ public:
     auto functionName() const { return _functionName; }
     /// Property argNames. Note: native functions do not have this.
     auto argNames() const { return _argNames; }
-    /// Compiled form cached
+    /// Compiled form (raw ubyte array)
     ubyte[] compiled() { return _compiled; }
     /// bound this property. change with bind()
     ScriptAny boundThis() { return _boundThis; }
@@ -235,9 +235,9 @@ public:
         return false;
     }
 
-    /// ct property
+    /// ct property (currently null and unused)
     ConstTable constTable() { return _constTable; }
-    /// ct property
+    /// ct property (settable but does nothing yet)
     ConstTable constTable(ConstTable ct) { return _constTable = ct; }
 
 package(mildew):

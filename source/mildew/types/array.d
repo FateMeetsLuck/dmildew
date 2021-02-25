@@ -1,6 +1,7 @@
 /**
 This module implements how arrays are internally handled. There is no reason to use this instead of constructing a
-ScriptAny with a D array or using toValue!(ScriptAny[]) on a ScriptAny that stores an array. 
+ScriptAny with a D array or using toValue!(ScriptAny[]) on a ScriptAny that stores an array, unless it is necessary
+to modify the array in place inside a thisObj.
 
 ────────────────────────────────────────────────────────────────────────────────
 

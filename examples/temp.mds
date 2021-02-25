@@ -1,1 +1,19 @@
+// shamelessly taken from Mozilla's MDN website but it works 100% the same somehow
+function* gen() {
+    while(true) {
+        try {
+            yield 42;
+        } catch(e) {
+            console.log('Error caught!');
+        }
+    }
+}
+
+const g = gen();
+g.next();
+// { value: 42, done: false }
+const result = g.throw('Something went wrong');
+// "Error caught!"
+console.log(result);
+// { value: 42, done: false }
 

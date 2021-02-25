@@ -75,9 +75,12 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 ## Current Goals
 
 * Possibly support importing other scripts from a script. However, most host applications would probably prefer to do this with XML/JSON tables of contents and their own solution. The `runFile` stdlib function exists but is not intended for production use and will be replaced or removed.
-* Optional possibly asynchronous file I/O library not loaded by the default library loading function due to security. This would be enabled in the REPL only by a specific option.
+* Implement certain future script libraries as shared libraries that can be dynamically loaded at runtime. The only libraries that would qualify are classes that are not used by the core runtime. For example, Generator and RegExp are part of the core runtime and cannot be separated into dynamic libraries.
+* Optional possibly asynchronous file I/O library not loaded by the default library loading function due to security. This would be enabled in the REPL only by a specific option and possibly implemented as a shared library module.
+* HTTP request library.
 * The Promise class for wrapping asynchronous APIs.
 * Bind native classes and functions with one line of code with mixins and template metaprogramming. Or write software that will analyze D source files and generate bindings.
 * Write a more complete and robust standard library for the scripting language. (In progress.)
 * Allow all alphanumeric unicode characters as components of identifier and label tokens. Currently identifiers are limited to ASCII characters.
 * Implement asynchronous functions and function calls. (In progress.)
+* Destructuring of function parameters.

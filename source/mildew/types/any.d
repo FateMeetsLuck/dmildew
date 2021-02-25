@@ -428,7 +428,7 @@ public:
     /**
      * This allows ScriptAny to be used as a key index in a table. The Map class uses this feature.
      */
-    size_t toHash() const nothrow
+    size_t toHash() const @trusted nothrow
     {
         import mildew.types.array: ScriptArray;
         try 
@@ -561,7 +561,8 @@ public:
     }
 
     /**
-     * Converts a stored value back into a D value if it is valid, otherwise throws an exception.
+     * Converts a stored value back into a D value if it is valid, otherwise throws a ScriptAnyException.
+     * This is not ideal to use in native bindings because such an exception cannot be caught by the script runtime.
      */
     T checkValue(T)() const
     {
@@ -801,7 +802,7 @@ public:
             throw new ScriptAnyException("Objects cannot be decoded yet", value);
         default:
             throw new ScriptAnyException("Decoded value is not a ScriptAny ("
-                ~ to!string(cast(int)value._type) ~ ")", value);
+                ~ to!string(cast(int)value._type) ~ ")", ScriptAny.UNDEFINED);
         }
 
         // writeln(value.toString());
@@ -1068,10 +1069,7 @@ private:
 }
 
 /**
- * This exception is only thrown when using ScriptAny.checkValue. If checkValue is used to check arguments, the host
- * application running a script should catch this exception in addition to catching ScriptRuntimeException and
- * ScriptCompileException. Otherwise it makes sense to just use toValue after checking the type field of the ScriptAny
- * and setting the NativeFunctionError flag appropriately then returning ScriptAny.UNDEFINED.
+ * This exception is only thrown when using ScriptAny.checkValue.
  */
 class ScriptAnyException : Exception
 {

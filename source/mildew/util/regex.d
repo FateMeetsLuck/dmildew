@@ -37,7 +37,7 @@ string[] extract(string slashRegex)
             break;
         }
     }
-    if(patternEnd == patternStart)
+    if(patternEnd == 0)
         throw new Exception("Not a valid regular expression string");
     string pattern = slashRegex[patternStart..patternEnd];
     string flags = slashRegex[patternEnd+1..$];

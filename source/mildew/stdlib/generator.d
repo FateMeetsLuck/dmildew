@@ -74,6 +74,7 @@ class ScriptGenerator : Generator!ScriptAny
             }
             catch(ScriptRuntimeException ex)
             {
+                this._markedAsFinished = true;
                 parentVM.setException(ex);
             }
         });
@@ -93,12 +94,19 @@ package:
             .yield!ScriptAny(args[0]);
         auto result = this._yieldValue;
         this._yieldValue = ScriptAny.UNDEFINED;
+        if(_excFlag)
+        {
+            auto exc = _excFlag; // @suppress(dscanner.suspicious.unmodified)
+            _excFlag = null;
+            throw exc;
+        }
         return result;
     }
 
 private:
     string _name;
     bool _markedAsFinished = false;
+    ScriptRuntimeException _excFlag;
     ScriptAny _yieldValue;
     ScriptAny _returnValue;
 }
@@ -120,8 +128,8 @@ void initializeGeneratorLibrary(Interpreter interpreter)
 
 private ScriptObject _generatorPrototype;
 
-/// Gets the Generator prototype. The VM will eventually need this.
-ScriptObject getGeneratorPrototype()
+/// Gets the Generator prototype. The VM uses this.
+package(mildew) ScriptObject getGeneratorPrototype()
 {
     if(_generatorPrototype is null)
     {
@@ -132,6 +140,8 @@ ScriptObject getGeneratorPrototype()
                 &native_Generator_next);
         _generatorPrototype["return"] = new ScriptFunction("Generator.prototype.return",
                 &native_Generator_return);
+        _generatorPrototype["throw"] = new ScriptFunction("Generator.prototype.throw",
+                &native_Generator_throw);
         _generatorPrototype.addGetterProperty("returnValue", new ScriptFunction("Generator.prototype.returnValue",
                 &native_Generator_p_returnValue));
     }
@@ -168,8 +178,8 @@ private ScriptAny native_Generator_p_name(Environment env, ScriptAny* thisObj,
     return ScriptAny(thisGen._name);
 }
 
-/// This is public for opIter
-ScriptAny native_Generator_next(Environment env, ScriptAny* thisObj,
+/// The virtual machine uses this
+package(mildew) ScriptAny native_Generator_next(Environment env, ScriptAny* thisObj,
                                 ScriptAny[] args, ref NativeFunctionError nfe)
 {
     auto thisGen = thisObj.toNativeObject!ScriptGenerator;
@@ -245,7 +255,31 @@ private ScriptAny native_Generator_return(Environment env, ScriptAny* thisObj,
     return ScriptAny(obj);
 }
 
-// we are not adding throw I've ripped up the Lexer enough as it is
+private ScriptAny native_Generator_throw(Environment env, ScriptAny* thisObj,
+                                         ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto thisGen = thisObj.toNativeObject!ScriptGenerator;
+    if(thisGen is null)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    if(args.length < 1)
+    {
+        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
+        return ScriptAny.UNDEFINED;
+    }
+    if(thisGen._markedAsFinished)
+    {
+        nfe = NativeFunctionError.RETURN_VALUE_IS_EXCEPTION;
+        return ScriptAny("Cannot call throw on a finished Generator");
+    }
+    auto exc = new ScriptRuntimeException("Generator exception");
+    exc.thrownValue = args[0];
+    thisGen._excFlag = exc;
+    auto result = native_Generator_next(env, thisObj, [], nfe);
+    return result;
+}
 
 private ScriptAny native_Generator_p_returnValue(Environment env, ScriptAny* thisObj,
                                                ScriptAny[] args, ref NativeFunctionError nfe)

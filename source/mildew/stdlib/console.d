@@ -41,9 +41,9 @@ public void initializeConsoleLibrary(Interpreter interpreter)
 }
 
 private ScriptAny native_console_log(Environment environment,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                     ScriptAny* thisObj,
+                                     ScriptAny[] args,
+                                     ref NativeFunctionError nfe)
 {
     import std.stdio: write, writeln;
     if(args.length > 0)
@@ -56,9 +56,9 @@ private ScriptAny native_console_log(Environment environment,
 }
 
 private ScriptAny native_console_put(Environment environment,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                     ScriptAny* thisObj,
+                                     ScriptAny[] args,
+                                     ref NativeFunctionError nfe)
 {
 import std.stdio: write, writeln;
     if(args.length > 0)
@@ -70,9 +70,9 @@ import std.stdio: write, writeln;
 }
 
 private ScriptAny native_console_error(Environment environment,
-        ScriptAny* thisObj,
-        ScriptAny[] args,
-        ref NativeFunctionError nfe)
+                                       ScriptAny* thisObj,
+                                       ScriptAny[] args,
+                                       ref NativeFunctionError nfe)
 {
     import std.stdio: stderr;
     foreach(arg ; args)

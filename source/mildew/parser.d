@@ -245,6 +245,9 @@ package:
         {
             auto opToken = _currentToken;
             nextToken();
+            // TODO handle nested unary operations such as -++foo. This will require building an array
+            // of unary ops before parsing the primary expression. and further complicate unary operations on
+            // member access, array access, and function call nodes. 
             primaryLeft = parsePrimaryExpression();
             primaryLeft = new UnaryOpNode(opToken, primaryLeft);
         }
@@ -257,8 +260,12 @@ package:
         {
             if(_currentToken.unaryOpPrecedence(true) >= minPrec)
             {
-                // writeln("We must handle postfix " ~ _currentToken.symbol ~ " for " ~ primaryLeft.toString);
-                primaryLeft = new PostfixOpNode(_currentToken, primaryLeft);
+                // if primary left is a unary op node, we need to apply the postfix and recreate the uop
+                if(auto uopNode = cast(UnaryOpNode)primaryLeft)
+                    primaryLeft = new UnaryOpNode(uopNode.opToken, new PostfixOpNode(_currentToken, 
+                        uopNode.operandNode));
+                else
+                    primaryLeft = new PostfixOpNode(_currentToken, primaryLeft);
                 nextToken();
             }
             else 
@@ -278,6 +285,7 @@ package:
                     auto onFalse = parseExpression();
                     primaryLeft = new TerniaryOpNode(primaryLeft, onTrue, onFalse);
                 }
+                // this is monstrous. There has to be a better way to do this
                 else if(opToken.type == Token.Type.DOT)
                 {
                     auto right = parsePrimaryExpression();

@@ -1,6 +1,8 @@
 /**
 This module implements the bytecode compiler
+
 ────────────────────────────────────────────────────────────────────────────────
+
 Copyright (C) 2021 pillager86.rf.gd
 
 This program is free software: you can redistribute it and/or modify it under 
@@ -128,7 +130,7 @@ public:
 // The visitNode methods are not intended for public use but are required to be public by D language constraints
 
     /// handle literal value node (easiest)
-	Variant visitLiteralNode(LiteralNode lnode)
+    Variant visitLiteralNode(LiteralNode lnode)
     {
         // want booleans to be booleans not 1
         if(lnode.value.type == ScriptAny.Type.BOOLEAN)
@@ -236,7 +238,7 @@ public:
     }
 
     /// handle array literals
-	Variant visitArrayLiteralNode(ArrayLiteralNode alnode)
+    Variant visitArrayLiteralNode(ArrayLiteralNode alnode)
     {
         foreach(node ; alnode.valueNodes)
         {
@@ -247,7 +249,7 @@ public:
     }
 
     /// handle object literal nodes
-	Variant visitObjectLiteralNode(ObjectLiteralNode olnode)
+    Variant visitObjectLiteralNode(ObjectLiteralNode olnode)
     {
         assert(olnode.keys.length == olnode.valueNodes.length);
         for(size_t i = 0; i < olnode.keys.length; ++i)
@@ -260,7 +262,7 @@ public:
     }
 
     /// Class literals. Parser is supposed to make sure string-function pairs match up
-	Variant visitClassLiteralNode(ClassLiteralNode clnode)
+    Variant visitClassLiteralNode(ClassLiteralNode clnode)
     {
         // first make sure the data will fit in a 5 byte instruction
         if(clnode.classDefinition.methods.length > ubyte.max
@@ -319,7 +321,7 @@ public:
     }
 
     /// handles binary operations
-	Variant visitBinaryOpNode(BinaryOpNode bonode)
+    Variant visitBinaryOpNode(BinaryOpNode bonode)
     {
         if(bonode.opToken.isAssignmentOperator)
         {
@@ -428,12 +430,6 @@ public:
         case Token.Type.BIT_XOR:
             _chunk ~= OpCode.BITXOR;
             break;
-        /*case Token.Type.AND: {
-            _chunk ~= OpCode.AND;
-            break;
-        case Token.Type.OR: // deprecated: replace with lazy evaluation
-            _chunk ~= OpCode.OR;
-            break;*/
         default:
             if(bonode.opToken.isKeyword("instanceof"))
                 _chunk ~= OpCode.INSTANCEOF;
@@ -444,7 +440,7 @@ public:
     }
 
     /// handle unary operations
-	Variant visitUnaryOpNode(UnaryOpNode uonode)
+    Variant visitUnaryOpNode(UnaryOpNode uonode)
     {
         switch(uonode.opToken.type)
         {
@@ -493,7 +489,7 @@ public:
     }
 
     /// Handle x++ and x--
-	Variant visitPostfixOpNode(PostfixOpNode ponode)
+    Variant visitPostfixOpNode(PostfixOpNode ponode)
     {
         if(!nodeIsAssignable(ponode.operandNode))
             throw new ScriptCompileException("Invalid operand for postfix operator", ponode.opToken);
@@ -514,7 +510,7 @@ public:
     }
 
     /// handle :? operator
-	Variant visitTerniaryOpNode(TerniaryOpNode tonode)
+    Variant visitTerniaryOpNode(TerniaryOpNode tonode)
     {
         tonode.conditionNode.accept(this);
         immutable start = _chunk.length;
@@ -533,7 +529,7 @@ public:
     }
 
     /// These should not be directly visited for assignment
-	Variant visitVarAccessNode(VarAccessNode vanode)
+    Variant visitVarAccessNode(VarAccessNode vanode)
     {
         if(varExists(vanode.varToken.text))
         {
@@ -549,7 +545,7 @@ public:
     }
 
     /// Handle function() calls
-	Variant visitFunctionCallNode(FunctionCallNode fcnode)
+    Variant visitFunctionCallNode(FunctionCallNode fcnode)
     {
         // if returnThis is set this is an easy new op
         if(fcnode.returnThis)
@@ -615,7 +611,7 @@ public:
     }
 
     /// handle [] operator. This method cannot be used in assignment
-	Variant visitArrayIndexNode(ArrayIndexNode ainode)
+    Variant visitArrayIndexNode(ArrayIndexNode ainode)
     {
         ainode.objectNode.accept(this);
         ainode.indexValueNode.accept(this);
@@ -624,7 +620,7 @@ public:
     }
 
     /// handle . operator. This method cannot be used in assignment
-	Variant visitMemberAccessNode(MemberAccessNode manode)
+    Variant visitMemberAccessNode(MemberAccessNode manode)
     {
         manode.objectNode.accept(this);
         // memberNode has to be a var access node for this to make any sense
@@ -637,7 +633,7 @@ public:
     }
 
     /// handle new operator. visitFunctionCallExpression will handle returnThis field
-	Variant visitNewExpressionNode(NewExpressionNode nenode)
+    Variant visitNewExpressionNode(NewExpressionNode nenode)
     {
         nenode.functionCallExpression.accept(this);
         return Variant(null);
@@ -768,7 +764,7 @@ public:
     }
 
     /// handle {} braces
-	Variant visitBlockStatementNode(BlockStatementNode bsnode)
+    Variant visitBlockStatementNode(BlockStatementNode bsnode)
     {
         import std.conv: to;
         _debugInfoStack.top.addLine(_chunk.length, bsnode.line);
@@ -805,7 +801,7 @@ public:
     }
 
     /// emit if statements
-	Variant visitIfStatementNode(IfStatementNode isnode)
+    Variant visitIfStatementNode(IfStatementNode isnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, isnode.line);
         isnode.onTrueStatement = new BlockStatementNode(isnode.onTrueStatement.line, [isnode.onTrueStatement]);
@@ -835,7 +831,7 @@ public:
     }
 
     /// Switch statements
-	Variant visitSwitchStatementNode(SwitchStatementNode ssnode)
+    Variant visitSwitchStatementNode(SwitchStatementNode ssnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, ssnode.line);
 
@@ -896,7 +892,7 @@ public:
     }
 
     /// Handle while loops
-	Variant visitWhileStatementNode(WhileStatementNode wsnode)
+    Variant visitWhileStatementNode(WhileStatementNode wsnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, wsnode.line);
         ++_compDataStack.top.loopOrSwitchStack;
@@ -920,7 +916,7 @@ public:
     }
 
     /// do-while loops
-	Variant visitDoWhileStatementNode(DoWhileStatementNode dwsnode)
+    Variant visitDoWhileStatementNode(DoWhileStatementNode dwsnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, dwsnode.line);
         ++_compDataStack.top.loopOrSwitchStack;
@@ -941,7 +937,7 @@ public:
     }
 
     /// handle regular for loops
-	Variant visitForStatementNode(ForStatementNode fsnode)
+    Variant visitForStatementNode(ForStatementNode fsnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, fsnode.line);
         ++_compDataStack.top.loopOrSwitchStack;
@@ -976,8 +972,8 @@ public:
         return Variant(null);
     }
 
-    /// TODO
-	Variant visitForOfStatementNode(ForOfStatementNode fosnode)
+    /// Visit for-of statements
+    Variant visitForOfStatementNode(ForOfStatementNode fosnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, fosnode.line);
         string[] varNames;
@@ -1048,8 +1044,8 @@ public:
         return Variant(null);
     }
 
-    /// TODO
-	Variant visitBreakStatementNode(BreakStatementNode bsnode)
+    /// visit break statements
+    Variant visitBreakStatementNode(BreakStatementNode bsnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, bsnode.line);
         immutable patchLocation = _chunk.length + 1;
@@ -1059,8 +1055,8 @@ public:
         return Variant(null);
     }
 
-    /// TODO
-	Variant visitContinueStatementNode(ContinueStatementNode csnode)
+    /// visit continue statements
+    Variant visitContinueStatementNode(ContinueStatementNode csnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, csnode.line);
         immutable patchLocation = _chunk.length + 1;
@@ -1071,7 +1067,7 @@ public:
     }
 
     /// Return statements
-	Variant visitReturnStatementNode(ReturnStatementNode rsnode)
+    Variant visitReturnStatementNode(ReturnStatementNode rsnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, rsnode.line);
         immutable numPops = _compDataStack.top.forOfDepth * 2;
@@ -1088,7 +1084,7 @@ public:
     }
 
     /// function declarations
-	Variant visitFunctionDeclarationStatementNode(FunctionDeclarationStatementNode fdsnode)
+    Variant visitFunctionDeclarationStatementNode(FunctionDeclarationStatementNode fdsnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, fdsnode.line);
         // easy, reduce it to a let fname = function(){...} VarDeclarationStatement
@@ -1111,7 +1107,7 @@ public:
     }
 
     /// Throw statement
-	Variant visitThrowStatementNode(ThrowStatementNode tsnode)
+    Variant visitThrowStatementNode(ThrowStatementNode tsnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, tsnode.line);
         tsnode.expressionNode.accept(this);
@@ -1120,7 +1116,7 @@ public:
     }
 
     /// Try catch
-	Variant visitTryCatchBlockStatementNode(TryCatchBlockStatementNode tcbsnode)
+    Variant visitTryCatchBlockStatementNode(TryCatchBlockStatementNode tcbsnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, tcbsnode.line);
         // emit try block
@@ -1165,7 +1161,7 @@ public:
     }
 
     /// delete statement. can be used on ArrayIndexNode or MemberAccessNode
-	Variant visitDeleteStatementNode(DeleteStatementNode dsnode)
+    Variant visitDeleteStatementNode(DeleteStatementNode dsnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, dsnode.line);
         if(auto ain = cast(ArrayIndexNode)dsnode.memberAccessOrArrayIndexNode)
@@ -1188,7 +1184,7 @@ public:
     }
 
     /// Class declarations. Reduce to let leftHand = classExpression
-	Variant visitClassDeclarationStatementNode(ClassDeclarationStatementNode cdsnode)
+    Variant visitClassDeclarationStatementNode(ClassDeclarationStatementNode cdsnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, cdsnode.line);
         auto reduction = new VarDeclarationStatementNode(
@@ -1203,7 +1199,7 @@ public:
     }
 
     /// handle expression statements
-	Variant visitExpressionStatementNode(ExpressionStatementNode esnode)
+    Variant visitExpressionStatementNode(ExpressionStatementNode esnode)
     {
         _debugInfoStack.top.addLine(_chunk.length, esnode.line);
         if(esnode.expressionNode is null)
@@ -1656,8 +1652,8 @@ unittest
 {
     import mildew.environment: Environment;
     auto compiler = new Compiler();
-    // auto chunk = compiler.compile("5 == 5 ? 'ass' : 'titties';");
-    auto vm = new VirtualMachine(new Environment(null, "<global>"));
-    // vm.printChunk(chunk);
-    // vm.run(chunk);
+    auto program = compiler.compile("5 == 5 ? 'ass' : 'titties';"); // @suppress(dscanner.suspicious.unmodified)
+    /*auto vm = new VirtualMachine(new Environment(null, "<global>"));
+    vm.printProgram(program); // This all has to be done through an Interpreter instance
+    vm.runProgram(program, []);*/ 
 }

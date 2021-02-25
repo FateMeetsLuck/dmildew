@@ -82,7 +82,7 @@ class ClassDefinition
 /// root class of expression nodes
 abstract class ExpressionNode
 {
-	abstract Variant accept(IExpressionVisitor visitor);
+    abstract Variant accept(IExpressionVisitor visitor);
 
     // have to override here for subclasses' override to work
     override string toString() const
@@ -99,10 +99,10 @@ class LiteralNode : ExpressionNode
         value = val;
     }
 
-	override Variant accept(IExpressionVisitor visitor)
-	{
-		return visitor.visitLiteralNode(this);
-	}
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitLiteralNode(this);
+    }
 
     override string toString() const
     {
@@ -253,10 +253,10 @@ class ArrayLiteralNode : ExpressionNode
         valueNodes = values;
     }
 
-	override Variant accept(IExpressionVisitor visitor)
-	{
-		return visitor.visitArrayLiteralNode(this);
-	}
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitArrayLiteralNode(this);
+    }
 
     override string toString() const
     {
@@ -274,10 +274,10 @@ class ObjectLiteralNode : ExpressionNode
         valueNodes = vs;
     }
 
-	override Variant accept(IExpressionVisitor visitor)
-	{
-		return visitor.visitObjectLiteralNode(this);
-	}
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitObjectLiteralNode(this);
+    }
 
     override string toString() const
     {
@@ -304,10 +304,10 @@ class DestructureTargetNode : ExpressionNode
         isObject = isObj;
     }
 
-    // this can't be directly visited?
+    // this can't be directly visited because its meaning is different depending on context
     override Variant accept(IExpressionVisitor visitor)
     {
-        return Variant(null);
+        throw new Exception("DestructureTargetNode cannot be directly visited");
     }
 
     override string toString() const
@@ -338,10 +338,10 @@ class ClassLiteralNode : ExpressionNode
         classDefinition = cdef;
     }
 
-	override Variant accept(IExpressionVisitor visitor)
-	{
-		return visitor.visitClassLiteralNode(this);
-	}
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitClassLiteralNode(this);
+    }
 
     override string toString() const 
     {
@@ -361,10 +361,10 @@ class BinaryOpNode : ExpressionNode
         rightNode = right;
     }
 
-	override Variant accept(IExpressionVisitor visitor)
-	{
-		return visitor.visitBinaryOpNode(this);
-	}
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitBinaryOpNode(this);
+    }
 
     override string toString() const
     {
@@ -384,10 +384,10 @@ class UnaryOpNode : ExpressionNode
         operandNode = operand;
     }
 
-	override Variant accept(IExpressionVisitor visitor)
-	{
-		return visitor.visitUnaryOpNode(this);
-	}
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitUnaryOpNode(this);
+    }
 
     override string toString() const
     {
@@ -406,10 +406,10 @@ class PostfixOpNode : ExpressionNode
         operandNode = node;
     }
 
-	override Variant accept(IExpressionVisitor visitor)
-	{
-		return visitor.visitPostfixOpNode(this);
-	}
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitPostfixOpNode(this);
+    }
 
     override string toString() const 
     {
@@ -429,10 +429,10 @@ class TerniaryOpNode : ExpressionNode
         onFalseNode = onFalse;
     }
 
-	override Variant accept(IExpressionVisitor visitor)
-	{
-		return visitor.visitTerniaryOpNode(this);
-	}
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitTerniaryOpNode(this);
+    }
 
     override string toString() const 
     {
@@ -451,10 +451,10 @@ class VarAccessNode : ExpressionNode
         varToken = token;
     }
 
-	override Variant accept(IExpressionVisitor visitor)
-	{
-		return visitor.visitVarAccessNode(this);
-	}
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitVarAccessNode(this);
+    }
 
     override string toString() const
     {
@@ -473,10 +473,10 @@ class FunctionCallNode : ExpressionNode
         returnThis = retThis;
     }
 
-	override Variant accept(IExpressionVisitor visitor)
-	{
-		return visitor.visitFunctionCallNode(this);
-	}
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitFunctionCallNode(this);
+    }
 
     override string toString() const
     {
@@ -505,10 +505,10 @@ class ArrayIndexNode : ExpressionNode
         indexValueNode = index;
     }    
 
-	override Variant accept(IExpressionVisitor visitor)
-	{
-		return visitor.visitArrayIndexNode(this);
-	}
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitArrayIndexNode(this);
+    }
 
     override string toString() const
     {
@@ -528,10 +528,10 @@ class MemberAccessNode : ExpressionNode
         memberNode = member;
     }
 
-	override Variant accept(IExpressionVisitor visitor)
-	{
-		return visitor.visitMemberAccessNode(this);
-	}
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitMemberAccessNode(this);
+    }
 
     override string toString() const
     {
@@ -550,10 +550,10 @@ class NewExpressionNode : ExpressionNode
         functionCallExpression = fn;
     }
 
-	override Variant accept(IExpressionVisitor visitor)
-	{
-		return visitor.visitNewExpressionNode(this);
-	}
+    override Variant accept(IExpressionVisitor visitor)
+    {
+        return visitor.visitNewExpressionNode(this);
+    }
 
     override string toString() const
     {
@@ -616,7 +616,7 @@ abstract class StatementNode
         line = lineNo;
     }
 
-	abstract Variant accept(IStatementVisitor visitor);
+    abstract Variant accept(IStatementVisitor visitor);
 
     override string toString() const
     {
@@ -642,10 +642,10 @@ class VarDeclarationStatementNode : StatementNode
         varAccessOrAssignmentNodes = nodes;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitVarDeclarationStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitVarDeclarationStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -671,10 +671,10 @@ class BlockStatementNode: StatementNode
         statementNodes = statements;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitBlockStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitBlockStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -700,10 +700,10 @@ class IfStatementNode : StatementNode
         onFalseStatement = onFalse;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitIfStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitIfStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -727,10 +727,10 @@ class SwitchStatementNode : StatementNode
         switchBody = sbody;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitSwitchStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitSwitchStatementNode(this);
+    }
 
     ExpressionNode expressionNode; // expression to test
     SwitchBody switchBody;
@@ -760,10 +760,10 @@ class WhileStatementNode : StatementNode
         label = lbl;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitWhileStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitWhileStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -787,10 +787,10 @@ class DoWhileStatementNode : StatementNode
         label = lbl;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitDoWhileStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitDoWhileStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -817,10 +817,10 @@ class ForStatementNode : StatementNode
         label = lbl;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitForStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitForStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -854,10 +854,10 @@ class ForOfStatementNode : StatementNode
         label = lbl;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitForOfStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitForOfStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -890,10 +890,10 @@ class BreakStatementNode : StatementNode
         label = lbl;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitBreakStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitBreakStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -911,10 +911,10 @@ class ContinueStatementNode : StatementNode
         label = lbl;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitContinueStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitContinueStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -932,10 +932,10 @@ class ReturnStatementNode : StatementNode
         expressionNode = expr;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitReturnStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitReturnStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -960,10 +960,10 @@ class FunctionDeclarationStatementNode : StatementNode
         isGenerator = isG;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitFunctionDeclarationStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitFunctionDeclarationStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -996,10 +996,10 @@ class ThrowStatementNode : StatementNode
         expressionNode = expr;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitThrowStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitThrowStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -1020,10 +1020,10 @@ class TryCatchBlockStatementNode : StatementNode
         finallyBlockNode = fin;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitTryCatchBlockStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitTryCatchBlockStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -1050,10 +1050,10 @@ class DeleteStatementNode : StatementNode
         memberAccessOrArrayIndexNode = accessNode;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitDeleteStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitDeleteStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -1073,10 +1073,10 @@ class ClassDeclarationStatementNode : StatementNode
         classDefinition = cdef;
     }
 
-	override Variant accept(IStatementVisitor visitor)
-	{
-		return visitor.visitClassDeclarationStatementNode(this);
-	}
+    override Variant accept(IStatementVisitor visitor)
+    {
+        return visitor.visitClassDeclarationStatementNode(this);
+    }
 
     override string toString() const
     {
@@ -1095,10 +1095,10 @@ class ExpressionStatementNode : StatementNode
         expressionNode = expression;
     }
 
-	override Variant accept(IStatementVisitor visitor)
+    override Variant accept(IStatementVisitor visitor)
 	{
-		return visitor.visitExpressionStatementNode(this);
-	}
+        return visitor.visitExpressionStatementNode(this);
+    }
 
     override string toString() const
     {

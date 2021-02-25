@@ -43,7 +43,8 @@ public:
      * to not pollute the global namespace. However, scripts can use var to declare variables that
      * are global.
      * Params:
-     *  printVMDebugInfo = This option, if true, indicates to print very verbose data while executing bytecode.
+     *  printDisasm = If this is set to true, bytecode disassembly of each program will be printed before execution.
+     *  printSteps = If this is set to true, detailed step by step execution of bytecode in the VM will be printed.
      */
     this(bool printDisasm = false, bool printSteps = false)
     {
@@ -84,8 +85,7 @@ public:
      * This is the main entry point for evaluating a script program.
      * Params:
      *  code = This is the source code of a script to be executed.
-     *  printDisasm = If VM mode is set, print the disassembly of bytecode before running if true.
-     *  fromScript = This parameter is reserved for internal use and should be left as false
+     *  program = The optional name of the program, defaults to "<program>"
      * Returns:
      *  If the script has a return statement with an expression, this value will be the result of that expression
      *  otherwise it will be ScriptAny.UNDEFINED
@@ -103,8 +103,6 @@ public:
      * Evaluates a file that can be either binary bytecode or textual source code.
      * Params:
      *  pathName = the location of the code file in the file system.
-     *  printDisasm = Whether or not bytecode disassembly should be printed before running
-     *  fromScript = This should be left to false and will be used internally
      * Returns:
      *  The result of evaluating the file, undefined if no return statement.
      */
@@ -158,14 +156,16 @@ public:
     }
 
     /**
-     * Run the VM queued fibers. This API is still being worked on.
+     * Run the VM queued fibers. This API is still a work in progress.
      */
     void runVMFibers()
     {
         _vm.runFibersToCompletion();
     }
 
-    /// Virtual machine property should never at any point be null
+    // TODO function to run one cycle of fibers once VM implements it
+
+    /// Gets the VirtualMachine instance of this Interpreter
     VirtualMachine vm() { return _vm; }
 
 private:
