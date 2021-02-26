@@ -138,6 +138,9 @@ private ScriptObject getXMLHttpRequestPrototype()
         _XMLHttpRequestPrototype["setRequestHeader"] = new ScriptFunction(
                 "XMLHttpRequest.prototype.setRequestHeader",
                 &native_XMLHttpRequest_setRequestHeader);
+        _XMLHttpRequestPrototype.addGetterProperty("status", new ScriptFunction(
+                "XMLHttpRequest.prototype.status",
+                &native_XMLHttpRequest_p_status));
     }
     return _XMLHttpRequestPrototype;
 }
@@ -496,6 +499,13 @@ private ScriptAny native_XMLHttpRequest_setRequestHeader(Environment env, Script
     return ScriptAny.UNDEFINED;
 }
 
-
+private ScriptAny native_XMLHttpRequest_p_status(Environment env, ScriptAny* thisObj,
+                                               ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto req = thisObj.toNativeObject!ScriptXMLHttpRequest;
+    if(req is null)
+        throw new ScriptRuntimeException("Invalid XMLHttpRequest object");
+    return ScriptAny(req._status);
+}
 
 

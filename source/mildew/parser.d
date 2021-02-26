@@ -108,6 +108,8 @@ private int binaryOpPrecedence(Token opToken)
             return 7;
         case Token.Type.OR:
             return 6;
+        case Token.Type.NULLC:
+            return 5;
         case Token.Type.QUESTION:
             return 4;
         case Token.Type.ASSIGN:
@@ -127,7 +129,7 @@ private int binaryOpPrecedence(Token opToken)
         default:
             return 0;
     }
-    // TODO null coalesce 5? yield and commma are already handled differently
+    // yield and commma are already handled differently
 }
 
 private bool isBinaryOpLeftAssociative(in Token opToken)
@@ -176,6 +178,8 @@ private bool isBinaryOpLeftAssociative(in Token opToken)
             return true;
         case Token.Type.QUESTION:
             return false;
+        case Token.Type.NULLC:
+            return true;
         case Token.Type.ASSIGN:
         case Token.Type.POW_ASSIGN:
         case Token.Type.STAR_ASSIGN:

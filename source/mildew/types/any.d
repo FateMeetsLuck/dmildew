@@ -304,14 +304,16 @@ public:
         // if both are undefined then return true
         if(_type == Type.UNDEFINED && other._type == Type.UNDEFINED)
             return true;
+        // but if both are either null or undefined return true
+        else if((_type == Type.UNDEFINED || _type == Type.NULL) 
+          && (other._type == Type.UNDEFINED || other._type == Type.NULL))
+            return true;
         // but if only one is undefined return false
         else if(_type == Type.UNDEFINED || other._type == Type.UNDEFINED)
             return false;
 
         // if both are null return true else false if only one is null
-        if(_type == Type.NULL && other._type == Type.NULL)
-            return true;
-        else if(_type == Type.NULL || other._type == Type.NULL)
+        if(_type == Type.NULL || other._type == Type.NULL)
             return false;
         
         // if either are strings, convert to string and compare

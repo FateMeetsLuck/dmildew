@@ -364,6 +364,18 @@ public:
             *cast(int*)(_chunk.ptr + jmp) = cast(int)(end - jumpOver);
             return Variant(null);
         }
+        else if(bonode.opToken.type == Token.Type.NULLC)
+        {
+            auto tern = new TerniaryOpNode(
+                new BinaryOpNode(Token.createFakeToken(Token.Type.EQUALS, ""), 
+                    bonode.leftNode, new LiteralNode(
+                        Token.createFakeToken(Token.Type.KEYWORD, "null"), ScriptAny(null) )
+                    ),
+                bonode.rightNode, bonode.leftNode
+            );
+            tern.accept(this);
+            return Variant(null);
+        }
 
         // push operands
         bonode.leftNode.accept(this);

@@ -85,7 +85,8 @@ struct Token
         INC, DEC, // ++ and --
         BIT_AND, BIT_XOR, BIT_OR, BIT_NOT, BIT_LSHIFT, BIT_RSHIFT, BIT_URSHIFT,
         LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET, 
-        SEMICOLON, COMMA, LABEL, QUESTION, COLON, ARROW,
+        SEMICOLON, COMMA, LABEL, QUESTION, COLON, ARROW, 
+        NULLC, // null coalesce
         
         INVALID
     }
@@ -183,6 +184,7 @@ struct Token
         case Type.QUESTION: return "?";
         case Type.COLON: return ":";
         case Type.ARROW: return "=>";
+        case Type.NULLC: return "??";
         case Type.INVALID: return "#";
         }
     }
@@ -346,7 +348,7 @@ public:
             else if(currentChar == ':')
                 tokens ~= Token(Token.Type.COLON, _position);
             else if(currentChar == '?')
-                tokens ~= Token(Token.Type.QUESTION, _position);
+                tokens ~= makeQuestionToken();
             else if(currentChar == '\0')
                 tokens ~= Token(Token.Type.EOF, _position);
             else
@@ -901,6 +903,20 @@ private:
         else
         {
             return [Token(Token.Type.DOT, _position)];
+        }
+    }
+
+    Token makeQuestionToken()
+    {
+        immutable startpos = _position;
+        if(peekChar == '?')
+        {
+            advanceChar();
+            return Token(Token.Type.NULLC, _position);
+        }
+        else
+        {
+            return Token(Token.Type.QUESTION, _position);
         }
     }
 
