@@ -1,6 +1,11 @@
-function test(a, b) {
-    console.log("a=" + a + ", b=" + b);
-    return 22;
+// Generators are now an iterable that can be used with Array.from
+function* testGen() {
+    yield 5;
+    yield 10;
+    yield 69;
+    yield 420;
 }
 
-1 == 1 ? test.apply(null, [5, 10]) : test(3, 4);
+const testArray = Array.from(testGen(), value => value * 2);
+console.log(testArray);
+// [10, 20, 138, 840] same as Node

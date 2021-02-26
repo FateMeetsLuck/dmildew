@@ -905,7 +905,10 @@ private ScriptAny native_Array_forEach(Environment env, ScriptAny* thisObj,
     return ScriptAny.UNDEFINED;
 }
 
-private ScriptAny native_Array_s_from(Environment env, ScriptAny* thisObj,
+/**
+ * Creates an Array from any iterable
+ */
+ScriptAny native_Array_s_from(Environment env, ScriptAny* thisObj,
                                       ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(args.length < 1)
@@ -943,9 +946,7 @@ private ScriptAny native_Array_s_from(Environment env, ScriptAny* thisObj,
             {
                 auto temp = native_Function_call(env, &func, 
                     [thisToUse, ScriptAny([ch]), ScriptAny(index), args[0]], nfe);
-                if(env.g.interpreter.vm.hasException)
-                    return temp;
-                if(nfe != NativeFunctionError.NO_ERROR)
+                if(env.g.interpreter.vm.hasException || nfe != NativeFunctionError.NO_ERROR)
                     return temp;
                 result ~= temp;
             }
@@ -955,6 +956,28 @@ private ScriptAny native_Array_s_from(Environment env, ScriptAny* thisObj,
             }
             ++index;
         }       
+    }
+    else if(args[0].isNativeObjectType!ScriptGenerator)
+    {
+        auto nextIteration = native_Generator_next(env, &args[0], [], nfe).toValue!ScriptObject;
+        size_t counter = 0;
+        while(!nextIteration["done"])
+        {
+            auto value = nextIteration["value"];
+            if(func.type == ScriptAny.Type.FUNCTION)
+            {
+                auto temp = native_Function_call(env, &func, [thisToUse, value, ScriptAny(counter), args[0]], nfe);
+                if(env.g.interpreter.vm.hasException || nfe != NativeFunctionError.NO_ERROR)
+                    return temp;
+                result ~= temp;
+            }
+            else
+            {
+                result ~= value;
+            }
+            ++counter;
+            nextIteration = native_Generator_next(env, &args[0], [], nfe).toValue!ScriptObject;
+        }
     }
 
     return ScriptAny(result);

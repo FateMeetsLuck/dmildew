@@ -54,6 +54,13 @@ function getThen(obj) {
     }
 }
 
+function valuePromise(value) {
+    let p = new Promise(Promise._noop);
+    p._state = 1;
+    p._value = value;
+    return p;
+}
+
 function tryCallOne(fn, a) {
     try {
         return fn(a);
@@ -92,11 +99,11 @@ Promise._onReject = null;
 Promise._noop = noop;
 
 Promise.all = function(promises) {
+    promises = Array.from(promises);
     let resolved = 0;
     let results = new Array(promises.length);
     return new Promise((resolve, reject)=>{
-        let i = 0;
-        for(let promise of promises) {
+        for(let i, promise in promises) {
             promise
                 .then(result => {
                     // results.push(result);
@@ -106,9 +113,97 @@ Promise.all = function(promises) {
                 .catch(e => { 
                     reject(e);
                 });
-            ++i;
         }
     });
+};
+
+Promise.allSettled = function(promises) {
+    promises = Array.from(promises);
+    let resolvedOrRejected = 0;
+    let results = new Array(promises.length);
+    return new Promise((resolve, reject)=>{
+        for(let i, promise in promises) {
+            promise
+                .then(result => {
+                    results[i] = {
+                        status: "fulfilled",
+                        value: result
+                    };
+                    if(++resolvedOrRejected == promises.length) resolve(results); 
+                })
+                .catch(err => {
+                    results[i] = {
+                        status: "rejected",
+                        value: err
+                    };
+                    if(++resolvedOrRejected == promises.length) resolve(results);
+                });
+        }
+    });
+};
+
+Promise.any = function(promises) {
+    promises = Array.from(promises);
+    let rejected = 0;
+    let rejections = new Array(promises.length);
+    return new Promise((resolve, reject)=>{
+        for(let i, promise in promises) {
+            promise
+                .then(result => {
+                    resolve(result);
+                })
+                .catch(e => {
+                    rejections[i] = e;
+                    if(++rejected == promises.length) reject(rejections);
+                });
+        }
+    });
+};
+
+Promise.race = function(promises) {
+    promises = Array.from(promises);
+    return new Promise((resolve, reject)=>{
+        for(let promise in promises) {
+            promise 
+                .then(result => {
+                    resolve(result);
+                })
+                .catch(e => {
+                    reject(e);
+                });
+        }
+    });
+};
+
+Promise.reject = function (value) {
+    return new Promise(function (resolve, reject) {
+        reject(value);
+    });
+};
+
+Promise.resolve = function(value) {
+    if(value instanceof Promise) return value;
+
+    if(value === null) return valuePromise(null);
+    if(value === undefined) return valuePromise(undefined);
+    if(value === true) return valuePromise(true);
+    if(value === false) return valuePromise(false);
+    if(value === 0) return valuePromise(0);
+    if(value === '') return valuePromise('');
+
+    if(typeof value === 'object' || typeof value === 'function') {
+        try {
+            let then = value.then;
+            if(typeof then === 'function') {
+                return new Promise(then.bind(value));
+            }
+        } catch(ex) {
+            return  new Promise((resolve, reject) => {
+                reject(ex);
+            });
+        } 
+    }
+    return valuePromise(value);
 };
 
 Promise.prototype.done = function (onFulfilled, onRejected) {
@@ -137,7 +232,6 @@ Promise.prototype.finally = function (f) {
 };
 
 Promise.prototype.then = function(onFulfilled, onRejected) {
-    console.log('Thenning ' + this + ' with ' + onFulfilled + ' and ' + onRejected);
     if (this.constructor !== Promise) {
         return safeThen(this, onFulfilled, onRejected);
     }
@@ -308,40 +402,69 @@ function delayedCodePoints(s1) {
     });
 }
 
-/*calculate(5, "-", 10)
-    .then(result => console.log("Result is " + result))
-    .catch(err => console.error("Could not calculate -: " + err));
+function testPromise() {
+    calculate(5, "+", 31)
+        .then(result => delayedCodePoints(result + ""))
+        .then(result => console.log("Calculate 5+31: " + result))
+        .catch(error => console.error("Error calculate 5+31: " + error));
 
-calculate(69, "+", 11)
-    .then(result => console.log("Result is " + result))
-    .catch(err => console.error("Could not calculate +: " + err));
+    Promise.resolve(69).then(result => console.log("Promise resolve 69 result: " + result))
+        .catch(err => console.error("Something went wrong with Promise.resolve: " + err));
 
-calculate(69, "+", 420)
-    .then(result => { throw "This calculation may be offensive"; })
-    .catch(err => console.error("Could not calculate 69+420: " + err));
+    calculate(5, "-", 10)
+        .then(result => console.log("Calculate 5-10: " + result))
+        .catch(err => console.error("Error calculate 5-10: " + err));
 
-delayedCodePoints("foo")
-    .then(result => console.log("Result of foo: " + result))
-    .catch(err => console.error("Couldn't do foo: " + err));*/
+    calculate(69, "+", 11)
+        .then(result => console.log("Calculate 69+11: " + result))
+        .catch(err => console.error("Error calculate 69+11: " + err));
 
-delayedCodePoints("blah blah")
-    .done(result => console.log("Done " + result));
+    calculate(69, "+", 420)
+        .then(result => { throw "This calculation may be offensive"; })
+        .catch(err => console.error("Error calculate 69+420: " + err));
 
-function testPromiseAll() 
-{
-    Promise.all([calculate(10, "+", 5), calculate(21, "+", -11), calculate("foo", "+", "bar")])
-        .then(result => console.log("The result of all these promises is " + result))
-        .catch(err => console.error("Something went wrong with all these promises: " + err))
-        .finally(()=> console.log("Finally always do this"));
+    delayedCodePoints("foo")
+        .then(result => console.log("delayedCodePoints 'foo': " + result))
+        .catch(err => console.error("Error delayedCodePoints foo: " + err));
 
-    Promise.all([delayedCodePoints("foo bar"), calculate(9, "-", 9)])
-        .then(result => console.log("The mixed result is " + result))
-        .catch(err => console.log("Something wrong with the mixed results: " + err))
-        .finally(obj => console.log("Finally all " + obj));
-
-    Promise.all([delayedCodePoints(""), delayedCodePoints("bc")])
-        .then(result => console.log(result))
-        .catch(err => console.log("I got a problem with these results: " + err));
+    delayedCodePoints("blah blah")
+        .done(result => console.log("delayedCodePoints blah blah done: " + result));
 }
 
-// testPromiseAll();
+function testPromiseAll() {
+    Promise.all([calculate(10, "+", 5), calculate(21, "+", -11), calculate("foo", "+", "bar")])
+        .then(result => console.log("Result promise all 0: " + result))
+        .catch(err => console.error("Error promise all 0: " + err))
+        .finally(()=> console.log("Finally promise all 0"));
+
+    Promise.all([delayedCodePoints("foo bar"), calculate(9, "-", 9)])
+        .then(result => console.log("result promise all 1: " + result))
+        .catch(err => console.log("Error promise all 1: " + err))
+        .finally(() => console.log("Finally promise all 1:"));
+
+    Promise.all([delayedCodePoints(""), delayedCodePoints("bc")])
+        .then(result => console.log("Result promise all 2: " + result))
+        .catch(err => console.log("Error promise all 2: " + err));
+}
+
+function testPromiseRace() {
+    Promise.race([delayedCodePoints("ass"), calculate(4, "+", 4)])
+        .then(result => console.log("Promise.race result: " + result))
+        .catch(error => console.error("Promise.race error: " + error));
+}
+
+Promise.any([calculate(14, "/", 88), delayedCodePoints(9000)])
+    .then(result => console.log("Promise.any success: " + result))
+    .catch(errors => console.error("Promise.any errors: " + errors));
+
+Promise.reject("This is a Promise.reject test")
+    .then(result => console.log("Promise.reject resolved when it shouldn't have"))
+    .catch(error => console.error("Catch: " + error));
+
+testPromise();
+testPromiseAll();
+testPromiseRace();
+
+Promise.allSettled([calculate(14, "*", 88), delayedCodePoints("word")])
+    .then(results => console.log("Promise.allSettled result: " + results))
+    .catch(() => console.error("This should never catch"));
