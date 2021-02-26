@@ -70,6 +70,7 @@ public:
         import mildew.stdlib.math: initializeMathLibrary;
         import mildew.stdlib.regexp: initializeRegExpLibrary;
         import mildew.stdlib.system: initializeSystemLib;
+        import mildew.stdlib.xmlhttprequest: initializeXMLHttpRequestLibrary;
         initializeTypesLibrary(this);
         initializeGlobalLibrary(this);
         initializeConsoleLibrary(this);
@@ -79,6 +80,7 @@ public:
         initializeMathLibrary(this);
         initializeRegExpLibrary(this);
         initializeSystemLib(this);
+        initializeXMLHttpRequestLibrary(this);
     }
 
     /**

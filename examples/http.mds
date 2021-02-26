@@ -1,0 +1,13 @@
+const req = new XMLHttpRequest();
+req.onreadystatechange = () => {
+    console.log("Ready state changed to " + req.readyState);
+    if(req.readyState == 3)
+         console.log(req.getAllResponseHeaders());
+    if(req.readyState == 4)
+        console.log("RS4: length of response is " + req.response.length);
+};
+req.open("GET", "http://www.reddit.com", true);
+req.setRequestHeader("content-type", "\"text/json\"");
+req.send();
+console.log("Length of response after send: " + req.response.length);
+// console.log("Response text after send: " + req.response);
