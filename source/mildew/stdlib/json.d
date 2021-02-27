@@ -56,8 +56,14 @@ ScriptAny native_JSON_parse(Environment env, ScriptAny* thisObj, ScriptAny[] arg
     try 
     {
         JSONReader.ignoreWhitespace(str);
-        auto object = JSONReader.consumeObject(str);
-        return ScriptAny(object);
+        if(str.length == 0)
+            return ScriptAny.UNDEFINED;
+        else if(str[0] == '{')
+            return ScriptAny(JSONReader.consumeObject(str));
+        else if(str[0] == '[')
+            return ScriptAny(JSONReader.consumeArray(str));
+        else
+            throw new ScriptRuntimeException("Unknown JSON value at top level");
     }
     catch(Exception ex)
     {
@@ -65,9 +71,13 @@ ScriptAny native_JSON_parse(Environment env, ScriptAny* thisObj, ScriptAny[] arg
     }
 }
 
-private class JSONReader 
+/**
+ * Reads JSON strings as Mildew objects.
+ */
+class JSONReader 
 {
-    static void consume(ref string str, char c)
+
+    private static void consume(ref string str, char c)
     {
         if(str.length < 1)
             throw new ScriptRuntimeException("Expected " ~ c ~ " in non-empty string");
@@ -76,6 +86,9 @@ private class JSONReader
         str = str[1..$];
     }
 
+    /**
+     * Reads an array from a string
+     */
     static ScriptAny[] consumeArray(ref string str)
     {
         ScriptAny[] result;
@@ -107,7 +120,7 @@ private class JSONReader
         return result;
     }
 
-    static bool consumeBoolean(ref string str)
+    private static bool consumeBoolean(ref string str)
     {
         if(str[0] == 't' && str.length >= 4 && str[0..4] == "true")
         {
@@ -125,7 +138,7 @@ private class JSONReader
         }
     }
 
-    static ScriptAny consumeNull(ref string str)
+    private static ScriptAny consumeNull(ref string str)
     {
         if(str[0] == 'n' && str.length >= 4 && str[0..4] == "null")
         {
@@ -135,7 +148,7 @@ private class JSONReader
         throw new ScriptRuntimeException("Expected null");
     }
 
-    static ScriptAny consumeNumber(ref string str)
+    private static ScriptAny consumeNumber(ref string str)
     {
         auto numberString = "";
         auto eCounter = 0;
@@ -160,6 +173,9 @@ private class JSONReader
         return ScriptAny(to!double(numberString));
     }
 
+    /**
+     * Reads a Mildew object from a JSON string
+     */
     static ScriptObject consumeObject(ref string str)
     {
         auto object = new ScriptObject("Object", null);
@@ -201,7 +217,7 @@ private class JSONReader
         return object;
     }
 
-    static string consumeString(ref string str)
+    private static string consumeString(ref string str)
     {
         if(str.length == 0)
             throw new ScriptRuntimeException("Expected string value in non-empty string");
@@ -264,7 +280,7 @@ private class JSONReader
         return value;
     }
 
-    static void ignoreWhitespace(ref string str)
+    private static void ignoreWhitespace(ref string str)
     {
         while ( 
             str.length > 0 
@@ -279,18 +295,18 @@ private class JSONReader
         }
     }
 
-    static bool isHexDigit(in char c)
+    private static bool isHexDigit(in char c)
     {
         import std.ascii: toLower;
         return (c >= '0' && c <= '9') || (c.toLower >= 'a' || c.toLower <= 'f');
     }
 
-    static bool isStringDelimiter(in char c)
+    private static bool isStringDelimiter(in char c)
     {
         return (c == '"' || c == '\'' || c == '`');
     }
 
-    static char next(ref string str)
+    private static char next(ref string str)
     {
         if(str.length == 0)
             return '\0';
@@ -299,7 +315,7 @@ private class JSONReader
         return c;
     }
 
-    static char peek(in string str)
+    private static char peek(in string str)
     {
         if(str.length == 0)
             return '\0';
@@ -307,7 +323,10 @@ private class JSONReader
     }
 }
 
-private ScriptAny native_JSON_stringify(Environment env, ScriptAny* thisObj, 
+/**
+ * Converts a Mildew Object into a JSON string.
+ */
+ScriptAny native_JSON_stringify(Environment env, ScriptAny* thisObj, 
                                         ScriptAny[] args, ref NativeFunctionError nfe)
 {
     if(args.length < 1)

@@ -22,11 +22,13 @@ module mildew.stdlib.xmlhttprequest;
 import std.concurrency;
 import std.net.curl;
 debug import std.stdio;
+import std.string: indexOf;
 import std.typecons;
 
 import mildew.environment;
 import mildew.exceptions;
 import mildew.interpreter;
+import mildew.stdlib.json;
 import mildew.types;
 import mildew.vm;
 
@@ -45,9 +47,7 @@ void initializeXMLHttpRequestLibrary(Interpreter interpreter)
     interpreter.forceSetGlobal("XMLHttpRequest", ctor, false);
 }
 
-package:
-
-class ScriptXMLHttpRequest
+private class ScriptXMLHttpRequest
 {
     enum ReadyState : ushort {
         UNSENT = 0,
@@ -71,12 +71,31 @@ class ScriptXMLHttpRequest
 
     alias Event = Tuple!(EventType, ScriptAny);
 
-    /*
 
-    void setRequestHeader(in string name, in string value)
+    void checkResponseType()
     {
-        _http.addRequestHeader(name, value);
-    }*/
+        if((_status >= 200 && _status <= 299) && _readyState == ReadyState.DONE 
+          && indexOf(_responseHeaders["content-type"], "application/json") != -1
+          && _responseText.length > 0)
+        {
+            try 
+            {
+                string text = cast(string)_responseText.dup;
+                if(text[0] == '[')
+                    _response = JSONReader.consumeArray(text);
+                else if(text[0] == '{')
+                    _response = JSONReader.consumeObject(text);
+            }
+            catch(Exception ex)
+            {
+                throw new ScriptRuntimeException(ex.msg);
+            }
+        }
+        else
+        {
+            _response = ScriptAny(cast(string)_responseText);
+        }        
+    }
 
 private:
     HTTP _http;
@@ -98,8 +117,10 @@ private:
     Event[] _eventQueue; // for async
 
     // response
+    Exception _exception;
     ushort _status;
     string[string] _responseHeaders;
+    ScriptAny _response;
     ubyte[] _responseText; // just a string for now
 }
 
@@ -129,6 +150,9 @@ private ScriptObject getXMLHttpRequestPrototype()
         _XMLHttpRequestPrototype.addGetterProperty("readyState", new ScriptFunction(
                 "XMLHttpRequest.prototype.readyState",
                 &native_XMLHttpRequest_p_readyState));                
+        _XMLHttpRequestPrototype.addGetterProperty("response", new ScriptFunction(
+                "XMLHttpRequest.prototype.response",
+                &native_XMLHttpRequest_p_response));
         _XMLHttpRequestPrototype.addGetterProperty("responseText", new ScriptFunction(
                 "XMLHttpRequest.prototype.responseText",
                 &native_XMLHttpRequest_p_responseText));
@@ -270,52 +294,57 @@ private ScriptAny native_XMLHttpRequest_open(Environment env, ScriptAny* thisObj
 
     // TODO all events
     req._http.onReceiveStatusLine = (HTTP.StatusLine line) {
-        req._status = line.code;
+        synchronized(req)
+        {
+            req._status = line.code;
+        }
     };
 
     req._http.onReceive = (ubyte[] data) {
         import core.thread: Thread;
 
-        synchronized(req)
+        if(req._responseText.length == 0)
         {
-            if(req._responseText.length == 0)
+            if(!req._async)
             {
                 req._readyState = ScriptXMLHttpRequest.ReadyState.HEADERS_RECEIVED;
-                if(!req._async)
+                if(req._onReadyStateChange)
+                    vm.runFunction(req._onReadyStateChange, *thisObj, []);
+            }
+            else
+            {
+                synchronized(req)
                 {
-                    if(req._onReadyStateChange)
-                        vm.runFunction(req._onReadyStateChange, *thisObj, []);
-                }
-                else
-                {
+                    req._readyState = ScriptXMLHttpRequest.ReadyState.HEADERS_RECEIVED;
                     req._eventQueue ~= tuple(ScriptXMLHttpRequest.EventType.RS_CHANGE, 
                             ScriptAny(ScriptXMLHttpRequest.ReadyState.HEADERS_RECEIVED));
                 }
             }
-            req._responseText ~= data;
-            if(req._readyState == ScriptXMLHttpRequest.ReadyState.HEADERS_RECEIVED)
+        }
+        req._responseText ~= data;
+        if(req._readyState == ScriptXMLHttpRequest.ReadyState.HEADERS_RECEIVED)
+        {
+            req._readyState = ScriptXMLHttpRequest.ReadyState.LOADING;
+            if(!req._async)
             {
-                req._readyState = ScriptXMLHttpRequest.ReadyState.LOADING;
-                if(!req._async)
+                if(req._onReadyStateChange)
+                    vm.runFunction(req._onReadyStateChange, *thisObj, []);
+            }
+            else
+            {
+                synchronized(req)
                 {
-                    if(req._onReadyStateChange)
-                        vm.runFunction(req._onReadyStateChange, *thisObj, []);
-                }
-                else
-                {
-                    synchronized 
-                    {
-                        req._eventQueue ~= tuple(ScriptXMLHttpRequest.EventType.RS_CHANGE, 
-                            ScriptAny(ScriptXMLHttpRequest.ReadyState.LOADING));
-                    }
+                    req._eventQueue ~= tuple(ScriptXMLHttpRequest.EventType.RS_CHANGE, 
+                        ScriptAny(ScriptXMLHttpRequest.ReadyState.LOADING));
                 }
             }
         }
+
         return data.length;
     };
 
     req._http.onProgress = (size_t dlTotal, size_t dlNow, size_t ulTotal, size_t ulNow) {
-        if(dlTotal == dlNow && (req._readyState == ScriptXMLHttpRequest.ReadyState.LOADING
+        /*if(dlTotal == dlNow && (req._readyState == ScriptXMLHttpRequest.ReadyState.LOADING
          || req._readyState == ScriptXMLHttpRequest.ReadyState.HEADERS_RECEIVED))
         {
             req._readyState = ScriptXMLHttpRequest.ReadyState.DONE;
@@ -326,13 +355,13 @@ private ScriptAny native_XMLHttpRequest_open(Environment env, ScriptAny* thisObj
             }
             else
             {
-                synchronized
+                synchronized(req)
                 {
                     req._eventQueue ~= tuple(ScriptXMLHttpRequest.EventType.RS_CHANGE, 
-                        ScriptAny(req._readyState));
+                        ScriptAny(ScriptXMLHttpRequest.ReadyState.DONE));
                 }
             }
-        }
+        }*/
         return 0;
     };
 
@@ -360,7 +389,7 @@ private ScriptAny native_XMLHttpRequest_open(Environment env, ScriptAny* thisObj
     }
     else
     {
-        synchronized
+        synchronized(req)
         {
             req._eventQueue ~= tuple(ScriptXMLHttpRequest.EventType.RS_CHANGE, 
                 ScriptAny(ScriptXMLHttpRequest.ReadyState.OPENED));
@@ -379,6 +408,15 @@ private ScriptAny native_XMLHttpRequest_p_readyState(Environment env, ScriptAny*
     return ScriptAny(req._readyState);
 }
 
+private ScriptAny native_XMLHttpRequest_p_response(Environment env, ScriptAny* thisObj,
+                                                   ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto req = thisObj.toNativeObject!ScriptXMLHttpRequest;
+    if(req is null)
+        throw new ScriptRuntimeException("Invalid XMLHttpRequest object");
+    return ScriptAny(req._response);
+}
+
 private ScriptAny native_XMLHttpRequest_p_responseText(Environment env, ScriptAny* thisObj,
                                                    ScriptAny[] args, ref NativeFunctionError nfe)
 {
@@ -391,6 +429,8 @@ private ScriptAny native_XMLHttpRequest_p_responseText(Environment env, ScriptAn
 private ScriptAny native_XMLHttpRequest_send(Environment env, ScriptAny* thisObj,
                                              ScriptAny[] args, ref NativeFunctionError nfe)
 {
+    import std.string: indexOf;
+    
     auto req = thisObj.toNativeObject!ScriptXMLHttpRequest;
     if(req is null)
         throw new ScriptRuntimeException("Invalid XMLHttpRequest object");
@@ -413,42 +453,33 @@ private ScriptAny native_XMLHttpRequest_send(Environment env, ScriptAny* thisObj
                 receive((shared ScriptXMLHttpRequest httpRequest)
                 {
                     auto httpRequestUnshared = cast(ScriptXMLHttpRequest)httpRequest;
-                    httpRequestUnshared._http.perform();
-                    synchronized
+                    try 
                     {
-                        if(httpRequestUnshared._readyState == ScriptXMLHttpRequest.ReadyState.LOADING)
+                        httpRequestUnshared._http.perform();
+                        // synchronized
                         {
                             httpRequestUnshared._readyState = ScriptXMLHttpRequest.ReadyState.DONE;
                             httpRequestUnshared._eventQueue ~= tuple(ScriptXMLHttpRequest.EventType.RS_CHANGE,
-                                ScriptAny(ScriptXMLHttpRequest.ReadyState.DONE)); 
+                                    ScriptAny(ScriptXMLHttpRequest.ReadyState.DONE)); 
+                            httpRequestUnshared._done = true;
                         }
+                    } 
+                    catch(Exception ex)
+                    {
+                        httpRequestUnshared._exception = ex;
                     }
-                    httpRequestUnshared._done = true;
                 });
             });
             send(tid, cast(shared)request);
 
             while(!request._done)
             {
-                synchronized(request)
-                {
-                    while(request._eventQueue != null)
-                    {
-                        ScriptXMLHttpRequest.Event event;
-                        event = request._eventQueue[0];
-                        request._eventQueue = request._eventQueue[1..$];
-                        if(event[0] == ScriptXMLHttpRequest.EventType.RS_CHANGE)
-                        {
-                            // resync
-                            request._readyState = cast(ScriptXMLHttpRequest.ReadyState)event[1].toValue!ushort;
-                            if(request._onReadyStateChange)
-                                vm.runFunction(request._onReadyStateChange, *thisObj, []);
-                        }
-                    }
-                }
+                // wait for events to queue up then run them
                 yield();
             }
 
+            if(request._exception)
+                throw new ScriptRuntimeException(request._exception.msg);
             if(request._eventQueue)
             {
                 foreach(event ; request._eventQueue)
@@ -457,6 +488,7 @@ private ScriptAny native_XMLHttpRequest_send(Environment env, ScriptAny* thisObj
                     {
                         // resync
                         request._readyState = cast(ScriptXMLHttpRequest.ReadyState)event[1].toValue!ushort;
+                        request.checkResponseType();
                         if(request._onReadyStateChange)
                             vm.runFunction(request._onReadyStateChange, *thisObj, []);
                     }
@@ -474,9 +506,11 @@ private ScriptAny native_XMLHttpRequest_send(Environment env, ScriptAny* thisObj
         if(req._readyState != ScriptXMLHttpRequest.ReadyState.OPENED)
             throw new ScriptRuntimeException("Invalid ready state (not opened)");
         req._http.perform();
+        req.checkResponseType();
         if(req._readyState == ScriptXMLHttpRequest.ReadyState.LOADING)
         {
             req._readyState = ScriptXMLHttpRequest.ReadyState.DONE;
+            req.checkResponseType();
             if(req._onReadyStateChange)
             {
                 vm.runFunction(req._onReadyStateChange, *thisObj, []);

@@ -1,0 +1,14 @@
+const req = new XMLHttpRequest();
+req.onreadystatechange = () => {
+    console.log("RS=" + req.readyState);
+    if(req.readyState == 4)
+        console.log(req.response + " " + req.readyState); // Object {id: 101}
+};
+
+req.open("POST", "https://jsonplaceholder.typicode.com/posts");
+req.setRequestHeader("content-type", "application.json; charset=UTF-8");
+req.send(JSON.stringify({
+    title: 'Straight from Mildew',
+    body: 'This is just a test',
+    userId: 88
+}));
