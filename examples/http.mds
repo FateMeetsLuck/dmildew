@@ -1,3 +1,8 @@
+/*
+XMLHttpRequest works similar to most browser implementations except there is no addEventHandler method, instead
+event properties are directly modified such as "onerror" or "onreadystatechange". Also there is obviously no
+restriction on what domains are accessed as Mildew is not a web browser.
+*/
 function testPosts() {
     const req = new XMLHttpRequest();
     req.onreadystatechange = () => {
@@ -13,6 +18,8 @@ function testPosts() {
     req.open("GET", "https://jsonplaceholder.typicode.com/posts", false);
     req.send("foo bar");
 }
+
+testPosts();
 
 function testProgress() {
     const xhr = new XMLHttpRequest();
@@ -35,9 +42,86 @@ function testProgress() {
         if(xhr.readyState == 4)
             console.log(xhr.getAllResponseHeaders());
     };
-    xhr.open("GET", "https://www.reddit.com", false);
+    xhr.open("GET", "https://www.reddit.com", true);
     xhr.send("Retard");
 }
 
 testProgress();
+
+function testError() {
+    const xhr = new XMLHttpRequest();
+    xhr.onloadend = (e) => {
+        console.log("load end: " + e);
+    };
+    xhr.onerror = (e) => {
+        console.log("An HTTP error: " + e);
+    };
+    xhr.onreadystatechange = () => {
+        console.log("RS=" + xhr.readyState);
+    };
+    xhr.open("GET", "https://fbdafdzfd.com", true);
+    xhr.send();
+}
+
+testError();
+
+function testLoad() {
+    const xhr = new XMLHttpRequest();
+    xhr.onload = (e) => {
+        console.log("Load event: " + e);
+    };
+    xhr.onreadystatechange = () => {
+        console.log("RS=" + xhr.readyState);
+    };
+    xhr.open("GET", "https://www.yahoo.com", true);
+    xhr.send();
+}
+
+testLoad();
+
+function testLoadStart() {
+    const xhr = new XMLHttpRequest();
+    xhr.onloadstart = (e) => {
+        console.log("Load start: " + e);
+    };
+    xhr.onreadystatechange = () => {
+        console.log("RS=" + xhr.readyState);
+    };
+    xhr.open("GET", "https://twitter.com", false);
+    xhr.send();
+}
+
+testLoadStart();
+
+function testTimeout() {
+    const xhr = new XMLHttpRequest();
+    xhr.ontimeout = (e) => {
+        console.log("Timeout: " + e);
+    };
+    xhr.open("GET", "http://192.168.1.2", true);
+    xhr.timeout = 1000;
+    xhr.send();
+}
+
+testTimeout();
+
+function testPosting() {
+    const req = new XMLHttpRequest();
+    req.onreadystatechange = () => {
+        console.log("RS=" + req.readyState);
+        if(req.readyState == 4)
+            console.log(req.response + " " + req.readyState); // Object {id: 101}
+    };
+
+    req.open("POST", "https://jsonplaceholder.typicode.com/posts");
+    req.setRequestHeader("content-type", "application.json; charset=UTF-8");
+    req.send(JSON.stringify({
+        title: 'Straight from Mildew',
+        body: 'This is just a test',
+        userId: 88
+    }));
+}
+
+testPosting();
+
 

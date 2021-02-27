@@ -1,3 +1,9 @@
+/*
+The JSON namespace implements two functions: stringify and parse. They work similar to their JavaScript
+counterparts except stringify does not accept a whitespace descriptor and the replacer callback receives
+key and value pairs during Array and Object parsing and the return value should be a string representing
+the value, not the entire Object.
+*/
 console.test = 200;
 const result = JSON.parse(JSON.stringify(console, (key,value)=>{
     if(typeof value === 'function')

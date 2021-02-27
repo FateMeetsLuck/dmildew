@@ -35,12 +35,6 @@ function noop() {}
 //
 // once the state is no longer pending (0) it is immutable
 
-// All `_` prefixed properties will be reduced to `_{random number}`
-// at build time to obfuscate them and discourage their use.
-// We don't use symbols or Object.defineProperty to fully hide them
-// because the performance isn't good enough.
-
-
 // to avoid using try/catch inside critical functions, we
 // extract them to here.
 let LAST_ERROR = null;
@@ -440,7 +434,7 @@ function testPromiseAll() {
     Promise.all([delayedCodePoints("foo bar"), calculate(9, "-", 9)])
         .then(result => console.log("result promise all 1: " + result))
         .catch(err => console.log("Error promise all 1: " + err))
-        .finally(() => console.log("Finally promise all 1:"));
+        .finally(() => console.log("Finally promise all 1"));
 
     Promise.all([delayedCodePoints(""), delayedCodePoints("bc")])
         .then(result => console.log("Result promise all 2: " + result))

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Namespace: System</title>
+    <title>JSDoc: Namespace: JSON</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Namespace: System</h1>
+    <h1 class="page-title">Namespace: JSON</h1>
 
     
 
@@ -28,7 +28,7 @@
 
 <header>
     
-        <h2>System</h2>
+        <h2>JSON</h2>
         
     
 </header>
@@ -37,8 +37,9 @@
     <div class="container-overview">
     
         
-            <div class="description">The System namespace differentiates Mildew from JavaScript and is inspired by the Java class
-of the same name. System contains various utility functions but no file I/O.</div>
+            <div class="description">The JSON namespace provides functions for converting Mildew Objects into JSON strings, or JSON strings
+into Mildew Objects. Mildew Objects can be retrieved and sent across the internet through XMLHttpRequest
+and REST APIs.</div>
         
 
         
@@ -107,7 +108,7 @@ of the same name. System contains various utility functions but no file I/O.</di
     
 
     
-    <h4 class="name" id=".currentTimeMillis"><span class="type-signature">(static) </span>currentTimeMillis<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="integer.html">integer</a>}</span></h4>
+    <h4 class="name" id=".parse"><span class="type-signature">(static) </span>parse<span class="signature">(string)</span><span class="type-signature"> &rarr; {*}</span></h4>
     
 
     
@@ -115,8 +116,7 @@ of the same name. System contains various utility functions but no file I/O.</di
 
 
 <div class="description">
-    Returns the number of milliseconds since January 1st, 1 AD. To get the number of milliseconds from Jan 1 1970, use
-Date.now.
+    Converts a JSON string into a Mildew value. If the string is not valid JSON, throws an error.
 </div>
 
 
@@ -125,6 +125,55 @@ Date.now.
 
 
 
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>string</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="String.html">String</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Any valid JSON string</td>
+        </tr>
+
+    
+    </tbody>
+</table>
 
 
 
@@ -184,7 +233,7 @@ Date.now.
 
         
 <div class="param-desc">
-    The system time in milliseconds
+    A Mildew Object described by the JSON string if successfully parsed.
 </div>
 
 
@@ -195,7 +244,7 @@ Date.now.
     </dt>
     <dd>
         
-<span class="param-type"><a href="integer.html">integer</a></span>
+<span class="param-type">*</span>
 
 
     </dd>
@@ -213,7 +262,7 @@ Date.now.
     
 
     
-    <h4 class="name" id=".gc"><span class="type-signature">(static) </span>gc<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id=".stringify"><span class="type-signature">(static) </span>stringify<span class="signature">(object, replacer)</span><span class="type-signature"> &rarr; {<a href="String.html">String</a>}</span></h4>
     
 
     
@@ -221,10 +270,9 @@ Date.now.
 
 
 <div class="description">
-    Requests that the D runtime perform a garbage collection cycle. The Mildew
-garbage collector relies on the D runtime's garbage collection. Scripts should 
-not keep references to unused objects in the global scope or inside Objects that
-do not go out of scope or are referenced likewise.
+    Converts a Mildew object into a valid JSON string. Invalid JSON values such as Function are ignored
+unless the replacer method overrides this. Native D objects with no added fields will produce "{}" as
+the value.
 </div>
 
 
@@ -235,88 +283,77 @@ do not go out of scope or are referenced likewise.
 
 
 
-
-
-
-
-<dl class="details">
-
+    <h5>Parameters:</h5>
     
 
-    
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
 
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        <th>Type</th>
 
         
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>object</code></td>
             
 
-    
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Any Mildew Object</td>
+        </tr>
 
     
-    <h4 class="name" id=".getenv"><span class="type-signature">(static) </span>getenv<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="Object.html">Object</a>}</span></h4>
-    
+
+        <tr>
+            
+                <td class="name"><code>replacer</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">A callback that receives the key and value of each Object entry and returns
+a String to be used as the value in the conversion. This method works differently than Node.js.</td>
+        </tr>
 
     
-
-
-
-<div class="description">
-    Gets an Object containing the key value pairs (both key and value are Strings) of
-all available shell environment variables such as HOME.
-</div>
-
-
-
-
-
-
-
+    </tbody>
+</table>
 
 
 
@@ -376,7 +413,7 @@ all available shell environment variables such as HOME.
 
         
 <div class="param-desc">
-    Hash map of environment variables.
+    A JSON string representation of the Object.
 </div>
 
 
@@ -387,7 +424,7 @@ all available shell environment variables such as HOME.
     </dt>
     <dd>
         
-<span class="param-type"><a href="Object.html">Object</a></span>
+<span class="param-type"><a href="String.html">String</a></span>
 
 
     </dd>

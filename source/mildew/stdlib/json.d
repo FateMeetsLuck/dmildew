@@ -279,6 +279,18 @@ class JSONReader
         return value;
     }
 
+    /**
+     * This function accepts JSON arrays or objects only
+     */
+    static ScriptAny consumeValue(string str)
+    {
+        if(str[0] == '{')
+            return ScriptAny(consumeObject(str));
+        else if(str[0] == '[')
+            return ScriptAny(consumeArray(str));
+        return ScriptAny.UNDEFINED;
+    }
+
     private static void ignoreWhitespace(ref string str)
     {
         while ( 

@@ -119,6 +119,8 @@ public:
 
         File inputFile = File(pathName, "rb");
         auto raw = new ubyte[inputFile.size];
+        if(inputFile.size == 0)
+            return ScriptAny.UNDEFINED;
         raw = inputFile.rawRead(raw);
         if(raw.length > 0 && raw[0] == 0x01)
         {
