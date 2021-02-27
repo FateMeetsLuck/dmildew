@@ -1,13 +1,43 @@
-const req = new XMLHttpRequest();
-req.onreadystatechange = () => {
-    console.log("Ready state changed to " + req.readyState);
-    if(req.readyState == 3) {
-         console.log(req.getAllResponseHeaders());
-    } else if(req.readyState == 4) {
-        console.log(`Status code=${req.status} and response length=${req.responseText.length}`);
-        console.log(req.response);
-        console.log(req.getResponseHeader("content-type"));
-    }
-};
-req.open("GET", "https://jsonplaceholder.typicode.com/posts", false);
-req.send("foo bar");
+function testPosts() {
+    const req = new XMLHttpRequest();
+    req.onreadystatechange = () => {
+        console.log("Ready state changed to " + req.readyState);
+        if(req.readyState == 3) {
+            console.log(req.getAllResponseHeaders());
+        } else if(req.readyState == 4) {
+            console.log(`Status code=${req.status} and response length=${req.responseText.length}`);
+            console.log(req.response);
+            console.log(req.getResponseHeader("content-type"));
+        }
+    };
+    req.open("GET", "https://jsonplaceholder.typicode.com/posts", false);
+    req.send("foo bar");
+}
+
+function testProgress() {
+    const xhr = new XMLHttpRequest();
+    xhr.onabort = (e) => {
+        console.log("Aborted, event=" + e);
+    };
+    xhr.onprogress = (e) => {
+        // console.log("\r" + "=".repeat(e.loaded * 100 / e.total).padEnd(100, "-"));
+        /*if(e.lengthComputable) {
+            console.put(`\rLoaded ${e.loaded} out of ${e.total}`);
+        } else {
+            const total = parseInt(xhr.getResponseHeader("content-length")) ?? "??";
+            console.put(`\rLoaded ${e.loaded} bytes out of ${total}`);
+        }*/
+        if(e.loaded > 10000)
+            xhr.abort();
+    };
+    xhr.onreadystatechange = () => {
+        console.log("RS=" + xhr.readyState);
+        if(xhr.readyState == 4)
+            console.log(xhr.getAllResponseHeaders());
+    };
+    xhr.open("GET", "https://www.reddit.com", false);
+    xhr.send("Retard");
+}
+
+testProgress();
+

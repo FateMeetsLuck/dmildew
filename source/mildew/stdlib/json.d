@@ -275,7 +275,6 @@ class JSONReader
             }
             ch = next(str);
         }
-        // consume(str, delim);
 
         return value;
     }
@@ -288,7 +287,7 @@ class JSONReader
                 || str[0] == '\t' 
                 || str[0] == '\n'
                 || str[0] == '\r'
-            )
+               )
             ) 
         {
             str = str[1..$];
@@ -363,7 +362,17 @@ private class JSONWriter
 
         for(size_t i = 0; i < array.length; ++i)
         {
-            auto strValue = produceValue(array[i]);
+            auto strValue = "";
+            if(replacer.type == ScriptAny.Type.FUNCTION)
+            {
+                NativeFunctionError nfe;
+                strValue = native_Function_call(environment, &replacer, 
+                        [thisToUse, ScriptAny(i), array[i]], nfe).toString();
+            }
+            else 
+            {
+                strValue = produceValue(array[i]);
+            }
             if(strValue != "")
                 result ~= strValue;
             else
@@ -503,5 +512,5 @@ unittest
 {
     string str1 = ""; // @suppress(dscanner.suspicious.unmodified)
     string str2 = null; // @suppress(dscanner.suspicious.unmodified)
-    assert(str1 == str2); // weird that is passes when the produceObject didn't work the same
+    assert(str1 == str2); // weird that this passes when produceObject didn't work the same
 }

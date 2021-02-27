@@ -20,10 +20,12 @@ this program.  If not, see <https://www.gnu.org/licenses/>.
 module mildew.stdlib.xmlhttprequest;
 
 import std.concurrency;
+import std.conv: to;
 import std.net.curl;
 debug import std.stdio;
 import std.string: indexOf;
 import std.typecons;
+import std.uni: toLower;
 
 import mildew.environment;
 import mildew.exceptions;
@@ -74,11 +76,11 @@ private class ScriptXMLHttpRequest
 
     void checkResponseType()
     {
-        if((_status >= 200 && _status <= 299) && _readyState == ReadyState.DONE 
-          && indexOf(_responseHeaders["content-type"], "application/json") != -1
-          && _responseText.length > 0)
+        try 
         {
-            try 
+            if((_status >= 200 && _status <= 299) && _readyState == ReadyState.DONE 
+            && indexOf(_responseHeaders["content-type"], "application/json") != -1
+            && _responseText.length > 0)
             {
                 string text = cast(string)_responseText.dup;
                 if(text[0] == '[')
@@ -86,15 +88,14 @@ private class ScriptXMLHttpRequest
                 else if(text[0] == '{')
                     _response = JSONReader.consumeObject(text);
             }
-            catch(Exception ex)
+            else
             {
-                throw new ScriptRuntimeException(ex.msg);
+                _response = ScriptAny(cast(string)_responseText);
             }
-        }
-        else
+        } catch(Exception ex)
         {
-            _response = ScriptAny(cast(string)_responseText);
-        }        
+            throw new ScriptRuntimeException(ex.msg);
+        }       
     }
 
 private:
@@ -139,6 +140,18 @@ private ScriptObject getXMLHttpRequestPrototype()
         _XMLHttpRequestPrototype["getResponseHeader"] = new ScriptFunction(
                 "XMLHttpRequest.prototype.getResponseHeader",
                 &native_XMLHttpRequest_getResponseHeader);
+        _XMLHttpRequestPrototype.addGetterProperty("onabort", new ScriptFunction(
+                "XMLHttpRequest.prototype.onabort",
+                &native_XMLHttpRequest_p_onabort));
+        _XMLHttpRequestPrototype.addSetterProperty("onabort", new ScriptFunction(
+                "XMLHttpRequest.prototype.onabort",
+                &native_XMLHttpRequest_p_onabort));
+        _XMLHttpRequestPrototype.addGetterProperty("onprogress", new ScriptFunction(
+                "XMLHttpRequest.prototype.onprogress",
+                &native_XMLHttpRequest_p_onprogress));
+        _XMLHttpRequestPrototype.addSetterProperty("onprogress", new ScriptFunction(
+                "XMLHttpRequest.prototype.onprogress",
+                &native_XMLHttpRequest_p_onprogress));
         _XMLHttpRequestPrototype.addGetterProperty("onreadystatechange", new ScriptFunction(
                 "XMLHttpRequest.prototype.onreadystatechange",
                 &native_XMLHttpRequest_p_onreadystatechange));
@@ -216,10 +229,54 @@ private ScriptAny native_XMLHttpRequest_getResponseHeader(Environment env, Scrip
         nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
         return ScriptAny.UNDEFINED;
     }
-    auto key = args[0].toString;
+    auto key = toLower(args[0].toString());
     if(key in req._responseHeaders)
         return ScriptAny(req._responseHeaders[key]);
     return ScriptAny.UNDEFINED;
+}
+
+private ScriptAny native_XMLHttpRequest_p_onabort(Environment env, ScriptAny* thisObj,
+                                                     ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto req = thisObj.toNativeObject!ScriptXMLHttpRequest;
+    if(req is null)
+        throw new ScriptRuntimeException("Invalid XMLHttpRequest object");
+    if(args.length < 1)
+    {
+        if(req._onAbort)
+            return ScriptAny(req._onProgress);
+        else
+            return ScriptAny(null);
+    }
+    if(args[0].type != ScriptAny.Type.FUNCTION)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    req._onAbort = args[0].toValue!ScriptFunction;
+    return args[0];
+}
+
+private ScriptAny native_XMLHttpRequest_p_onprogress(Environment env, ScriptAny* thisObj,
+                                                     ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto req = thisObj.toNativeObject!ScriptXMLHttpRequest;
+    if(req is null)
+        throw new ScriptRuntimeException("Invalid XMLHttpRequest object");
+    if(args.length < 1)
+    {
+        if(req._onProgress)
+            return ScriptAny(req._onProgress);
+        else
+            return ScriptAny(null);
+    }
+    if(args[0].type != ScriptAny.Type.FUNCTION)
+    {
+        nfe = NativeFunctionError.WRONG_TYPE_OF_ARG;
+        return ScriptAny.UNDEFINED;
+    }
+    req._onProgress = args[0].toValue!ScriptFunction;
+    return args[0];
 }
 
 private ScriptAny native_XMLHttpRequest_p_onreadystatechange(Environment env,
@@ -265,6 +322,8 @@ private ScriptAny native_XMLHttpRequest_open(Environment env, ScriptAny* thisObj
     auto method = args[0].toString();
     auto url = args[1].toString();
     req._http = HTTP(url);
+    req._done = false;
+    req._abort = false;
     switch(method.toUpper)
     {
     case "GET":
@@ -278,6 +337,21 @@ private ScriptAny native_XMLHttpRequest_open(Environment env, ScriptAny* thisObj
         break;
     case "DELETE":
         req._http.method = HTTP.Method.del;
+        break;
+    case "HEAD":
+        req._http.method = HTTP.Method.head;
+        break;
+    case "PATCH":
+        req._http.method = HTTP.Method.patch;
+        break;
+    case "OPTIONS":
+        req._http.method = HTTP.Method.options;
+        break;
+    case "TRACE":
+        req._http.method = HTTP.Method.trace;
+        break;
+    case "CONNECT":
+        req._http.method = HTTP.Method.connect;
         break;
     default:
         throw new ScriptRuntimeException("Invalid HTTP method specified");
@@ -344,40 +418,55 @@ private ScriptAny native_XMLHttpRequest_open(Environment env, ScriptAny* thisObj
     };
 
     req._http.onProgress = (size_t dlTotal, size_t dlNow, size_t ulTotal, size_t ulNow) {
-        /*if(dlTotal == dlNow && (req._readyState == ScriptXMLHttpRequest.ReadyState.LOADING
-         || req._readyState == ScriptXMLHttpRequest.ReadyState.HEADERS_RECEIVED))
+        synchronized(req)
         {
-            req._readyState = ScriptXMLHttpRequest.ReadyState.DONE;
+            ScriptObject event = new ScriptObject(
+                req._abort ? "AbortEvent" : "LoadEvent", 
+                null);
+            event["loaded"] = ScriptAny(dlNow);
+            event["total"] = ScriptAny(dlTotal);
+            event["lengthComputable"] = dlTotal == 0 ? ScriptAny(false) : ScriptAny(true);
             if(!req._async)
             {
-                if(req._onReadyStateChange)
-                    vm.runFunction(req._onReadyStateChange, *thisObj, []);
+                if(req._abort)
+                {
+                    if(req._onAbort)
+                        vm.runFunction(req._onAbort, *thisObj, [ScriptAny(event)]);
+                }
+                else if(req._onProgress)
+                    vm.runFunction(req._onProgress, *thisObj, [ScriptAny(event)]);
             }
             else
             {
-                synchronized(req)
+                if(req._abort)
                 {
-                    req._eventQueue ~= tuple(ScriptXMLHttpRequest.EventType.RS_CHANGE, 
-                        ScriptAny(ScriptXMLHttpRequest.ReadyState.DONE));
+                    req._eventQueue ~= tuple(ScriptXMLHttpRequest.EventType.ABORT,
+                        ScriptAny(event));
                 }
+                else req._eventQueue ~= tuple(ScriptXMLHttpRequest.EventType.PROGRESS,
+                    ScriptAny(event));
             }
-        }*/
+
+            if(req._abort)
+            {    
+                return HTTP.requestAbort;
+            }
+        }
         return 0;
     };
 
     req._http.onReceiveHeader = (in char[] key, in char[] value) {
         synchronized(req) 
         {
-            req._responseHeaders[key.idup] = value.idup;
+            req._responseHeaders[toLower(key)] = value.idup;
         }
     };
 
-    req._http.onSend = (void[] data) {
+    req._http.onSend = (void[] data) { // this is never called even with send params
         if(req._abort)
         {
-            req._abort = false;
             return HTTP.requestAbort;
-        }  
+        }
         return data.length;
     };
 
@@ -447,6 +536,7 @@ private ScriptAny native_XMLHttpRequest_send(Environment env, ScriptAny* thisObj
             function ScriptAny(Environment env, ScriptAny* thisObj,
                 ScriptAny[] args, ref NativeFunctionError nfe) 
         {
+            import core.thread: Thread;
             auto vm = env.g.interpreter.vm;
             auto request = thisObj.toNativeObject!ScriptXMLHttpRequest;
             auto tid = spawn({
@@ -456,33 +546,68 @@ private ScriptAny native_XMLHttpRequest_send(Environment env, ScriptAny* thisObj
                     try 
                     {
                         httpRequestUnshared._http.perform();
-                        // synchronized
+                        synchronized(httpRequestUnshared)
                         {
                             httpRequestUnshared._readyState = ScriptXMLHttpRequest.ReadyState.DONE;
                             httpRequestUnshared._eventQueue ~= tuple(ScriptXMLHttpRequest.EventType.RS_CHANGE,
                                     ScriptAny(ScriptXMLHttpRequest.ReadyState.DONE)); 
                             httpRequestUnshared._done = true;
                         }
+                    }
+                    catch(CurlException cex)
+                    {
+                        synchronized(httpRequestUnshared)
+                        {
+                            httpRequestUnshared._done = true;
+                        }
                     } 
                     catch(Exception ex)
                     {
-                        httpRequestUnshared._exception = ex;
+                        synchronized(httpRequestUnshared)
+                        {
+                            httpRequestUnshared._exception = ex;
+                        }
                     }
                 });
             });
             send(tid, cast(shared)request);
 
-            while(!request._done)
+            ScriptXMLHttpRequest.Event[] deferredEvents;
+            while(!request._done && request._exception is null)
             {
-                // wait for events to queue up then run them
+                synchronized(request)
+                {
+                    if(request._eventQueue.length > 0)
+                    {
+                        auto event = request._eventQueue[0];
+                        request._eventQueue = request._eventQueue[1..$];
+                        if(event[0] == ScriptXMLHttpRequest.EventType.PROGRESS)
+                        {
+                            if(request._onProgress)
+                                vm.runFunction(request._onProgress, *thisObj, [event[1]]);
+                        }
+                        else if(event[0] == ScriptXMLHttpRequest.EventType.ABORT)
+                        {
+                            if(request._onAbort)
+                                vm.runFunction(request._onAbort, *thisObj, [event[1]]);
+                        }
+                        else
+                        {
+                            deferredEvents ~= event;
+                        }
+                    }
+                }
                 yield();
             }
 
-            if(request._exception)
+            deferredEvents ~= request._eventQueue;
+
+            if(request._exception !is null)
                 throw new ScriptRuntimeException(request._exception.msg);
-            if(request._eventQueue)
+
+            if(deferredEvents.length > 0)
             {
-                foreach(event ; request._eventQueue)
+                foreach(event ; deferredEvents)
                 {
                     if(event[0] == ScriptXMLHttpRequest.EventType.RS_CHANGE)
                     {
@@ -493,7 +618,7 @@ private ScriptAny native_XMLHttpRequest_send(Environment env, ScriptAny* thisObj
                             vm.runFunction(request._onReadyStateChange, *thisObj, []);
                     }
                 }
-                request._eventQueue = null;
+                deferredEvents = null;
             }
 
             return ScriptAny();
@@ -505,7 +630,30 @@ private ScriptAny native_XMLHttpRequest_send(Environment env, ScriptAny* thisObj
     {
         if(req._readyState != ScriptXMLHttpRequest.ReadyState.OPENED)
             throw new ScriptRuntimeException("Invalid ready state (not opened)");
-        req._http.perform();
+        try 
+        {
+            req._http.perform();
+        }
+        catch(CurlException ex)
+        {
+            if(indexOf(ex.msg, "aborted") != -1)
+            {
+                if(req._onAbort)
+                {
+                    auto event = new ScriptObject("AbortEvent", null);
+                    event["lengthComputable"] = ScriptAny(false);
+                    event["loaded"] = ScriptAny(req._responseText.length);
+                    event["total"] = ScriptAny(0);
+                    vm.runFunction(req._onAbort, *thisObj, [ScriptAny(event)]);
+                }
+                return ScriptAny.UNDEFINED;
+             }
+             else throw new ScriptRuntimeException(ex.msg);
+        }
+        catch(Exception ex)
+        {
+            throw new ScriptRuntimeException(ex.msg);
+        }
         req.checkResponseType();
         if(req._readyState == ScriptXMLHttpRequest.ReadyState.LOADING)
         {

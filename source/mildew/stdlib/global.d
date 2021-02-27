@@ -21,6 +21,7 @@ this program.  If not, see <https://www.gnu.org/licenses/>.
 module mildew.stdlib.global;
 
 import mildew.environment;
+import mildew.exceptions;
 import mildew.interpreter;
 import mildew.types;
 
@@ -36,6 +37,12 @@ void initializeGlobalLibrary(Interpreter interpreter)
     interpreter.forceSetGlobal("runFile", new ScriptFunction("runFile", &native_runFile));
     interpreter.forceSetGlobal("clearImmediate", new ScriptFunction("clearImmediate", &native_clearImmediate));
     interpreter.forceSetGlobal("clearTimeout", new ScriptFunction("clearTimeout", &native_clearTimeout));
+    interpreter.forceSetGlobal("decodeURI", new ScriptFunction("decodeURI", &native_decodeURI));
+    interpreter.forceSetGlobal("decodeURIComponent", new ScriptFunction("decodeURIComponent", 
+            &native_decodeURIComponent));
+    interpreter.forceSetGlobal("encodeURI", new ScriptFunction("encodeURI", &native_encodeURI));
+    interpreter.forceSetGlobal("encodeURIComponent", new ScriptFunction("encodeURIComponent", 
+            &native_encodeURIComponent));
     interpreter.forceSetGlobal("isdefined", new ScriptFunction("isdefined", &native_isdefined));
     interpreter.forceSetGlobal("isFinite", new ScriptFunction("isFinite", &native_isFinite));
     interpreter.forceSetGlobal("isNaN", new ScriptFunction("isNaN", &native_isNaN));
@@ -113,6 +120,70 @@ private ScriptAny native_clearTimeout(Environment env, ScriptAny* thisObj,
     if(sfib.toString() != "Timeout")
         return ScriptAny(false);
     return ScriptAny(env.g.interpreter.vm.removeFiber(sfib));
+}
+
+private ScriptAny native_decodeURI(Environment env, ScriptAny* thisObj,
+                                   ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.uri: decode, URIException;
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+    try 
+    {
+        return ScriptAny(decode(args[0].toString()));
+    }
+    catch(URIException ex)
+    {
+        throw new ScriptRuntimeException(ex.msg);
+    }
+}
+
+private ScriptAny native_decodeURIComponent(Environment env, ScriptAny* thisObj,
+                                            ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.uri: decodeComponent, URIException;
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+    try 
+    {
+        return ScriptAny(decodeComponent(args[0].toString()));
+    }
+    catch(URIException ex)
+    {
+        throw new ScriptRuntimeException(ex.msg);
+    }
+}
+
+private ScriptAny native_encodeURI(Environment env, ScriptAny* thisObj,
+                                   ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.uri: encode, URIException;
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+    try 
+    {
+        return ScriptAny(encode(args[0].toString()));
+    }
+    catch(URIException ex)
+    {
+        throw new ScriptRuntimeException(ex.msg);
+    }
+}
+
+private ScriptAny native_encodeURIComponent(Environment env, ScriptAny* thisObj,
+                                            ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    import std.uri: encodeComponent, URIException;
+    if(args.length < 1)
+        return ScriptAny.UNDEFINED;
+    try 
+    {
+        return ScriptAny(encodeComponent(args[0].toString()));
+    }
+    catch(URIException ex)
+    {
+        throw new ScriptRuntimeException(ex.msg);
+    }
 }
 
 private ScriptAny native_isdefined(Environment env, 

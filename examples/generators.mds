@@ -48,4 +48,24 @@ const otherGen = gen2(20);
 for(let value of otherGen) {
     console.log("value is", value);
 }
-// As of Feb 18 15:34 2021 This program produces the correct values but the output is out of sync with yield
+
+// shamelessly taken from Mozilla's MDN website but it works 100% the same somehow
+function* gen() {
+    while(true) {
+        try {
+            yield 42;
+        } catch(e) {
+            console.log('Error caught!');
+        }
+    }
+}
+
+const g = gen();
+g.next();
+// { value: 42, done: false }
+const res = g.throw('Something went wrong');
+// "Error caught!"
+console.log(res);
+// { value: 42, done: false }
+
+// As of Feb 27 11:56 2021 This program produces the correct values but the output is out of sync with yield
