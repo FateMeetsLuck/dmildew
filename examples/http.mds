@@ -3,11 +3,10 @@ req.onreadystatechange = () => {
     console.log("Ready state changed to " + req.readyState);
     if(req.readyState == 3)
          console.log(req.getAllResponseHeaders());
-    if(req.readyState == 4 && req.status == 200)
-        console.log("RS4: length of response is " + req.response.length);
+    if(req.readyState == 4)
+        console.log(`Status code=${req.status} and response length=${req.responseText.length}`);
 };
-req.open("GET", "http://www.reddit.com", true);
-req.setRequestHeader("content-type", "\"text/json\"");
-req.send();
-console.log("Length of response after send: " + req.response.length);
+req.open("POST", "http://www.reddit.com", true);
+req.send("Blah blah blah");
+console.log("Length of response after send: " + req.responseText.length);
 // console.log("Response text after send: " + req.response);

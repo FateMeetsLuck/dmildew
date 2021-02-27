@@ -1,0 +1,8 @@
+console.test = 200;
+const result = JSON.parse(JSON.stringify(console, (key,value)=>{
+    if(typeof value === 'function')
+        return '"' + value + '"';
+    return '"poopy"';
+}));
+
+console.log(result);

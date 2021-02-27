@@ -1013,6 +1013,7 @@ private:
             }
             else if(_currentToken.type == Token.Type.LBRACE || _currentToken.type == Token.Type.LBRACKET)
             {
+                // TODO: replace destructure node with [name|/{name| variables
                 immutable isObj = _currentToken.type == Token.Type.LBRACE;
                 immutable endTokenType = isObj ? Token.Type.RBRACE : Token.Type.RBRACKET;
                 nextToken();

@@ -97,11 +97,10 @@ private:
     ScriptFunction _onLoadEnd;
     Event[] _eventQueue; // for async
 
-
     // response
     ushort _status;
     string[string] _responseHeaders;
-    ubyte[] _response; // just a string for now
+    ubyte[] _responseText; // just a string for now
 }
 
 private ScriptObject _XMLHttpRequestPrototype;
@@ -130,9 +129,9 @@ private ScriptObject getXMLHttpRequestPrototype()
         _XMLHttpRequestPrototype.addGetterProperty("readyState", new ScriptFunction(
                 "XMLHttpRequest.prototype.readyState",
                 &native_XMLHttpRequest_p_readyState));                
-        _XMLHttpRequestPrototype.addGetterProperty("response", new ScriptFunction(
-                "XMLHttpRequest.prototype.respone",
-                &native_XMLHttpRequest_p_response));
+        _XMLHttpRequestPrototype.addGetterProperty("responseText", new ScriptFunction(
+                "XMLHttpRequest.prototype.responseText",
+                &native_XMLHttpRequest_p_responseText));
         _XMLHttpRequestPrototype["send"] = new ScriptFunction("XMLHttpRequest.prototype.send",
                 &native_XMLHttpRequest_send);
         _XMLHttpRequestPrototype["setRequestHeader"] = new ScriptFunction(
@@ -279,7 +278,7 @@ private ScriptAny native_XMLHttpRequest_open(Environment env, ScriptAny* thisObj
 
         synchronized(req)
         {
-            if(req._response.length == 0)
+            if(req._responseText.length == 0)
             {
                 req._readyState = ScriptXMLHttpRequest.ReadyState.HEADERS_RECEIVED;
                 if(!req._async)
@@ -293,7 +292,7 @@ private ScriptAny native_XMLHttpRequest_open(Environment env, ScriptAny* thisObj
                             ScriptAny(ScriptXMLHttpRequest.ReadyState.HEADERS_RECEIVED));
                 }
             }
-            req._response ~= data;
+            req._responseText ~= data;
             if(req._readyState == ScriptXMLHttpRequest.ReadyState.HEADERS_RECEIVED)
             {
                 req._readyState = ScriptXMLHttpRequest.ReadyState.LOADING;
@@ -380,13 +379,13 @@ private ScriptAny native_XMLHttpRequest_p_readyState(Environment env, ScriptAny*
     return ScriptAny(req._readyState);
 }
 
-private ScriptAny native_XMLHttpRequest_p_response(Environment env, ScriptAny* thisObj,
+private ScriptAny native_XMLHttpRequest_p_responseText(Environment env, ScriptAny* thisObj,
                                                    ScriptAny[] args, ref NativeFunctionError nfe)
 {
     auto req = thisObj.toNativeObject!ScriptXMLHttpRequest;
     if(req is null)
         throw new ScriptRuntimeException("Invalid XMLHttpRequest object");
-    return ScriptAny(cast(string)req._response);
+    return ScriptAny(cast(string)req._responseText);
 }
 
 private ScriptAny native_XMLHttpRequest_send(Environment env, ScriptAny* thisObj,
@@ -397,6 +396,11 @@ private ScriptAny native_XMLHttpRequest_send(Environment env, ScriptAny* thisObj
         throw new ScriptRuntimeException("Invalid XMLHttpRequest object");
     req._done = false;
     auto vm = env.g.interpreter.vm;
+    if(args.length > 0)
+    {
+        auto content = args[0].toString();
+        req._http.setPostData(content, "text/plain");
+    }
     if(req._async)
     {
         auto fiberFunc = new ScriptFunction("http", 
