@@ -31,6 +31,7 @@ import std.typecons;
 
 import mildew.environment;
 import mildew.exceptions;
+import mildew.stdlib.buffers;
 import mildew.stdlib.generator;
 import mildew.stdlib.map;
 import mildew.stdlib.regexp;
@@ -374,6 +375,11 @@ private size_t opRegex(VirtualMachine vm, const ubyte[] chunk, size_t ip)
     return ip + 1;
 }
 
+private template BufferGenerator(A)
+{
+
+}
+
 pragma(inline, true)
 private size_t opIter(VirtualMachine vm, const ubyte[] chunk, size_t ip)
 {
@@ -438,6 +444,82 @@ private size_t opIter(VirtualMachine vm, const ubyte[] chunk, size_t ip)
                 }
                 return ScriptAny(retVal);
             })));
+    }
+    else if(objToIterate.isNativeObjectType!AbstractArrayBuffer)
+    {
+        auto aab = objToIterate.toNativeObject!AbstractArrayBuffer; // @suppress(dscanner.suspicious.unmodified)
+        if(!aab.isView)
+            return throwRuntimeError("Cannot iterate over ArrayBuffer, must convert to view", vm, chunk, ip);
+        string PRODUCE_GENERATOR(A)()
+        {
+            import std.format: format;
+            return format(q{
+            {
+                auto a = cast(%1$s)aab;
+                auto generator = new Generator!(Tuple!(size_t, ScriptAny))({
+                    size_t indexCounter = 0;
+                    foreach(element ; a.data)
+                    {
+                        yield(tuple(indexCounter, ScriptAny(element)));
+                        ++indexCounter;
+                    }
+                });
+                vm._stack.push(ScriptAny(new ScriptFunction("next", 
+                delegate ScriptAny(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError){
+                    auto retVal = new ScriptObject("iteration", null);
+                    if(generator.empty)
+                    {
+                        retVal.assignField("done", ScriptAny(true));
+                    }
+                    else
+                    {
+                        auto result = generator.front();
+                        retVal.assignField("key", ScriptAny(result[0]));
+                        retVal.assignField("value", ScriptAny(result[1]));
+                        generator.popFront();
+                    }
+                    return ScriptAny(retVal);
+                })));
+            }
+            }, A.stringof);
+        }
+        final switch(aab.type)
+        {
+        case AbstractArrayBuffer.Type.ARRAY_BUFFER:
+            break; // already handled
+        case AbstractArrayBuffer.Type.INT8_ARRAY:
+            mixin(PRODUCE_GENERATOR!Int8Array);
+            break;
+        case AbstractArrayBuffer.Type.UINT8_ARRAY:
+            mixin(PRODUCE_GENERATOR!Uint8Array);
+            break;
+        case AbstractArrayBuffer.Type.INT16_ARRAY:
+            mixin(PRODUCE_GENERATOR!Int16Array);
+            break;
+        case AbstractArrayBuffer.Type.UINT16_ARRAY:
+            mixin(PRODUCE_GENERATOR!Uint16Array);
+            break;
+        case AbstractArrayBuffer.Type.INT32_ARRAY:
+            mixin(PRODUCE_GENERATOR!Int32Array);
+            break;
+        case AbstractArrayBuffer.Type.UINT32_ARRAY:
+            mixin(PRODUCE_GENERATOR!Uint32Array);
+            break;
+        case AbstractArrayBuffer.Type.FLOAT32_ARRAY:
+            mixin(PRODUCE_GENERATOR!Float32Array);
+            break;
+        case AbstractArrayBuffer.Type.FLOAT64_ARRAY:
+            mixin(PRODUCE_GENERATOR!Float64Array);
+            break;
+        case AbstractArrayBuffer.Type.BIGINT64_ARRAY:
+            mixin(PRODUCE_GENERATOR!BigInt64Array);
+            break;
+        case AbstractArrayBuffer.Type.BIGUINT64_ARRAY:
+            mixin(PRODUCE_GENERATOR!BigUint64Array);
+            break;
+        }
+
+        
     }
     else if(objToIterate.isObject)
     {
@@ -653,7 +735,8 @@ private size_t opObjGet(VirtualMachine vm, const ubyte[] chunk, size_t ip)
     // TODO handle getters
     // if field is integer it is array access
     if(field.isNumber 
-      && (objToAccess.type == ScriptAny.Type.ARRAY || objToAccess.type == ScriptAny.Type.STRING))
+      && (objToAccess.type == ScriptAny.Type.ARRAY || objToAccess.type == ScriptAny.Type.STRING
+        || objToAccess.isNativeObjectType!AbstractArrayBuffer))
     {
         auto index = field.toValue!long;
         if(objToAccess.type == ScriptAny.Type.ARRAY)
@@ -679,6 +762,51 @@ private size_t opObjGet(VirtualMachine vm, const ubyte[] chunk, size_t ip)
             catch(UTFException)
             {
                 vm._stack.push(ScriptAny.UNDEFINED);
+            }
+        }
+        else
+        {
+            auto aab = objToAccess.toNativeObject!AbstractArrayBuffer;
+            immutable realIndex = aab.getIndex(index);
+            if(!aab.isView)
+                return throwRuntimeError("ArrayBuffer cannot be indexed directly, convert to view",
+                    vm, chunk, ip);
+            if(realIndex == -1)
+                return throwRuntimeError("Buffer out of bounds array index", vm, chunk, ip);
+            final switch(aab.type)
+            {
+            case AbstractArrayBuffer.Type.ARRAY_BUFFER:
+                break; // already handled
+            case AbstractArrayBuffer.Type.INT8_ARRAY:
+                vm._stack.push(ScriptAny((cast(Int8Array)aab).data[realIndex]));
+                break;
+            case AbstractArrayBuffer.Type.UINT8_ARRAY:
+                vm._stack.push(ScriptAny((cast(Uint8Array)aab).data[realIndex]));
+                break;
+            case AbstractArrayBuffer.Type.INT16_ARRAY:
+                vm._stack.push(ScriptAny((cast(Int16Array)aab).data[realIndex]));
+                break;
+            case AbstractArrayBuffer.Type.UINT16_ARRAY:
+                vm._stack.push(ScriptAny((cast(Uint16Array)aab).data[realIndex]));
+                break;
+            case AbstractArrayBuffer.Type.INT32_ARRAY:
+                vm._stack.push(ScriptAny((cast(Int32Array)aab).data[realIndex]));
+                break;
+            case AbstractArrayBuffer.Type.UINT32_ARRAY:
+                vm._stack.push(ScriptAny((cast(Uint32Array)aab).data[realIndex]));
+                break;
+            case AbstractArrayBuffer.Type.FLOAT32_ARRAY:
+                vm._stack.push(ScriptAny((cast(Float32Array)aab).data[realIndex]));
+                break;
+            case AbstractArrayBuffer.Type.FLOAT64_ARRAY:
+                vm._stack.push(ScriptAny((cast(Float64Array)aab).data[realIndex]));
+                break;
+            case AbstractArrayBuffer.Type.BIGINT64_ARRAY:
+                vm._stack.push(ScriptAny((cast(BigInt64Array)aab).data[realIndex]));
+                break;
+            case AbstractArrayBuffer.Type.BIGUINT64_ARRAY:
+                vm._stack.push(ScriptAny((cast(BigUint64Array)aab).data[realIndex]));
+                break;
             }
         }
     }
@@ -730,7 +858,8 @@ private size_t opObjSet(VirtualMachine vm, const ubyte[] chunk, size_t ip)
     auto value = vm._stack.array[$-1];
     vm._stack.pop(3);
     if(fieldToAssign.isNumber 
-      && (objToAccess.type == ScriptAny.Type.ARRAY || objToAccess.type == ScriptAny.Type.STRING))
+      && (objToAccess.type == ScriptAny.Type.ARRAY || objToAccess.type == ScriptAny.Type.STRING
+        || objToAccess.isNativeObjectType!AbstractArrayBuffer))
     {
         auto index = fieldToAssign.toValue!long;
         if(objToAccess.type == ScriptAny.Type.ARRAY)
@@ -742,6 +871,55 @@ private size_t opObjSet(VirtualMachine vm, const ubyte[] chunk, size_t ip)
                 return throwRuntimeError("Out of bounds array assignment", vm, chunk, ip);
             arr[index] = value;
             vm._stack.push(value);
+        }
+        else if(objToAccess.type == ScriptAny.Type.STRING)
+        {
+            return throwRuntimeError("Cannot assign index to strings", vm, chunk, ip);
+        }
+        else 
+        {
+            auto aab = objToAccess.toNativeObject!AbstractArrayBuffer;
+            index = aab.getIndex(index);
+            if(!aab.isView)
+                return throwRuntimeError("ArrayBuffer must be converted to view", vm, chunk, ip);
+                    else
+            if(index == -1)
+                return throwRuntimeError("Buffer out of bounds array index", vm, chunk, ip);
+            final switch(aab.type)
+            {
+            case AbstractArrayBuffer.Type.ARRAY_BUFFER:
+                break; // already handled
+            case AbstractArrayBuffer.Type.INT8_ARRAY:
+                vm._stack.push(ScriptAny((cast(Int8Array)aab).data[index] = value.toValue!byte));
+                break;
+            case AbstractArrayBuffer.Type.UINT8_ARRAY:
+                vm._stack.push(ScriptAny((cast(Uint8Array)aab).data[index] = value.toValue!ubyte));
+                break;
+            case AbstractArrayBuffer.Type.INT16_ARRAY:
+                vm._stack.push(ScriptAny((cast(Int16Array)aab).data[index] = value.toValue!short));
+                break;
+            case AbstractArrayBuffer.Type.UINT16_ARRAY:
+                vm._stack.push(ScriptAny((cast(Uint16Array)aab).data[index] = value.toValue!ushort));
+                break;
+            case AbstractArrayBuffer.Type.INT32_ARRAY:
+                vm._stack.push(ScriptAny((cast(Int32Array)aab).data[index] = value.toValue!int));
+                break;
+            case AbstractArrayBuffer.Type.UINT32_ARRAY:
+                vm._stack.push(ScriptAny((cast(Uint32Array)aab).data[index] = value.toValue!uint));
+                break;
+            case AbstractArrayBuffer.Type.FLOAT32_ARRAY:
+                vm._stack.push(ScriptAny((cast(Float32Array)aab).data[index] = value.toValue!float));
+                break;
+            case AbstractArrayBuffer.Type.FLOAT64_ARRAY:
+                vm._stack.push(ScriptAny((cast(Float64Array)aab).data[index] = value.toValue!double));
+                break;
+            case AbstractArrayBuffer.Type.BIGINT64_ARRAY:
+                vm._stack.push(ScriptAny((cast(BigInt64Array)aab).data[index] = value.toValue!long));
+                break;
+            case AbstractArrayBuffer.Type.BIGUINT64_ARRAY:
+                vm._stack.push(ScriptAny((cast(BigUint64Array)aab).data[index] = value.toValue!ulong));
+                break;
+            }
         }
     }
     else

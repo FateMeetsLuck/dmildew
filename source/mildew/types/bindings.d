@@ -21,7 +21,9 @@ this program.  If not, see <https://www.gnu.org/licenses/>.
 module mildew.types.bindings;
 
 import mildew.environment;
+import mildew.exceptions;
 import mildew.interpreter;
+import mildew.stdlib.buffers;
 import mildew.stdlib.generator;
 import mildew.stdlib.regexp;
 import mildew.types.any;
@@ -163,6 +165,8 @@ ScriptObject getFunctionPrototype()
         _functionPrototype["call"] = new ScriptFunction("Function.prototype.call", &native_Function_call);
         _functionPrototype.addGetterProperty("isGenerator", new ScriptFunction("Function.prototype.isGenerator",
                 &native_Function_p_isGenerator));
+        _functionPrototype.addGetterProperty("isNative", new ScriptFunction("Function.prototype.isNative",
+                &native_Function_p_isNative));
         _functionPrototype.addGetterProperty("length", new ScriptFunction("Function.prototype.length",
                 &native_Function_p_length));
         _functionPrototype.addGetterProperty("name", new ScriptFunction("Function.prototype.name",
@@ -235,6 +239,25 @@ ScriptAny getLocalThis(Environment env, ScriptAny func=ScriptAny.UNDEFINED)
     if(thisObj == null)
         return ScriptAny.UNDEFINED;
     return *thisObj;
+}
+
+/// Returns true if object is an iterable for Array.from
+bool isIterable(ScriptAny object)
+{
+    import mildew.stdlib.buffers: AbstractArrayBuffer;
+    if (
+        object.type == ScriptAny.Type.ARRAY ||
+        object.type == ScriptAny.Type.STRING ||
+        object.isNativeObjectType!ScriptGenerator
+    )
+    {
+        return true;
+    }
+    else if(object.isNativeObjectType!AbstractArrayBuffer)
+    {
+        return object.toNativeObject!AbstractArrayBuffer.isView;
+    }
+    return false;
 }
 
 //
@@ -933,7 +956,9 @@ ScriptAny native_Array_s_from(Environment env, ScriptAny* thisObj,
             }
             else
             {
-                result ~= arr[i];
+                // args[0] is already an array and there is no callback so there is nothing else to do
+                // and if the array is empty return results=[] will be hit.
+                return args[0];
             }
         }
     }
@@ -956,6 +981,72 @@ ScriptAny native_Array_s_from(Environment env, ScriptAny* thisObj,
             }
             ++index;
         }       
+    }
+    else if(args[0].isNativeObjectType!AbstractArrayBuffer)
+    {
+        auto aab = args[0].toNativeObject!AbstractArrayBuffer; // @suppress(dscanner.suspicious.unmodified)
+        if(!aab.isView)
+            throw new ScriptRuntimeException("ArrayBuffer must be cast to view");
+        string HANDLE_TYPED_ARRAY(A)()
+        {
+            import std.format: format;
+            return format(q{
+            {
+                alias E = typeof(%1$s.data[0]);
+                auto a = cast(%1$s)aab;
+                for(size_t i = 0; i < a.data.length; ++i)
+                {
+                    if(func.type == ScriptAny.Type.FUNCTION)
+                    {
+                        auto temp = native_Function_call(env, &func,
+                            [thisToUse, ScriptAny(a.data[i]), ScriptAny(i), args[0]], nfe);
+                        if(env.g.interpreter.vm.hasException || nfe != NativeFunctionError.NO_ERROR)
+                            return temp;
+                        result ~= temp;
+                    }
+                    else 
+                    {
+                        result ~= ScriptAny(a.data[i]);
+                    }
+                }
+            }
+            }, A.stringof);
+        }
+        final switch(aab.type)
+        {
+        case AbstractArrayBuffer.Type.ARRAY_BUFFER:
+            break; // already handled
+        case AbstractArrayBuffer.Type.INT8_ARRAY:
+            mixin(HANDLE_TYPED_ARRAY!Int8Array);
+            break;
+        case AbstractArrayBuffer.Type.UINT8_ARRAY:
+            mixin(HANDLE_TYPED_ARRAY!Uint8Array);
+            break;
+        case AbstractArrayBuffer.Type.INT16_ARRAY:
+            mixin(HANDLE_TYPED_ARRAY!Int16Array);
+            break;
+        case AbstractArrayBuffer.Type.UINT16_ARRAY:
+            mixin(HANDLE_TYPED_ARRAY!Uint16Array);
+            break;
+        case AbstractArrayBuffer.Type.INT32_ARRAY:
+            mixin(HANDLE_TYPED_ARRAY!Int32Array);
+            break;
+        case AbstractArrayBuffer.Type.UINT32_ARRAY:
+            mixin(HANDLE_TYPED_ARRAY!Uint32Array);
+            break;
+        case AbstractArrayBuffer.Type.FLOAT32_ARRAY:
+            mixin(HANDLE_TYPED_ARRAY!Float32Array);
+            break;
+        case AbstractArrayBuffer.Type.FLOAT64_ARRAY:
+            mixin(HANDLE_TYPED_ARRAY!Float64Array);
+            break;
+        case AbstractArrayBuffer.Type.BIGINT64_ARRAY:
+            mixin(HANDLE_TYPED_ARRAY!BigInt64Array);
+            break;
+        case AbstractArrayBuffer.Type.BIGUINT64_ARRAY:
+            mixin(HANDLE_TYPED_ARRAY!BigUint64Array);
+            break;
+        }
     }
     else if(args[0].isNativeObjectType!ScriptGenerator)
     {
@@ -1496,6 +1587,16 @@ private ScriptAny native_Function_p_isGenerator(Environment env, ScriptAny* this
         return ScriptAny(false);
     auto func = thisObj.toValue!ScriptFunction;
     return ScriptAny(func.isGenerator);
+}
+
+private ScriptAny native_Function_p_isNative(Environment env, ScriptAny* thisObj,
+                                             ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(thisObj.type != ScriptAny.Type.FUNCTION)
+        return ScriptAny(false);
+    auto func = thisObj.toValue!ScriptFunction;
+    return ScriptAny(func.type == ScriptFunction.Type.NATIVE_DELEGATE 
+        || func.type == ScriptFunction.Type.NATIVE_FUNCTION);
 }
 
 private ScriptAny native_Function_p_length(Environment env, ScriptAny* thisObj,

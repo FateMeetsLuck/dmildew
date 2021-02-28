@@ -1,0 +1,7 @@
+const xhr = new XMLHttpRequest();
+xhr.onreadystatechange = () => {
+    if(this.readyState == 4)
+        console.log(this.response instanceof ArrayBuffer);
+};
+xhr.open("GET", "https://i.imgur.com/2Zti7AH.jpg");
+xhr.send();

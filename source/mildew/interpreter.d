@@ -63,6 +63,7 @@ public:
     {
         import mildew.types.bindings: initializeTypesLibrary;
         import mildew.stdlib.global: initializeGlobalLibrary;
+        import mildew.stdlib.buffers: initializeBuffersLibrary;
         import mildew.stdlib.console: initializeConsoleLibrary;
         import mildew.stdlib.date: initializeDateLibrary;
         import mildew.stdlib.generator: initializeGeneratorLibrary;
@@ -74,6 +75,7 @@ public:
         import mildew.stdlib.xmlhttprequest: initializeXMLHttpRequestLibrary;
         initializeTypesLibrary(this);
         initializeGlobalLibrary(this);
+        initializeBuffersLibrary(this);
         initializeConsoleLibrary(this);
         initializeDateLibrary(this);
         initializeGeneratorLibrary(this);

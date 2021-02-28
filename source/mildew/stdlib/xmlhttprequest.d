@@ -30,6 +30,7 @@ import std.uni: toLower;
 import mildew.environment;
 import mildew.exceptions;
 import mildew.interpreter;
+import mildew.stdlib.buffers;
 import mildew.stdlib.json;
 import mildew.types;
 import mildew.vm;
@@ -73,7 +74,6 @@ private class ScriptXMLHttpRequest
 
     alias Event = Tuple!(EventType, ScriptAny);
 
-
     void checkResponseType()
     {
         try 
@@ -84,6 +84,13 @@ private class ScriptXMLHttpRequest
                 if(indexOf(mimeType, "application/json") != -1)
                 {
                     _response = JSONReader.consumeValue(cast(string)_responseText);
+                }
+                else if(indexOf(mimeType, "image/") != -1)
+                {
+                    _response = ScriptAny(
+                        new ScriptObject("ArrayBuffer",
+                            getArrayBufferPrototype(), 
+                            new ScriptArrayBuffer(_responseText)));
                 }
                 else // TODO: more values and implement Buffer class for binary data
                 {
