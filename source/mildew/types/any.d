@@ -493,20 +493,12 @@ public:
                 return _asDouble == other._asDouble;
             case Type.STRING:
                 return toString() == other.toString();
-            case Type.ARRAY: {
-                auto left = (cast(ScriptArray)_asObject).array;
-                auto right = (cast(ScriptArray)other._asObject).array;
-                if(left.length != right.length)
-                    return false;
-                for(size_t i = 0; i < left.length; ++i)
-                    if(!left[i].strictEquals(right[i]))
-                        return false;
-                return true;
-            }
+            case Type.ARRAY:
+                return (cast(ScriptArray)_asObject) == (cast(ScriptArray)other._asObject);
             case Type.FUNCTION:
-                return (cast(ScriptFunction)_asObject).opEquals(cast(ScriptFunction)other._asObject);
+                return (cast(ScriptFunction)_asObject) == (cast(ScriptFunction)other._asObject);
             case Type.OBJECT:
-                return _asObject.opEquals(other._asObject);
+                return _asObject == other._asObject;
         }
     }
 
