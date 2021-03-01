@@ -1,4 +1,10 @@
-const nums = new Int32Array([1, 10, 100, 1000]);
-const buffer = new ArrayBuffer(nums);
-console.log(buffer);
+const bytes = new Uint8Array([0, 0, 0, 1]);
+const raw = new ArrayBuffer(bytes);
+const float = new Float32Array(raw);
+console.log(bytes);
+console.log(float[0]);
+
+
+const data = Uint8Array.from("test");
+console.log(String.fromCharCode(Array.from(data)));
 

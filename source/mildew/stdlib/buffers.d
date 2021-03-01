@@ -20,6 +20,7 @@ this program.  If not, see <https://www.gnu.org/licenses/>.
 module mildew.stdlib.buffers;
 
 import std.format;
+debug import std.stdio;
 
 import mildew.environment;
 import mildew.exceptions;
@@ -432,7 +433,12 @@ private ScriptAny native_TArray_ctor(A)(Environment env, ScriptAny* thisObj,
         static if(is(A==Uint8Array))
             a.data[] = data[0..$];
         else 
-            a.data[] = (cast(E*)data.ptr)[0..data.length/E.sizeof];
+        { 
+            if(a.data.length >= data.length / E.sizeof && a.data.length > 0 && data.length/E.sizeof > 0)
+            {
+                a.data[] = (cast(E*)data.ptr)[0..data.length/E.sizeof];
+            }
+        }
         thisObj.toValue!ScriptObject.nativeObject = a;
     }
     else if(isIterable(args[0]))
@@ -705,11 +711,8 @@ private ScriptAny native_TArray_forEach(A)(Environment env, ScriptAny* thisObj,
     return ScriptAny.UNDEFINED;
 }
 
-/**
- * Creates an Array from any iterable
- */
-ScriptAny native_TArray_s_from(A)(Environment env, ScriptAny* thisObj,
-                                  ScriptAny[] args, ref NativeFunctionError nfe)
+private ScriptAny native_TArray_s_from(A)(Environment env, ScriptAny* thisObj,
+                                          ScriptAny[] args, ref NativeFunctionError nfe)
 {
     import std.format: format;
     alias E = typeof(A.data[0]);

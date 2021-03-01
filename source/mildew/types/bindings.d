@@ -1730,6 +1730,8 @@ private ScriptAny native_String_s_fromCharCode(Environment env, ScriptAny* thisO
 {
     import std.utf: UTFException;
     auto result = "";
+    if(args.length > 0 && args[0].type == ScriptAny.Type.ARRAY) // auto spread
+        args = args[0].toValue!(ScriptAny[]);
     foreach(arg ; args)
     {
         try 
@@ -1749,6 +1751,8 @@ private ScriptAny native_String_s_fromCodePoint(Environment env, ScriptAny* this
 {
     import std.utf: UTFException;
     dstring result = "";
+    if(args.length > 0 && args[0].type == ScriptAny.Type.ARRAY) // auto spread
+        args = args[0].toValue!(ScriptAny[]);
     foreach(arg ; args)
     {
         try 
