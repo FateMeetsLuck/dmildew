@@ -81,20 +81,20 @@ private class ScriptXMLHttpRequest
             if(_readyState == ReadyState.DONE && "content-type" in _responseHeaders)
             {
                 immutable mimeType = _overriddenMimeType != "" ? _overriddenMimeType : _responseHeaders["content-type"];
-                if(indexOf(mimeType, "application/json") != -1)
+                if(indexOf(mimeType, "json") != -1)
                 {
                     _response = JSONReader.consumeValue(cast(string)_responseText);
                 }
-                else if(indexOf(mimeType, "image/") != -1)
+                else if(indexOf(mimeType, "text/") != - 1)
+                {
+                    _response = ScriptAny(cast(string)_responseText);
+                }
+                else
                 {
                     _response = ScriptAny(
                         new ScriptObject("ArrayBuffer",
                             getArrayBufferPrototype(), 
                             new ScriptArrayBuffer(_responseText)));
-                }
-                else // TODO: more values and implement Buffer class for binary data
-                {
-                    _response = ScriptAny(cast(string)_responseText);
                 }
             }
         } catch(Exception ex)

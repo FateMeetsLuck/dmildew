@@ -82,4 +82,4 @@ There is now a ##dmildew channel on the Freenode IRC network. If no one is there
 * Write a more complete and robust standard library for the scripting language. (In progress.)
 * Allow all alphanumeric unicode characters as components of identifier and label tokens. Currently identifiers are limited to ASCII characters.
 * Implement asynchronous functions and function calls. (In progress.)
-* Destructuring of function parameters.
+* Destructuring of function parameters and the ability to parse `{}` expressions as the left hand side of a binary expression.

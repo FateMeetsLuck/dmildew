@@ -679,6 +679,11 @@ private ScriptAny native_Array_copyWithin(Environment env, ScriptAny* thisObj,
     long target = args.length > 0 ? args[0].toValue!long : arr.array.length;
     long start = args.length > 1 ? args[1].toValue!long : 0;
     long end = args.length > 2 ? args[2].toValue!long : arr.array.length;
+
+    if(target < 0) target += arr.array.length;
+    if(start < 0) start += arr.array.length;
+    if(end < 0) end += arr.array.length;
+
     if(target < 0 || target >= arr.array.length)
         target = arr.array.length;
     if(start < 0 || start >= arr.array.length)
@@ -739,11 +744,11 @@ private ScriptAny native_Array_every(Environment env, ScriptAny* thisObj,
     {
         auto temp = native_Function_call(env, &args[0], 
             [ theThisArg, element, ScriptAny(counter), *thisObj ], nfe);
-        if(env.g.interpreter.vm.hasException)
-            return temp;
-        if(nfe != NativeFunctionError.NO_ERROR)
+        if(env.g.interpreter.vm.hasException || nfe != NativeFunctionError.NO_ERROR)
             return temp;
         result = result && temp;
+        if(!result)
+            return ScriptAny(result);
         ++counter;
     }
     return ScriptAny(result);
@@ -760,6 +765,10 @@ private ScriptAny native_Array_fill(Environment env, ScriptAny* thisObj,
     // auto value = args[0]; // @suppress(dscanner.suspicious.unmodified)
     long start = args.length > 1 ? args[1].toValue!long : 0;
     long end = args.length > 2 ? args[2].toValue!long : arr.length;
+
+    if(start < 0) start += arr.length;
+    if(end < 0) end += arr.length;
+
     if(start < 0 || start >= arr.length)
         start = 0;
     if(end < 0 || end >= arr.length)
@@ -786,9 +795,7 @@ private ScriptAny native_Array_filter(Environment env, ScriptAny* thisObj,
     {
         auto temp = native_Function_call(env, &args[0], 
             [thisToUse, element, ScriptAny(counter), *thisObj], nfe);
-        if(env.g.interpreter.vm.hasException)
-            return temp;
-        if(nfe != NativeFunctionError.NO_ERROR)
+        if(env.g.interpreter.vm.hasException || nfe != NativeFunctionError.NO_ERROR)
             return temp;
         if(temp)
             result ~= element;
@@ -812,9 +819,7 @@ private ScriptAny native_Array_find(Environment env, ScriptAny* thisObj,
     {
         auto temp = native_Function_call(env, &args[0], 
             [thisToUse, arr[i], ScriptAny(i), *thisObj], nfe);
-        if(env.g.interpreter.vm.hasException)
-            return temp;
-        if(nfe != NativeFunctionError.NO_ERROR)
+        if(env.g.interpreter.vm.hasException || nfe != NativeFunctionError.NO_ERROR)
             return temp;
         if(temp)
             return arr[i];
@@ -838,9 +843,7 @@ private ScriptAny native_Array_findIndex(Environment env, ScriptAny* thisObj,
     {
         auto temp = native_Function_call(env, &args[0], 
             [thisToUse, arr[i], ScriptAny(i), *thisObj], nfe);
-        if(env.g.interpreter.vm.hasException)
-            return temp;
-        if(nfe != NativeFunctionError.NO_ERROR)
+        if(env.g.interpreter.vm.hasException || nfe != NativeFunctionError.NO_ERROR)
             return temp;
         if(temp)
             return ScriptAny(i);
@@ -920,9 +923,7 @@ private ScriptAny native_Array_forEach(Environment env, ScriptAny* thisObj,
     {
         auto temp = native_Function_call(env, &args[0],
             [thisToUse, arr[i], ScriptAny(i), *thisObj], nfe);
-        if(env.g.interpreter.vm.hasException)
-            return temp;
-        if(nfe != NativeFunctionError.NO_ERROR)
+        if(env.g.interpreter.vm.hasException || nfe != NativeFunctionError.NO_ERROR)
             return temp;
     }
     return ScriptAny.UNDEFINED;
@@ -948,9 +949,7 @@ ScriptAny native_Array_s_from(Environment env, ScriptAny* thisObj,
             if(func.type == ScriptAny.Type.FUNCTION)
             {
                 auto temp = native_Function_call(env, &func, [thisToUse, arr[i], ScriptAny(i), args[0]], nfe);
-                if(env.g.interpreter.vm.hasException)
-                    return temp;
-                if(nfe != NativeFunctionError.NO_ERROR)
+                if(env.g.interpreter.vm.hasException || nfe != NativeFunctionError.NO_ERROR)
                     return temp;
                 result ~= temp;
             }
@@ -965,6 +964,7 @@ ScriptAny native_Array_s_from(Environment env, ScriptAny* thisObj,
     else if(args[0].type == ScriptAny.Type.STRING)
     {
         size_t index = 0;
+
         foreach(dchar ch ; args[0].toString())
         {
             if(func.type == ScriptAny.Type.FUNCTION)
@@ -1084,7 +1084,7 @@ private ScriptAny native_Array_includes(Environment env, ScriptAny* thisObj,
         return ScriptAny(false);
     long indexToStart = args.length > 1 ? args[1].toValue!long : 0;
     if(indexToStart < 0)
-        indexToStart = args.length + indexToStart;
+        indexToStart = arr.length + indexToStart;
     if(indexToStart < 0 || indexToStart >= arr.length)
         indexToStart = arr.length;
     for(size_t i = indexToStart; i < arr.length; ++i)
@@ -1103,8 +1103,7 @@ private ScriptAny native_Array_indexOf(Environment env, ScriptAny* thisObj,
     if(args.length < 1)
         return ScriptAny(-1);
     long indexToStart = args.length > 1 ? args[1].toValue!long : 0;
-    if(indexToStart < 0)
-        indexToStart = args.length + indexToStart;
+    if(indexToStart < 0) indexToStart += arr.length;
     if(indexToStart < 0 || indexToStart >= arr.length)
         indexToStart = arr.length;
     for(size_t i = indexToStart; i < arr.length; ++i)
@@ -1169,13 +1168,14 @@ private ScriptAny native_Array_lastIndexOf(Environment env, ScriptAny* thisObj,
     if(args.length < 1)
         return ScriptAny(-1);
     long indexToStart = args.length > 1 ? args[1].toValue!long : arr.length - 1;
-    if(indexToStart < 0)
-        indexToStart = args.length + indexToStart;
+    if(indexToStart < 0) indexToStart += arr.length;
     if(indexToStart < 0 || indexToStart >= arr.length)
         indexToStart = arr.length - 1;
-    for(size_t i = indexToStart; i >= 0; --i)
+    if(arr.length == 0)
+        return ScriptAny(-1);
+    for(long i = indexToStart; i >= 0; --i)
     {
-        if(i < arr.length && args[0].strictEquals(arr[i]))
+        if(args[0].strictEquals(arr[i]))
             return ScriptAny(i);
     }
     return ScriptAny(-1);    
@@ -1216,9 +1216,7 @@ private ScriptAny native_Array_map(Environment env, ScriptAny* thisObj,
     {
         auto temp = native_Function_call(env, &args[0], 
             [thisToUse, arr[i], ScriptAny(i), *thisObj], nfe);
-        if(env.g.interpreter.vm.hasException)
-            return temp;
-        if(nfe != NativeFunctionError.NO_ERROR)
+        if(env.g.interpreter.vm.hasException || nfe != NativeFunctionError.NO_ERROR)
             return temp;
         result ~= temp;
     }
@@ -1267,13 +1265,13 @@ private ScriptAny native_Array_reduce(Environment env, ScriptAny* thisObj,
         return ScriptAny.UNDEFINED;
     ScriptAny accumulator = args.length > 1 ? args[1] : (arr.length > 0? arr[0] : ScriptAny.UNDEFINED);
     immutable start = accumulator == ScriptAny.UNDEFINED ? 0 : 1;
+    if(arr.length == 0 && args.length < 2)
+        throw new ScriptRuntimeException("Reduce with no accumulator may not be called on empty array");
     for(size_t i = start; i < arr.length; ++i)
     {
         accumulator = native_Function_call(env, &args[0], 
             [getLocalThis(env, args[0]), accumulator, arr[i], ScriptAny(i), *thisObj], nfe);
-        if(env.g.interpreter.vm.hasException)
-            return accumulator;
-        if(nfe != NativeFunctionError.NO_ERROR)
+        if(env.g.interpreter.vm.hasException || nfe != NativeFunctionError.NO_ERROR)
             return accumulator;
     }
     return accumulator;
@@ -1289,15 +1287,15 @@ private ScriptAny native_Array_reduceRight(Environment env, ScriptAny* thisObj,
         return ScriptAny.UNDEFINED;
     ScriptAny accumulator = args.length > 1 ? args[1] : (arr.length > 0? arr[arr.length-1] : ScriptAny.UNDEFINED);
     immutable long start = accumulator == ScriptAny.UNDEFINED ? arr.length : cast(long)arr.length - 1;
+    if(arr.length == 0 && args.length < 2)
+        throw new ScriptRuntimeException("Reduce right with no accumulator may not be called on empty array");
     if(start < 0)
         return ScriptAny.UNDEFINED;
-    for(size_t i = start; i > 0; --i)
+    for(long i = start; i > 0; --i)
     {
         accumulator = native_Function_call(env, &args[0], 
             [getLocalThis(env, args[0]), accumulator, arr[i-1], ScriptAny(i-1), *thisObj], nfe);
-        if(env.g.interpreter.vm.hasException)
-            return accumulator;
-        if(nfe != NativeFunctionError.NO_ERROR)
+        if(env.g.interpreter.vm.hasException || nfe != NativeFunctionError.NO_ERROR)
             return accumulator;
     }
     return accumulator;
@@ -1342,6 +1340,12 @@ private ScriptAny native_Array_slice(Environment env, ScriptAny* thisObj, Script
         start = 0;
     if(end < 0 || end > array.length)
         end = array.length;
+    if(end < start)
+    {
+        immutable temp = end;
+        end = start;
+        start = temp;
+    }
     return ScriptAny(array[start .. end]);
 }
 
@@ -1358,9 +1362,7 @@ private ScriptAny native_Array_some(Environment env, ScriptAny* thisObj,
     {
         auto temp = native_Function_call(env, &args[0], 
             [thisToUse, arr[i], ScriptAny(i), *thisObj], nfe);
-        if(env.g.interpreter.vm.hasException)
-            return temp;
-        if(nfe != NativeFunctionError.NO_ERROR || temp)
+        if(env.g.interpreter.vm.hasException || nfe != NativeFunctionError.NO_ERROR || temp)
             return temp;
     }
     return ScriptAny(false);
@@ -1388,9 +1390,7 @@ private ScriptAny native_Array_sort(Environment env, ScriptAny* thisObj,
             {
                 auto temp = native_Function_call(env, &args[0], 
                     [getLocalThis(env, args[0]), arr.array[j], arr.array[j+1]], nfe);
-                if(env.g.interpreter.vm.hasException)
-                    return temp;
-                if(nfe != NativeFunctionError.NO_ERROR)
+                if(env.g.interpreter.vm.hasException || nfe != NativeFunctionError.NO_ERROR)
                     return temp;
                 if(temp.toValue!int > 0)
                 {
