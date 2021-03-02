@@ -90,14 +90,15 @@ int main(string[] args)
     // auto terminal = Terminal(ConsoleOutputType.linear);
     bool printVMDebugInfo = false;
     bool printDisasm = false;
-    bool testLib = false;
+    string[] libsToLoad = [];
 
     try 
     {
+        arraySep = ",";
         auto options = cast(immutable)getopt(args, 
             "verbose|v", &printVMDebugInfo,
             "disasm|d", &printDisasm,
-            "test|t", &testLib
+            "lib|l", &libsToLoad
         );
         if(options.helpWanted) 
         {
@@ -113,8 +114,16 @@ int main(string[] args)
 
     auto interpreter = new Interpreter(printDisasm, printVMDebugInfo);
     interpreter.initializeStdlib();
-    if(testLib)
-        loadAndInitModule(".", "fs", interpreter);
+    version(Windows)
+    {
+        if(libsToLoad.length > 0)
+            throw new Exception("This option will never be supported on Windows");
+    }
+    else 
+    {
+        foreach(lib ; libsToLoad)
+            loadAndInitModule(".", lib, interpreter);
+    }
 
     if(args.length > 1)
     {
