@@ -17,6 +17,8 @@ import mildew.lexer;
 import mildew.parser;
 import mildew.types;
 
+import loader;
+
 /**
  * This runs a script program and prints the appropriate error message when a script exception is caught. A lot
  * of extra code is added to capture the result of the previous expression, but all one really needs is
@@ -108,6 +110,7 @@ int main(string[] args)
 
     auto interpreter = new Interpreter(printDisasm, printVMDebugInfo);
     interpreter.initializeStdlib();
+    loadAndInitModule(".", "fs", interpreter);
 
     if(args.length > 1)
     {

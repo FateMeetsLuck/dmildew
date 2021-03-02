@@ -6,5 +6,5 @@ console.log(float[0]);
 
 
 const data = Uint8Array.from("test");
-console.log(String.fromCharCode(Array.from(data)));
+console.log(String.fromCodePoint(Array.from(data)));
 
