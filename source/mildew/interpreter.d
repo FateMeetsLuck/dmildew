@@ -70,6 +70,7 @@ public:
         import mildew.stdlib.json: initializeJSONLibrary;
         import mildew.stdlib.map: initializeMapLibrary;
         import mildew.stdlib.math: initializeMathLibrary;
+        import mildew.stdlib.promise: initializePromiseLibrary;
         import mildew.stdlib.regexp: initializeRegExpLibrary;
         import mildew.stdlib.system: initializeSystemLib;
         import mildew.stdlib.xmlhttprequest: initializeXMLHttpRequestLibrary;
@@ -82,6 +83,7 @@ public:
         initializeJSONLibrary(this);
         initializeMapLibrary(this);
         initializeMathLibrary(this);
+        initializePromiseLibrary(this);
         initializeRegExpLibrary(this);
         initializeSystemLib(this);
         initializeXMLHttpRequestLibrary(this);

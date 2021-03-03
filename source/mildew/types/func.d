@@ -128,6 +128,14 @@ public:
         _boundThis = thisObj;
     }
 
+    /// Binds to a new function
+    ScriptFunction bindCopy(ScriptAny thisObj)
+    {
+        ScriptFunction func = copy(_closure);
+        func.bind(thisObj);
+        return func;
+    }
+
     /// Returns a string representing the type and name.
     override string toString() const
     {

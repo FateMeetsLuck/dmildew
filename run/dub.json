@@ -10,5 +10,6 @@
         "dmildew": "~main", 
         "arsd-official:terminal": "~>9.0.4" 
     },
-    "dflags-linux": ["-defaultlib=phobos2"]
+    "dflags-linux": ["-defaultlib=phobos2"],
+    "dflags-osx": ["-defaultlib=phobos2"]
 }

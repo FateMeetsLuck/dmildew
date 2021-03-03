@@ -1,3 +1,4 @@
+/// Inspired by bindbc-loader. Implements shared library module loading.
 module loader;
 
 import core.runtime: Runtime;

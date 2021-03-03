@@ -78,6 +78,8 @@ private void printUsage()
     stderr.writeln("Options: -v|--verbose Prints very verbose bytecode execution information");
     stderr.writeln("         -d|--disasm  Prints the disassembly of bytecode before execution");
     stderr.writeln("         -h|--help    Print this usage message");
+    stderr.writeln("         -l|--lib=<library names separated by comma>");
+    stderr.writeln("                      Load library modules");
 }
 
 /**
