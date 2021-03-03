@@ -90,12 +90,14 @@ int main(string[] args)
     // auto terminal = Terminal(ConsoleOutputType.linear);
     bool printVMDebugInfo = false;
     bool printDisasm = false;
+    bool testLib = false;
 
     try 
     {
         auto options = cast(immutable)getopt(args, 
             "verbose|v", &printVMDebugInfo,
             "disasm|d", &printDisasm,
+            "test|t", &testLib
         );
         if(options.helpWanted) 
         {
@@ -111,6 +113,8 @@ int main(string[] args)
 
     auto interpreter = new Interpreter(printDisasm, printVMDebugInfo);
     interpreter.initializeStdlib();
+    if(testLib)
+        loadAndInitModule(".", "fs", interpreter);
 
     if(args.length > 1)
     {

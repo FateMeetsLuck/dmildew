@@ -13,6 +13,8 @@ mdc/
 mdc/*
 *.exe
 *.o
+*.so 
+*.dll
 *.obj
 *.lst
 *.a

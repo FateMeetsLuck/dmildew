@@ -1,0 +1,16 @@
+{
+	"authors": [
+		"Johnny Postblock"
+	],
+	"copyright": "Copyright © 2021, Johnny Postblock",
+	"dependencies": {
+		"dmildew": "~main"
+	},
+	"description": "Filesystem module",
+	"license": "GPL-3.0",
+	"name": "fs",
+    "targetType": "dynamicLibrary",
+    "postBuildCommands-windows": ["move *.dll .."],
+    "postBuildCommands-linux": ["mv *.so .."],
+    "postBuildCommands-osx": ["mv *.dylib .."]
+}
