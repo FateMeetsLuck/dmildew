@@ -94,8 +94,9 @@ int main(string[] args)
     try 
     {
         auto options = cast(immutable)getopt(args, 
-                "verbose|v", &printVMDebugInfo,
-                "disasm|d", &printDisasm);
+            "verbose|v", &printVMDebugInfo,
+            "disasm|d", &printDisasm,
+        );
         if(options.helpWanted) 
         {
             printUsage();
@@ -110,7 +111,6 @@ int main(string[] args)
 
     auto interpreter = new Interpreter(printDisasm, printVMDebugInfo);
     interpreter.initializeStdlib();
-    loadAndInitModule(".", "fs", interpreter);
 
     if(args.length > 1)
     {
