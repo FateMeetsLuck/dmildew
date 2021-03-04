@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Class: boolean</title>
+    <title>JSDoc: Namespace: fs</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Class: boolean</h1>
+    <h1 class="page-title">Namespace: fs</h1>
 
     
 
@@ -28,16 +28,7 @@
 
 <header>
     
-        <h2><span class="attribs"><span class="type-signature"></span></span>boolean</h2>
-        
-            <div class="class-description"><p>This primitive type can hold only one of two values: true or false. Booleans are the result of most
-logical operations such as greater than (>) or strict equals (===). The && and || operators do not necessarily
-return a boolean, but instead return one of the two operands. However, any type will be automatically converted to
-boolean when used in control flow statements such as 'if' and 'while.'</p>
-<p>Values that are converted to false include 0, null, undefined, and empty Strings. Any other value, including
-empty Arrays, evaluates to true.</p>
-<p>Primitive types are passed by
-value and not reference.</p></div>
+        <h2>fs</h2>
         
     
 </header>
@@ -46,6 +37,86 @@ value and not reference.</p></div>
     <div class="container-overview">
     
         
+            <div class="description">This library provides access to file I/O. It can only be loaded as a shared library in the REPL with the --lib=fs option. There is no
+shared library support in D for Windows.</div>
+        
+
+        
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".readdirSync"><span class="type-signature">(static) </span>readdirSync<span class="signature">(path)</span><span class="type-signature"> &rarr; {<a href="Array.html">Array</a>.&lt;<a href="String.html">String</a>>}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Synchronously read a directory.
+</div>
 
 
 
@@ -55,6 +126,53 @@ value and not reference.</p></div>
 
 
 
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>path</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="String.html">String</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">A file path</td>
+        </tr>
+
+    
+    </tbody>
+</table>
 
 
 
@@ -110,28 +228,34 @@ value and not reference.</p></div>
 
 
 
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    A listing of all files and folders in a given directory.
+</div>
 
 
 
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="Array.html">Array</a>.&lt;<a href="String.html">String</a>></span>
 
+
+    </dd>
+</dl>
 
     
-    </div>
 
-    
 
-    
 
-    
 
-    
 
-    
-
-    
-
-    
-
+        
     
 
     

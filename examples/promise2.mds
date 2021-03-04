@@ -16,3 +16,5 @@ function delayedDouble(num) {
 Promise.all([delayedDouble(12), doAddition(5, 100)])
     .then(results => console.log("The result of Promise.all: " + results))
     .catch(err => console.error("Error with Promise.all: " + err));
+
+Promise.reject("Promise.reject test").catch(reason => console.error(reason));

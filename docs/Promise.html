@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Class: Map</title>
+    <title>JSDoc: Class: Promise</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Class: Map</h1>
+    <h1 class="page-title">Class: Promise</h1>
 
     
 
@@ -28,16 +28,15 @@
 
 <header>
     
-        <h2><span class="attribs"><span class="type-signature"></span></span>Map<span class="signature">()</span><span class="type-signature"></span></h2>
+        <h2><span class="attribs"><span class="type-signature"></span></span>Promise<span class="signature">(action)</span><span class="type-signature"></span></h2>
         
-            <div class="class-description"><p>The Map class provides an associative array that allows any type of key, not just Strings, unlike Object.
-Even Objects and complex types can be keys. Maps cannot be assigned with the array index [] operator, but
-are assigned with the set method. Likewise, the index operator cannot be used to get Map values, but the
-get method should be used instead. Maps can be used in for-in loops like a regular Object.</p>
-
-<p>Due to the implementation of opCmp and opEquals in ScriptAny, true and 1 cannot be unique keys; likewise
-0.0, null, and 0 cannot be unique keys. It is undefined behavior to modify a key that is a complex object
-of a Map.</p></div>
+            <div class="class-description">This class wraps asynchronous code with easy to follow then and catch lambdas. A function that returns a Promise can be used
+as
+<code>
+fn().then(result => console.log(result)).catch(error => console.log("Error:" + error));
+</code>
+for example. Promises start as pending, and then either resolve with a value, reject with a reason, or take on the 
+state of another Promise.</div>
         
     
 </header>
@@ -52,7 +51,7 @@ of a Map.</p></div>
     
 
     
-    <h4 class="name" id="Map"><span class="type-signature"></span>new Map<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="Promise"><span class="type-signature"></span>new Promise<span class="signature">(action)</span><span class="type-signature"></span></h4>
     
 
     
@@ -60,7 +59,7 @@ of a Map.</p></div>
 
 
 <div class="description">
-    Creates a new empty Map
+    Constructs a new Promise.
 </div>
 
 
@@ -69,6 +68,57 @@ of a Map.</p></div>
 
 
 
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>action</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">This should be a call back that takes two parameters: a resolve callback and a reject
+callback. When the operation is successful, the resolve callback should be called with the result value and
+if there is an error, the reject callback should be called with an error message.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
 
 
 
@@ -145,67 +195,6 @@ of a Map.</p></div>
     
 
     
-        <h3 class="subsection-title">Members</h3>
-
-        
-            
-<h4 class="name" id="length"><span class="type-signature"></span>length<span class="type-signature"></span></h4>
-
-
-
-
-<div class="description">
-    Unique to Mildew, this read-only property returns the number of entries in this Map
-</div>
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-        
-    
 
     
         <h3 class="subsection-title">Methods</h3>
@@ -216,7 +205,7 @@ of a Map.</p></div>
     
 
     
-    <h4 class="name" id="clear"><span class="type-signature"></span>clear<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id=".all"><span class="type-signature">(static) </span>all<span class="signature">(promises)</span><span class="type-signature"> &rarr; {<a href="Promise.html">Promise</a>}</span></h4>
     
 
     
@@ -224,90 +213,8 @@ of a Map.</p></div>
 
 
 <div class="description">
-    Clears all entries in this Map
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    
-    <h4 class="name" id="delete"><span class="type-signature"></span>delete<span class="signature">(key)</span><span class="type-signature"> &rarr; {<a href="boolean.html">boolean</a>}</span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    Deletes a specific entry.
+    Creates a Promise whose resolution is an Array of all the promises' resolution, and whose rejection is
+the first error to occur if any.
 </div>
 
 
@@ -343,7 +250,7 @@ of a Map.</p></div>
 
         <tr>
             
-                <td class="name"><code>key</code></td>
+                <td class="name"><code>promises</code></td>
             
 
             <td class="type">
@@ -359,7 +266,7 @@ of a Map.</p></div>
 
             
 
-            <td class="description last">The key value of the entry</td>
+            <td class="description last">Any iterable such as an Array of Promise objects.</td>
         </tr>
 
     
@@ -424,7 +331,7 @@ of a Map.</p></div>
 
         
 <div class="param-desc">
-    True if there was a deletion, otherwise false.
+    A Promise whose resolution is an Array of all the promises' resolutions.
 </div>
 
 
@@ -435,7 +342,7 @@ of a Map.</p></div>
     </dt>
     <dd>
         
-<span class="param-type"><a href="boolean.html">boolean</a></span>
+<span class="param-type"><a href="Promise.html">Promise</a></span>
 
 
     </dd>
@@ -453,7 +360,7 @@ of a Map.</p></div>
     
 
     
-    <h4 class="name" id="entries"><span class="type-signature"></span>entries<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="Generator.html">Generator</a>}</span></h4>
+    <h4 class="name" id=".reject"><span class="type-signature">(static) </span>reject<span class="signature">(reason)</span><span class="type-signature"> &rarr; {<a href="Promise.html">Promise</a>}</span></h4>
     
 
     
@@ -461,8 +368,7 @@ of a Map.</p></div>
 
 
 <div class="description">
-    Returns an Iterator that can be used in a for-of loop. The iterator value is an Array of two items, the key and
-value, in that order. Note that unlike JavaScript, the order of the entries is not defined.
+    Creates a Promise that rejects with a given reason.
 </div>
 
 
@@ -471,6 +377,55 @@ value, in that order. Note that unlike JavaScript, the order of the entries is n
 
 
 
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>reason</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Any reason</td>
+        </tr>
+
+    
+    </tbody>
+</table>
 
 
 
@@ -530,7 +485,7 @@ value, in that order. Note that unlike JavaScript, the order of the entries is n
 
         
 <div class="param-desc">
-    An Iterator that can be used in a for-of loop or manually iterated with the next() method.
+    A promise that rejects with the given reason.
 </div>
 
 
@@ -541,7 +496,7 @@ value, in that order. Note that unlike JavaScript, the order of the entries is n
     </dt>
     <dd>
         
-<span class="param-type"><a href="Generator.html">Generator</a></span>
+<span class="param-type"><a href="Promise.html">Promise</a></span>
 
 
     </dd>
@@ -559,7 +514,7 @@ value, in that order. Note that unlike JavaScript, the order of the entries is n
     
 
     
-    <h4 class="name" id="forEach"><span class="type-signature"></span>forEach<span class="signature">(callback, thisToUse<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id=".resolve"><span class="type-signature">(static) </span>resolve<span class="signature">(value)</span><span class="type-signature"> &rarr; {<a href="Promise.html">Promise</a>}</span></h4>
     
 
     
@@ -567,7 +522,471 @@ value, in that order. Note that unlike JavaScript, the order of the entries is n
 
 
 <div class="description">
-    Applies a callback whose arguments are the value, key, and Map in that order on each entry.
+    Creates a Promise that is resolved with a given value.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>value</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Any value</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    A promise that resolves to the given value.
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="Promise.html">Promise</a></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="catch"><span class="type-signature"></span>catch<span class="signature">(callback)</span><span class="type-signature"> &rarr; {<a href="Promise.html">Promise</a>}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Adds a callback that is called when the Promise rejects with an error. The callback should take a parameter
+that is the reason for the rejection.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>callback</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">A callback</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    This Promise so that calls may be chained.
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="Promise.html">Promise</a></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="finally"><span class="type-signature"></span>finally<span class="signature">(callback)</span><span class="type-signature"> &rarr; {<a href="Promise.html">Promise</a>}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Adds a callback to be executed regardless if the Promise is resolved or rejected. The callback does not
+receive any parameters.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>callback</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">A callback with no parameters.</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    This Promise
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="Promise.html">Promise</a></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="then"><span class="type-signature"></span>then<span class="signature">(onResolve, onRejected<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {<a href="Promise.html">Promise</a>}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Adds a callback to be called when the Promise is resolved and an optional callback to handle rejection.
 </div>
 
 
@@ -605,7 +1024,7 @@ value, in that order. Note that unlike JavaScript, the order of the entries is n
 
         <tr>
             
-                <td class="name"><code>callback</code></td>
+                <td class="name"><code>onResolve</code></td>
             
 
             <td class="type">
@@ -629,20 +1048,20 @@ value, in that order. Note that unlike JavaScript, the order of the entries is n
 
             
 
-            <td class="description last">A Function that can receive the value, key, and Map</td>
+            <td class="description last">A callback that receives the resolved value</td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>thisToUse</code></td>
+                <td class="name"><code>onRejected</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">*</span>
+<span class="param-type">function</span>
 
 
             
@@ -662,139 +1081,7 @@ value, in that order. Note that unlike JavaScript, the order of the entries is n
 
             
 
-            <td class="description last">The "this" Object to use inside the callback.</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-            
-
-    
-
-    
-    <h4 class="name" id="get"><span class="type-signature"></span>get<span class="signature">(key)</span><span class="type-signature"> &rarr; {*}</span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    Gets a value associated with a key, if it exists in this Map
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>key</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">*</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The key associated with the value to get</td>
+            <td class="description last">An optional callback that receives a rejection reason</td>
         </tr>
 
     
@@ -859,7 +1146,7 @@ value, in that order. Note that unlike JavaScript, the order of the entries is n
 
         
 <div class="param-desc">
-    The value if it exists, else undefined
+    This Promise so that calls may be chained.
 </div>
 
 
@@ -870,550 +1157,7 @@ value, in that order. Note that unlike JavaScript, the order of the entries is n
     </dt>
     <dd>
         
-<span class="param-type">*</span>
-
-
-    </dd>
-</dl>
-
-    
-
-
-
-
-
-        
-            
-
-    
-
-    
-    <h4 class="name" id="has"><span class="type-signature"></span>has<span class="signature">(key)</span><span class="type-signature"> &rarr; {<a href="boolean.html">boolean</a>}</span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    Determines if a key exists in this Map
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>key</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">*</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The key to the entry</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    True if the key is in this Map, otherwise false
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type"><a href="boolean.html">boolean</a></span>
-
-
-    </dd>
-</dl>
-
-    
-
-
-
-
-
-        
-            
-
-    
-
-    
-    <h4 class="name" id="keys"><span class="type-signature"></span>keys<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="Generator.html">Generator</a>}</span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    Gets an Iterator that iterates over just the keys in the Map. Note that unlike JavaScript, the order of the
-keys is not defined.
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    An Iterator that can be used in a for-of loop or iterated with next()
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type"><a href="Generator.html">Generator</a></span>
-
-
-    </dd>
-</dl>
-
-    
-
-
-
-
-
-        
-            
-
-    
-
-    
-    <h4 class="name" id="set"><span class="type-signature"></span>set<span class="signature">(key, value)</span><span class="type-signature"> &rarr; {<a href="Map.html">Map</a>}</span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    Creates or modifies an entry whose key is key and whose value is value.
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>key</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">*</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">Any type</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>value</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">*</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">Any type</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    Returns this Map so that set calls can be chained.
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type"><a href="Map.html">Map</a></span>
-
-
-    </dd>
-</dl>
-
-    
-
-
-
-
-
-        
-            
-
-    
-
-    
-    <h4 class="name" id="values"><span class="type-signature"></span>values<span class="signature">()</span><span class="type-signature"> &rarr; {<a href="Generator.html">Generator</a>}</span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    Returns an Iterator that iterates over just the values. Note that unlike JavaScript, the order of
-values is not defined.
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    An Iterator that can be used in a for-of loop or iterated with next()
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type"><a href="Generator.html">Generator</a></span>
+<span class="param-type"><a href="Promise.html">Promise</a></span>
 
 
     </dd>

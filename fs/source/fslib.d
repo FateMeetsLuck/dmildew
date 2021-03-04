@@ -25,6 +25,7 @@ version(Windows)
 import core.sys.windows.windows;
 import core.sys.windows.dll;
 }
+import std.file;
 import std.stdio;
 
 import mildew.interpreter;
@@ -40,8 +41,24 @@ mixin SimpleDllMain;
 export extern(C) void initializeModule(Interpreter interpreter)
 {
     auto fs = new ScriptObject("fs", null);
+    fs["readdirSync"] = new ScriptFunction("fs.readdirSync", &native_fs_readdirSync);
     fs["test"] = new ScriptFunction("fs.test", &native_fs_test);
     interpreter.forceSetGlobal("fs", ScriptAny(fs), false);
+}
+
+private ScriptAny native_fs_readdirSync(Environment env, ScriptAny* thisObj,
+                                        ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(args.length < 1)
+    {
+        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
+        return ScriptAny.UNDEFINED;
+    }
+    auto directory = args[0].toString();
+    ScriptAny[] entries;
+    foreach(entry ; dirEntries(directory, SpanMode.shallow))
+        entries ~= ScriptAny(entry.name());
+    return ScriptAny(entries);
 }
 
 private ScriptAny native_fs_test(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)

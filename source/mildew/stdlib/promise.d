@@ -38,6 +38,7 @@ void initializePromiseLibrary(Interpreter interpreter)
     promiseCtor["prototype"] = getPromisePrototype;
     promiseCtor["prototype"]["constructor"] = promiseCtor;
     promiseCtor["all"] = new ScriptFunction("Promise.all", &native_Promise_s_all);
+    promiseCtor["reject"] = new ScriptFunction("Promise.reject", &native_Promise_s_reject);
     promiseCtor["resolve"] = new ScriptFunction("Promise.resolve", &native_Promise_s_resolve);
 
     interpreter.forceSetGlobal("Promise", promiseCtor, false);
@@ -267,7 +268,7 @@ private ScriptPromise valuePromise(Environment env, ScriptAny value)
 }
 
 /**
- * Creates a new Promise with the constructor and wraps it in a ScriptAny
+ * Creates a new Promise with the constructor and wraps it in a ScriptAny. This overload takes a ScriptFunction
  */
 ScriptAny newPromise(Environment env, ScriptFunction action)
 {
@@ -277,6 +278,7 @@ ScriptAny newPromise(Environment env, ScriptFunction action)
     native_Promise_ctor(env, &thisObj, [ScriptAny(action)], nfe);
     return thisObj;
 }
+
 
 private ScriptAny native_Promise_ctor(Environment env, ScriptAny* thisObj,
                                       ScriptAny[] args, ref NativeFunctionError nfe)
@@ -420,6 +422,20 @@ private ScriptAny native_Promise_finally(Environment env, ScriptAny* thisObj,
         }
     );
     return native_Promise_then(env, thisObj, [onResolve, onReject], nfe);
+}
+
+private ScriptAny native_Promise_s_reject(Environment env, ScriptAny* thisObj,
+                                          ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    auto value = args.length > 0 ? args[0] : ScriptAny.UNDEFINED;
+    auto action = new ScriptFunction("::action", delegate ScriptAny
+        (Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe){
+            auto rejector = args.length > 1 ? args[1].toValue!ScriptFunction() : null;
+            if(!rejector) return ScriptAny.UNDEFINED;
+            return env.g.interpreter.vm.runFunction(rejector, *thisObj, [value]);
+        }
+    );
+    return newPromise(env, action);
 }
 
 private ScriptAny native_Promise_s_resolve(Environment env, ScriptAny* thisObj,
