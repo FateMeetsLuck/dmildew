@@ -31,6 +31,7 @@ import std.stdio;
 import mildew.interpreter;
 import mildew.environment;
 import mildew.exceptions;
+import mildew.stdlib.buffers;
 import mildew.types;
 
 version(Windows)
@@ -42,6 +43,7 @@ export extern(C) void initializeModule(Interpreter interpreter)
 {
     auto fs = new ScriptObject("fs", null);
     fs["readdirSync"] = new ScriptFunction("fs.readdirSync", &native_fs_readdirSync);
+    fs["readFileSync"] = new ScriptFunction("fs.readFileSync", &native_fs_readFileSync);
     fs["test"] = new ScriptFunction("fs.test", &native_fs_test);
     interpreter.forceSetGlobal("fs", ScriptAny(fs), false);
 }
@@ -59,6 +61,47 @@ private ScriptAny native_fs_readdirSync(Environment env, ScriptAny* thisObj,
     foreach(entry ; dirEntries(directory, SpanMode.shallow))
         entries ~= ScriptAny(entry.name());
     return ScriptAny(entries);
+}
+
+private ScriptAny native_fs_readFileSync(Environment env, ScriptAny* thisObj,
+                                         ScriptAny[] args, ref NativeFunctionError nfe)
+{
+    if(args.length < 1)
+    {
+        nfe = NativeFunctionError.WRONG_NUMBER_OF_ARGS;
+        return ScriptAny.UNDEFINED;
+    }
+    
+    auto path = args[0].toString();
+    auto encoding = "";
+
+    if(args.length > 1)
+    {
+        encoding = args[1].toString();
+        try 
+        {
+            auto result = readText(path);
+            return ScriptAny(result);
+        }
+        catch(Exception ex)
+        {
+            // Windows will never be supported until exceptions can cross DLL boundaries.
+            throw new ScriptRuntimeException(ex.msg);
+        }
+    }
+    else 
+    {
+        try 
+        {
+            auto buffer = cast(ubyte[])read(path);
+            auto result = new ScriptArrayBuffer(buffer);
+            return ScriptAny(new ScriptObject("ArrayBuffer", getArrayBufferPrototype, result));
+        }
+        catch(Exception ex)
+        {
+            throw new ScriptRuntimeException(ex.msg);
+        }
+    }
 }
 
 private ScriptAny native_fs_test(Environment env, ScriptAny* thisObj, ScriptAny[] args, ref NativeFunctionError nfe)

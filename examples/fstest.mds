@@ -2,3 +2,6 @@ if(!isdefined("fs"))
     throw "This test must be run with --lib=fs";
 
 fs.readdirSync("./examples").forEach(entry => console.log(entry));
+
+const text = fs.readFileSync("./examples/promise.mds", "utf8");
+console.log(text);
