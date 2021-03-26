@@ -22,6 +22,8 @@ The documentation for the standard library usable by scripts, which is only load
 
 Building the library is as simple as writing `dub build` in a terminal in the main project directory. To build the REPL and script runner one can write `dub build dmildew:run` in the same directory as the main project. Add `-b release` to the build and run commands to generate an optimized binary that performs slightly better than the default debugging build.
 
+To build the fs library for reading and writing files, `cd` to the fs directory and run `dub build`. It will automatically place the shared library in the directory above it. The fs library is not available on Windows.
+
 ## Compiling and Running Bytecode Files
 
 A script can be compiled with `dub run dmildew:bccompiler -- <name of script file.mds> -o <name of binary.mdc>` and the resulting binary bytecode file can be run directly with the REPL as if it were a normal text file of source code. The API is not stable yet so bytecode programs may need to be recompiled each pre-release.
@@ -31,6 +33,8 @@ A script can be compiled with `dub run dmildew:bccompiler -- <name of script fil
 In a terminal in the main project directory run `dub run dmildew:run -- examples/<nameofexample>.mds`. To try the interactive shell simply type `dub run dmilew:run`. In the interactive shell it is only possible to continue a command on a new line by writing a single backslash at the end of a line. Functions, variables, and classes declared in one REPL command will not be accessible in the next unless stored in a var. To store a class such as `class Foo {}` one must write `var Foo = Foo;` immediately after. One can also store anonymous class expressions in a global variable such as `var Foo = class {};`.
 
 The option `-d` prints bytecode disassembly before running each chunk of code. The option `-v` prints highly verbose step by step execution of bytecode in the virtual machine. For example, to print detailed information while running the REPL, the dub command would be `dub run dmildew:run -- -v -d`.
+
+If the fs library was built, the option `--lib=fs` can be added to load the fs library and use functions in the fs namespace. This feature is not available on Windows.
 
 ## Binding
 

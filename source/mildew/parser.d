@@ -323,6 +323,8 @@ package:
                 else if(opToken.type == Token.Type.LPAREN)
                 {
                     auto params = parseCommaSeparatedExpressions(Token.Type.RPAREN);
+                    if(_currentToken.type != Token.Type.RPAREN)
+                        throw new ScriptCompileException("Expected closing ')' for function call", _currentToken);
                     nextToken();
                     if(unOpPrec != 0 && prec > unOpPrec)
                     {
@@ -1129,7 +1131,6 @@ private:
             statement = parseDoWhileStatement(label);
             --_functionContextStack.top.loopStack;
         }
-        // check for for loop TODO check label
         else if(_currentToken.isKeyword("for"))
         {
             ++_functionContextStack.top.loopStack;
@@ -1201,7 +1202,7 @@ private:
             // of let or const and VarAccessNodes
             if(decl is null)
                 throw new ScriptCompileException("Invalid for in statement", _currentToken);
-            Token qualifier;
+            Token qualifier = decl.qualifier;
             VarAccessNode[] vans;
             if(decl.qualifier.text != "const" && decl.qualifier.text != "let")
                 throw new ScriptCompileException("Global variable declaration invalid in for in statement",

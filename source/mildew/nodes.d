@@ -732,6 +732,12 @@ class SwitchStatementNode : StatementNode
         return visitor.visitSwitchStatementNode(this);
     }
 
+    override string toString() const 
+    {
+        // TODO complete
+        return "switch(" ~ expressionNode.toString ~ "){...}";
+    }
+
     ExpressionNode expressionNode; // expression to test
     SwitchBody switchBody;
 }

@@ -712,7 +712,7 @@ private:
             advanceChar();
             if(peekChar == '=')
             {
-                advanceChar();
+                advanceChar(); // TODO fix lack of position
                 return Token(Token.Type.STRICT_EQUALS);
             }
             else

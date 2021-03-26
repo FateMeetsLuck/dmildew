@@ -191,11 +191,6 @@ public:
                     return 1;
                 else if(_argNames < other._argNames)
                     return -1;
-
-                if(_statementNodes > other._statementNodes)
-                    return 1;
-                else if(_statementNodes < other._statementNodes)
-                    return -1;
             }
         }
         else if(_type == Type.NATIVE_DELEGATE)
@@ -316,9 +311,6 @@ package(mildew):
     /// Sets the function name
     auto functionName(in string fnName) { return _functionName = fnName; }
 
-    /// Property statementNodes
-    auto statementNodes() { return _statementNodes; }
-
 	/// Property get closure
 	auto closure() { return _closure; }
     /// Property set closure
@@ -331,7 +323,6 @@ private:
     Type _type;
     string _functionName;
     string[] _argNames;
-    StatementNode[] _statementNodes;
     ScriptAny _boundThis;
 	Environment _closure = null;
 	bool _isClass = false;

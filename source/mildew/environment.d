@@ -308,7 +308,7 @@ private:
     /// holds consts, which can be shadowed by other consts or lets
     VariableTable _constTable;
     /// holds a list of labels
-    auto _labelList = new RedBlackTree!string;
+    deprecated auto _labelList = new RedBlackTree!string;
     /// Interpreter object can be held by global environment
     Interpreter _interpreter;
 }
