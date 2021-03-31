@@ -82,16 +82,38 @@ private void printUsage()
     stderr.writeln("                      Load library modules");
 }
 
+void replNoTerminal(Interpreter interpreter)
+{
+    string code = "";
+    while(!stdin.eof())
+    {
+        code ~= readln();
+    }
+    try 
+    {
+        auto result = interpreter.evaluate(code);
+        writeln("The program successfully returned " ~ result.toString());
+    }
+    catch(ScriptCompileException ex)
+    {
+        stderr.writeln(ex.toString());
+    }
+    catch(ScriptRuntimeException ex)
+    {
+        stderr.writeln(ex.toString());
+    }
+}
+
 /**
  * Main function for the REPL or interpreter. If no command line arguments are specified, it enters
  * interactive REPL mode, otherwise it attempts to execute the first argument as a script file.
  */
 int main(string[] args)
 {
-    Terminal terminal = Terminal(ConsoleOutputType.linear);
     // auto terminal = Terminal(ConsoleOutputType.linear);
     bool printVMDebugInfo = false;
     bool printDisasm = false;
+    bool useStdIn = false;
     string[] libsToLoad = [];
 
     try 
@@ -100,7 +122,8 @@ int main(string[] args)
         auto options = cast(immutable)getopt(args, 
             "verbose|v", &printVMDebugInfo,
             "disasm|d", &printDisasm,
-            "lib|l", &libsToLoad
+            "lib|l", &libsToLoad,
+            "i", &useStdIn
         );
         if(options.helpWanted) 
         {
@@ -131,10 +154,15 @@ int main(string[] args)
     {
         string[] fileNames = args[1..$];
         foreach(fileName ; fileNames)
-            evaluateWithErrorChecking(&terminal, interpreter, "", fileName);
-    }    
+            evaluateWithErrorChecking(null, interpreter, "", fileName);
+    }
+    else if(useStdIn)
+    {
+        replNoTerminal(interpreter);
+    }
     else
     {
+        Terminal terminal = Terminal(ConsoleOutputType.linear);
         while(true)
         {
             try 
