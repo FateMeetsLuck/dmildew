@@ -6,6 +6,8 @@ The ideal use case for this software is for embedding in D applications with an 
 
 This software is licensed under the GNU General Public License version 3.0 so that it may be used in free and open software. For a commercial software usage license, please contact the author. In the future, the license will be changed to LGPL3 when the software is more stable and ready for production use.
 
+One can try DMildew from their browser [here](http://pillager86.xyz). Note that variables cannot be saved between commands in the online REPL. In the future this will change when the REPL server is implemented with vibe.d
+
 ## Usage 
 
 The examples/ folder contains example scripts. It should look familiar to anyone who knows JavaScript. However, Mildew is not a full feature ES6 JavaScript implementation.
